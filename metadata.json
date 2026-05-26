@@ -1,0 +1,6 @@
+{
+  "name": "Live Scores & Matches Hub",
+  "description": "جدول مباريات مباشر، نتائج الدوريات العالمية، آخر الأخبار الرياضية، وتنبيهات مباشرة باللغتين العربية والإنجليزية. | Live match schedule, world leagues standings, sports news, and real-time goal alerts with Arabic & English support.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
