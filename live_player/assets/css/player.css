@@ -1,0 +1,280 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  player.css  —  تصميم داكن احترافي لنظام LiveStream Pro
+ *  يشبه مواقع البث الرياضية: شريط علوي متدرّج، شارة LIVE نابضة،
+ *  بطاقات موارد بألوان مختلفة حسب النوع، وتصميم متجاوب للموبايل.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── متغيّرات الألوان ─────────────────────────────────────────────────────── */
+:root {
+    --primary:   #00bcd4;      /* اللون الأساسي (سماوي) */
+    --primary-2: #0097a7;
+    --bg-dark:   #0a0a0a;      /* الخلفية الداكنة الرئيسية */
+    --bg-panel:  #141821;      /* خلفية اللوحات */
+    --bg-card:   #1b2130;      /* خلفية البطاقات */
+    --border:    #2a3143;
+    --text:      #e8eef5;
+    --text-dim:  #93a1b5;
+    --live:      #ff1744;      /* أحمر شارة LIVE */
+    --green:     #00e676;      /* m3u8 */
+    --blue:      #2979ff;      /* mpd */
+    --purple:    #b388ff;      /* ts */
+    --orange:    #ff9100;      /* iframe/مصدر */
+    --radius:    12px;
+    --shadow:    0 8px 30px rgba(0,0,0,.45);
+}
+
+/* ── إعادة الضبط العامة ───────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+    font-family: "Segoe UI", "Cairo", Tahoma, system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #12202b 0%, var(--bg-dark) 55%);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+a { color: var(--primary); text-decoration: none; }
+img, video, iframe { max-width: 100%; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  الشريط العلوي
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.topbar {
+    background: linear-gradient(90deg, #0d1117 0%, #101a2e 50%, #0d1117 100%);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: 0 2px 20px rgba(0,0,0,.5);
+}
+.topbar-inner {
+    max-width: 1400px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; }
+.brand-icon { font-size: 24px; }
+.brand-name b { color: var(--primary); }
+.topnav { display: flex; gap: 6px; flex-wrap: wrap; }
+.topnav a {
+    padding: 8px 14px; border-radius: 8px; color: var(--text-dim);
+    font-size: 14px; font-weight: 600; transition: all .2s;
+}
+.topnav a:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.topnav a.active { background: var(--primary); color: #04212a; }
+
+/* شارة LIVE النابضة */
+.live-badge {
+    background: var(--live); color: #fff; font-size: 11px; font-weight: 800;
+    padding: 3px 9px; border-radius: 6px; letter-spacing: 1px;
+    animation: livePulse 1.4s ease-in-out infinite;
+}
+@keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,.6); opacity: 1; }
+    50%      { box-shadow: 0 0 0 8px rgba(255,23,68,0); opacity: .85; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  الحاويات
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.container      { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+.container-wide { max-width: 1400px; margin: 0 auto; padding: 22px 20px 60px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  القسم البطولي (index)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.hero { text-align: center; padding: 30px 0 40px; }
+.hero-title {
+    font-size: clamp(26px, 5vw, 44px); font-weight: 800; letter-spacing: -.5px;
+    background: linear-gradient(90deg, var(--primary), #6ee7ff);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero-sub { color: var(--text-dim); max-width: 640px; margin: 14px auto 0; font-size: 16px; }
+.hint { color: var(--text-dim); font-size: 13px; margin-top: 14px; }
+
+/* نموذج الإدخال */
+.url-form { max-width: 720px; margin: 30px auto 0; }
+.url-actions { display: flex; gap: 12px; margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* حقول الإدخال */
+.url-input {
+    width: 100%; padding: 14px 16px; font-size: 15px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; outline: none; transition: border .2s, box-shadow .2s;
+    direction: ltr; text-align: left;
+}
+.url-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,188,212,.15); }
+.url-input::placeholder { color: #5b6b7a; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  الأزرار
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.btn {
+    display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+    padding: 12px 20px; font-size: 14px; font-weight: 700; cursor: pointer;
+    border: 1px solid transparent; border-radius: 10px; transition: transform .12s, filter .2s, background .2s;
+    font-family: inherit;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: linear-gradient(90deg, var(--primary), var(--primary-2)); color: #04212a; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
+.btn-ghost:hover { background: rgba(255,255,255,.06); }
+.btn-sm { padding: 7px 12px; font-size: 12.5px; border-radius: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  بطاقات المميزات
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.section-title { text-align: center; font-size: 24px; margin: 40px 0 24px; }
+.feature-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+}
+.feature-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; transition: transform .2s, border .2s;
+}
+.feature-card:hover { transform: translateY(-4px); border-color: var(--primary); }
+.feature-ico { font-size: 30px; margin-bottom: 10px; }
+.feature-card h3 { font-size: 17px; margin-bottom: 6px; }
+.feature-card p { color: var(--text-dim); font-size: 14px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  شريط الأدوات (المستكشف/المشغّل)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    padding: 14px; border-radius: var(--radius); margin-bottom: 18px;
+}
+.toolbar .url-input { flex: 1 1 320px; }
+
+/* مؤشّر الفحص النابض */
+.scan-indicator { display: inline-flex; align-items: center; gap: 8px; color: var(--primary); font-size: 13px; font-weight: 600; }
+.dot-pulse {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--primary);
+    display: inline-block; animation: dotPulse 1s ease-in-out infinite;
+}
+@keyframes dotPulse {
+    0%, 100% { transform: scale(.6); opacity: .5; box-shadow: 0 0 0 0 rgba(0,188,212,.5); }
+    50%      { transform: scale(1);  opacity: 1;  box-shadow: 0 0 0 6px rgba(0,188,212,0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  تخطيط المستكشف (عمودان)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.sniffer-layout { display: grid; grid-template-columns: minmax(320px, 460px) 1fr; gap: 18px; align-items: start; }
+
+/* لوحة الموارد */
+.resources-panel, .viewer-panel {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
+}
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.panel-head h2 { font-size: 18px; }
+.count-badge { background: var(--primary); color: #04212a; font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 20px; }
+.resource-list { display: flex; flex-direction: column; gap: 12px; max-height: 620px; overflow-y: auto; padding-left: 4px; }
+.empty-state { color: var(--text-dim); text-align: center; padding: 40px 12px; font-size: 14px; }
+
+/* ── بطاقة المورد مع أنيميشن الظهور ─────────────────────────────────────── */
+.resource-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-right: 4px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; animation: slideIn .35s ease both;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(18px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.resource-card.playing { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,188,212,.25); }
+/* ألوان الحدود حسب النوع */
+.resource-card.type-m3u8 { border-right-color: var(--green); }
+.resource-card.type-mpd  { border-right-color: var(--blue); }
+.resource-card.type-ts   { border-right-color: var(--purple); }
+.resource-card.type-mp4,
+.resource-card.type-webm,
+.resource-card.type-flv  { border-right-color: var(--orange); }
+
+.res-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.res-num  { font-weight: 800; color: var(--primary); font-size: 13px; }
+.res-name { font-weight: 700; font-size: 14px; }
+.res-source { margin-inline-start: auto; color: var(--text-dim); font-size: 11px; border: 1px solid var(--border); padding: 1px 8px; border-radius: 12px; }
+
+/* شارة النوع الملوّنة */
+.type-badge { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 6px; letter-spacing: .5px; }
+.badge-m3u8 { background: rgba(0,230,118,.15);  color: var(--green);  border: 1px solid var(--green); }
+.badge-mpd  { background: rgba(41,121,255,.15); color: #7aa2ff;       border: 1px solid var(--blue); }
+.badge-ts   { background: rgba(179,136,255,.15);color: var(--purple); border: 1px solid var(--purple); }
+.badge-mp4, .badge-webm, .badge-flv, .badge-stream {
+    background: rgba(255,145,0,.15); color: var(--orange); border: 1px solid var(--orange);
+}
+
+/* الرابط بخط monospace */
+.res-url {
+    font-family: "SFMono-Regular", Consolas, "Roboto Mono", monospace;
+    font-size: 12px; color: var(--text-dim); direction: ltr; text-align: left;
+    background: #0e131d; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 10px;
+    word-break: break-all; max-height: 60px; overflow-y: auto;
+}
+.res-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  المشغّل والمتصفح المدمج
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.player-wrap {
+    position: relative; width: 100%; aspect-ratio: 16 / 9;
+    background: #000; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
+}
+.video { width: 100%; height: 100%; display: block; background: #000; }
+
+/* شريط المعلومات */
+.info-bar { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+.info-item { color: var(--text-dim); font-size: 13px; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+.pill-idle    { color: var(--text-dim); }
+.pill-loading { color: #04212a; background: var(--orange); border-color: var(--orange); }
+.pill-live    { color: #04212a; background: var(--green);  border-color: var(--green); }
+.pill-error   { color: #fff;    background: var(--live);   border-color: var(--live); }
+
+/* المتصفح المدمج */
+.browser-frame { margin-top: 14px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.frame-label { background: #0e131d; padding: 8px 12px; font-size: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.site-frame { width: 100%; height: 380px; border: 0; background: #fff; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  لوحة الجودة وشريط إعادة الاتصال (watch)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.quality-panel { margin-top: 16px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.quality-title { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+.quality-levels { display: flex; gap: 8px; flex-wrap: wrap; }
+.quality-btn {
+    padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; transition: all .15s;
+}
+.quality-btn:hover { border-color: var(--primary); }
+.quality-btn.active { background: var(--primary); color: #04212a; border-color: var(--primary); }
+
+.reconnect-bar {
+    display: flex; align-items: center; gap: 10px; margin-top: 14px;
+    background: rgba(255,23,68,.08); border: 1px solid rgba(255,23,68,.35);
+    color: #ff8a9c; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  التذييل
+ * ═══════════════════════════════════════════════════════════════════════════ */
+.footer { border-top: 1px solid var(--border); padding: 22px 20px; text-align: center; color: var(--text-dim); font-size: 13px; margin-top: 30px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  التجاوب مع الشاشات الصغيرة
+ * ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+    .sniffer-layout { grid-template-columns: 1fr; }
+    .resource-list  { max-height: 340px; }
+    .site-frame     { height: 300px; }
+}
+@media (max-width: 560px) {
+    .topnav { width: 100%; justify-content: center; }
+    .url-actions { flex-direction: column; }
+    .btn { width: 100%; }
+    .toolbar .btn { width: auto; }
+}
+
+/* شريط تمرير مخصّص */
+.resource-list::-webkit-scrollbar, .res-url::-webkit-scrollbar { width: 8px; height: 8px; }
+.resource-list::-webkit-scrollbar-thumb, .res-url::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
