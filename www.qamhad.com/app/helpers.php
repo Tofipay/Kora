@@ -913,9 +913,19 @@ function query_int(string $key, int $default = 0): int
     return (int)($_GET[$key] ?? $default);
 }
 
+/**
+ * True when the ORIGINAL client request used HTTPS. Proxy-aware: behind
+ * Cloudflare or any TLS-terminating proxy the origin sees plain HTTP with
+ * forwarded headers — trusting only $_SERVER['HTTPS'] causes redirect loops.
+ */
 function is_https(): bool
 {
-    return !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+    if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') return true;
+    if (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https') return true;
+    if (strtolower((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on') return true;
+    if (stripos((string)($_SERVER['HTTP_CF_VISITOR'] ?? ''), 'https') !== false) return true;
+    return false;
 }
 
 /**

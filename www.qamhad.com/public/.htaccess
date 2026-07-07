@@ -11,15 +11,34 @@ DirectoryIndex index.php
   RewriteBase /
 
   # ---- Canonical host + HTTPS: everything → https://www.qamhad.com ----
-  # One-hop 301 from any scheme/host combination (http://, qamhad.com,
-  # live.qamhad.com, …) straight to the canonical URL, preserving the full
-  # path and query string. Local/dev hosts skip both rules.
+  # One-hop 301, preserving the full path + query string. Local dev skips
+  # all three rules. The redirect path is captured from THE_REQUEST (the
+  # original request line) — never from the rewritten filesystem path — so
+  # an internal public/ prefix from the root-folder router can never leak
+  # into the address bar, on Apache or LiteSpeed.
   RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1|192\.168\..*|10\..*|.*\.(test|local))(:\d+)?$ [NC]
-  RewriteRule ^ - [S=2]
-  RewriteCond %{HTTPS} off
-  RewriteRule ^ https://www.qamhad.com%{REQUEST_URI} [L,R=301]
+  RewriteRule ^ - [S=3]
+
+  # 1) A leaked/bookmarked /public URL → same URL without the prefix.
+  RewriteCond %{THE_REQUEST} \s/public(/\S*)?\s [NC]
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # 2) Wrong host (qamhad.com, live.qamhad.com, …) → canonical www.
   RewriteCond %{HTTP_HOST} !^www\.qamhad\.com$ [NC]
-  RewriteRule ^ https://www.qamhad.com%{REQUEST_URI} [L,R=301]
+  RewriteCond %{THE_REQUEST} \s(/\S*)\s
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # 3) Plain http → https. PROXY-AWARE: Cloudflare & other TLS-terminating
+  #    proxies talk plain HTTP to the origin while sending
+  #    X-Forwarded-Proto/X-Forwarded-SSL/CF-Visitor. Checking only %{HTTPS}
+  #    would loop forever (ERR_TOO_MANY_REDIRECTS).
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{SERVER_PORT} !=443
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteCond %{HTTP:X-Forwarded-SSL} !on [NC]
+  RewriteCond %{HTTP:CF-Visitor} !https [NC]
+  RewriteCond %{THE_REQUEST} \s(/\S*)\s
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
 
   # ---- First-party JSON proxy: /api/*.php execute directly ----
   RewriteCond %{REQUEST_URI} ^/api/ [NC]

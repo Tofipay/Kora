@@ -23,6 +23,18 @@ $uri  = $_SERVER['REQUEST_URI'] ?? '/';
 $path = rawurldecode((string)parse_url($uri, PHP_URL_PATH));
 $path = '/' . ltrim($path, '/');
 
+/* ---------- Never serve under /public: 301 to the clean path ----------
+ * A /public/... URL means the internal folder prefix leaked at some point
+ * (old link, misconfigured router). Answer with one permanent redirect to
+ * the clean canonical URL so browsers and Google drop the ugly variant. */
+if ($path === '/public' || str_starts_with($path, '/public/')) {
+    $clean = substr($path, strlen('/public')) ?: '/';
+    $__qs = (string)parse_url($uri, PHP_URL_QUERY);
+    header('Location: ' . SITE_URL . implode('/', array_map('rawurlencode', explode('/', $clean))) . ($__qs !== '' ? '?' . $__qs : ''), true, 301);
+    header('Cache-Control: public, max-age=86400');
+    exit;
+}
+
 /* ---------- Canonical host: 301 legacy hosts → www.qamhad.com ----------
  * live.qamhad.com / qamhad.com keep serving, but every request is answered
  * with a single permanent redirect to the same path on the primary domain,

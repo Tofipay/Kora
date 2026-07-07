@@ -247,7 +247,9 @@ function qamhad_session_start(): void {
         session_start([
             'cookie_httponly' => true,
             'cookie_samesite' => 'Lax',
-            'cookie_secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'cookie_secure'   => function_exists('is_https')
+                ? is_https()
+                : (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
         ]);
     }
 }

@@ -96,6 +96,26 @@ $aStats = $statsByTeam[$awayId] ?? [];
         <b><?= e(team_name($away)) ?></b>
       </a>
     </div>
+    <?php // Compact meta row: venue · kickoff date/time · round ?>
+    <?php if ($stadium !== '' || $ts || $roundLabel !== ''): ?>
+    <div class="mh-meta">
+      <?php if ($stadium !== ''): ?>
+      <span class="mh-meta-item">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+        <?= e($stadium) ?>
+      </span>
+      <?php endif; ?>
+      <?php if ($ts): ?>
+      <span class="mh-meta-item">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4m8-4v4M3 10h18"/></svg>
+        <?= e(format_date_short($ts)) ?> · <?= e(format_ts_time($ts)) ?>
+      </span>
+      <?php endif; ?>
+      <?php if ($roundLabel !== ''): ?>
+      <span class="mh-meta-item"><?= e($roundLabel) ?></span>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
     <?php /* "Watch now" appears ONLY while the match is live — hidden before
              kickoff and after it ends. */ ?>
     <?php if (!empty($watchable) && !empty($state['live'])): ?>
