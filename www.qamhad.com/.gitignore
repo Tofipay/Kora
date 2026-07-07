@@ -1,0 +1,16 @@
+# runtime caches & user uploads
+storage/cache/api/*
+storage/cache/media/*
+storage/settings/*
+public/assets/uploads/*
+!storage/cache/api/.gitkeep
+!storage/cache/media/.gitkeep
+!storage/settings/.gitkeep
+
+# OS / editors
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+.env*
+!.env.example

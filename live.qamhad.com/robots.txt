@@ -1,0 +1,15 @@
+# live.qamhad.com — fallback robots.txt (normally this URL 301s to www).
+# Served only if you disable the robots.txt redirect in .htaccess.
+# Everything stays crawlable so Googlebot can FOLLOW the 301s and
+# transfer the old rankings to www.qamhad.com — never block a host
+# you are redirecting, or the signals cannot move.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://www.qamhad.com/sitemap.xml
+Sitemap: https://www.qamhad.com/sitemap-ar.xml
+Sitemap: https://www.qamhad.com/sitemap-en.xml
+Sitemap: https://www.qamhad.com/sitemap-match.xml
+Sitemap: https://www.qamhad.com/sitemap-news.xml
+Sitemap: https://www.qamhad.com/sitemap-images.xml

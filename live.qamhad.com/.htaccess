@@ -1,0 +1,57 @@
+# ============================================================
+# live.qamhad.com — migration rules → https://www.qamhad.com
+# ============================================================
+# Purpose: transfer ALL ranking signals (link equity, indexed URLs)
+# from live.qamhad.com to the new primary domain www.qamhad.com
+# with professional one-hop 301 redirects that preserve every path
+# and query string. live.qamhad.com keeps answering requests (no
+# 404s, no soft errors) — each answer is a clean permanent redirect,
+# which is exactly what Google's site-move guidelines require.
+#
+# Upload this folder AS the document root of live.qamhad.com.
+# ============================================================
+
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # ---- 1) Sitemap redirects ----
+  # Old sitemap URLs 301 to the new sitemaps on www so Search Console
+  # discovers the new location instantly (no orphaned sitemaps).
+  RewriteRule ^sitemap\.xml$          https://www.qamhad.com/sitemap.xml        [L,R=301]
+  RewriteRule ^sitemap-ar\.xml$       https://www.qamhad.com/sitemap-ar.xml     [L,R=301]
+  RewriteRule ^sitemap-en\.xml$       https://www.qamhad.com/sitemap-en.xml     [L,R=301]
+  RewriteRule ^sitemap-match\.xml$    https://www.qamhad.com/sitemap-match.xml  [L,R=301]
+  RewriteRule ^sitemap-news\.xml$     https://www.qamhad.com/sitemap-news.xml   [L,R=301]
+  RewriteRule ^sitemap-images\.xml$   https://www.qamhad.com/sitemap-images.xml [L,R=301]
+
+  # ---- 2) robots.txt ----
+  # Per Google guidance for a moved host, robots.txt redirects too, so
+  # crawlers read the canonical rules from www. (If your host requires a
+  # served robots.txt instead, delete this rule — the bundled robots.txt
+  # file will be used automatically.)
+  RewriteRule ^robots\.txt$ https://www.qamhad.com/robots.txt [L,R=301]
+
+  # ---- 3) Everything else: same path + query on www (single hop) ----
+  # Covers every match, news, league, team, player and static URL:
+  #   live.qamhad.com/match/x-y-123  →  www.qamhad.com/match/x-y-123
+  #   live.qamhad.com/en/news/...    →  www.qamhad.com/en/news/...
+  RewriteRule ^(.*)$ https://www.qamhad.com/$1 [L,R=301,QSA]
+</IfModule>
+
+# ---- Fallback without mod_rewrite: Apache Redirect (path-preserving) ----
+<IfModule !mod_rewrite.c>
+  <IfModule mod_alias.c>
+    Redirect permanent / https://www.qamhad.com/
+  </IfModule>
+</IfModule>
+
+# Let crawlers cache the redirects (they are permanent by design).
+<IfModule mod_headers.c>
+  Header set Cache-Control "public, max-age=86400"
+</IfModule>
+
+AddDefaultCharset UTF-8
