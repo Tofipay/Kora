@@ -1458,3 +1458,102 @@ html[dir="rtl"] .pl-big-play svg { transform: scaleX(-1); }
 .pl-video.ar-stretch { object-fit: fill; }     /* stretch to fill the frame  */
 .pl-video.ar-zoom    { object-fit: cover; }     /* crop edges, fill the frame */
 .pl-arhint{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;padding:6px 15px;border-radius:20px;font-size:13px;font-weight:700;z-index:8;pointer-events:none;white-space:nowrap}
+
+/* ============================================================
+   Match center v2 — FIFA rank chips, penalty-shootout UI,
+   injury chips, highlight-provider labels. Mobile-first, RTL-safe
+   (logical properties), respects prefers-reduced-motion globally.
+   ============================================================ */
+
+/* FIFA world-ranking chip under each hero team name */
+.mh-rank {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .02em; direction: ltr;
+  color: var(--text-3); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
+  box-shadow: var(--shadow-1);
+}
+
+/* Aggregate note under the hero score */
+.mh-agg { font-weight: 800; }
+
+/* ---------- Penalty shootout (Sofascore-style takers board) ---------- */
+.pen-shootout .card-title { justify-content: space-between; }
+.ps-final {
+  font-size: 15px; font-weight: 900; direction: ltr;
+  color: var(--primary-700); background: var(--primary-soft);
+  padding: 3px 13px; border-radius: 999px;
+}
+html.dark .ps-final { color: var(--primary); }
+
+.ps-team { padding: 12px 0 6px; }
+.ps-team + .ps-team { border-top: 1px dashed var(--line); }
+.ps-team-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.ps-team-head img { border-radius: 50%; background: var(--surface-2); flex: none; }
+.ps-team-head b { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-count {
+  margin-inline-start: auto; font-size: 12.5px; font-weight: 900; direction: ltr;
+  color: var(--text-2); background: var(--surface-2); padding: 2px 11px; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.ps-winner .ps-count { color: var(--primary-700); background: var(--primary-soft); }
+html.dark .ps-winner .ps-count { color: var(--primary); }
+
+.ps-attempts {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 12px 14px;
+}
+.ps-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  width: 62px; text-align: center;
+}
+.ps-photo { position: relative; width: 40px; height: 40px; }
+.ps-photo > img {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  background: var(--surface-2); border: 2px solid var(--line);
+}
+.is-scored .ps-photo > img { border-color: color-mix(in srgb, var(--win) 65%, transparent); }
+.is-missed .ps-photo > img { border-color: color-mix(in srgb, var(--lose) 60%, transparent); filter: grayscale(.55); }
+.ps-badge {
+  position: absolute; bottom: -3px; inset-inline-end: -3px;
+  width: 17px; height: 17px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff;
+  border: 2px solid var(--surface); box-shadow: var(--shadow-1);
+}
+.is-scored .ps-badge { background: var(--win); }
+.is-missed .ps-badge { background: var(--lose); }
+.ps-order {
+  position: absolute; top: -5px; inset-inline-start: -5px;
+  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 6px;
+  background: var(--ink); color: #fff; font-style: normal;
+  font-size: 9px; font-weight: 900; display: grid; place-items: center;
+  border: 1.5px solid var(--surface);
+}
+.ps-name {
+  font-size: 10.5px; font-weight: 700; color: var(--text-2); line-height: 1.3;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.is-missed .ps-name { color: var(--text-3); }
+@media (min-width: 560px) {
+  .ps-chip { width: 70px; }
+  .ps-photo, .ps-photo > img { width: 44px; height: 44px; }
+}
+
+/* ---------- Timeline injury chip (substitution reason) ---------- */
+.tl-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+}
+.tl-injury { color: #b45309; background: color-mix(in srgb, #f59e0b 16%, transparent); }
+html.dark .tl-injury { color: #fbbf24; }
+.tl-event.side-away .tl-chip { margin-inline-end: 0; }
+
+/* ---------- Highlight link provider tag ---------- */
+.video-link { position: relative; }
+.vl-provider {
+  margin-inline-start: auto; flex: none;
+  font-size: 11px; font-weight: 800; letter-spacing: .02em;
+  color: var(--text-3); background: var(--surface-2);
+  padding: 3px 10px; border-radius: 999px;
+}
+.video-link:hover .vl-provider { color: var(--primary-700); background: var(--primary-soft); }
+html.dark .video-link:hover .vl-provider { color: var(--primary); }

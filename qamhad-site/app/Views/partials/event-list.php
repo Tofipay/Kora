@@ -28,15 +28,28 @@ $icons = [
     <span class="tl-period-label"><?= $icons['whistle'] ?> <?= e(period_label($ev)) ?></span>
   </li>
     <?php continue; endif; ?>
-  <li class="tl-event <?= $isHome ? 'side-home' : 'side-away' ?> ev-<?= e($et['key']) ?>">
+  <?php
+    /* Substitution reason rides on `status` / `status_name`:
+       status 9 = injury sub ("الإصابة"), status 8 = tactical ("تبديل"). */
+    $isInjury = $et['key'] === 'sub'
+        && ((int)($ev['status'] ?? 0) === 9
+            || (is_string($ev['status_name'] ?? null) && str_contains((string)$ev['status_name'], 'صاب')));
+  ?>
+  <li class="tl-event <?= $isHome ? 'side-home' : 'side-away' ?> ev-<?= e($et['key']) ?><?= $isInjury ? ' ev-injury' : '' ?>">
     <span class="tl-min"><?= e($minStr) ?></span>
     <span class="tl-icon"><?= $icons[$et['icon']] ?? $icons['dot'] ?></span>
     <span class="tl-body">
       <b><?= e(player_label($ev['player_name'] ?? null, $et['label'])) ?></b>
-      <small><?= e($et['label']) ?><?php
+      <small><?php if ($et['key'] === 'sub'): ?><?= e(t('event.sub_out')) ?><?php else: ?><?= e($et['label']) ?><?php endif; ?><?php
         $assist = player_label($ev['assist_player_name'] ?? null);
         if ($assist !== ''): ?> · <?= e($et['key'] === 'sub' ? t('event.sub_in') : t('event.assist')) ?>: <?= e($assist) ?><?php endif; ?></small>
     </span>
+    <?php if ($isInjury): ?>
+      <span class="tl-chip tl-injury" title="<?= e((string)($ev['status_name'] ?? t('event.injury'))) ?>">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <?= e(t('event.injury')) ?>
+      </span>
+    <?php endif; ?>
     <?php if (!empty($ev['event_video'])): ?>
       <a class="tl-video" href="<?= e((string)$ev['event_video']) ?>" target="_blank" rel="noopener nofollow" aria-label="video">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>

@@ -354,9 +354,60 @@ function match_periods(array $src): array
         'se'   => score_pair($src['se_scores'] ?? null),
         'pens' => score_pair($src['match_penalties'] ?? $src['penalties'] ?? null),
     ];
+    // Per-player shootout form: {"<teamId>":[{player_id,player_name,score},…],…}
+    // — score_pair can't read it; derive the totals from the attempt lists.
+    if ($out['pens'] === null) {
+        $so = penalty_shootout($src,
+            (int)($src['home_team']['row_id'] ?? 0),
+            (int)($src['away_team']['row_id'] ?? 0));
+        if ($so !== null) $out['pens'] = $so['score'];
+    }
     $out['has_et']   = $out['fe'] !== null || $out['se'] !== null;
     $out['has_pens'] = $out['pens'] !== null;
     return $out;
+}
+
+/**
+ * Per-player penalty shootout parsed from `match_penalties`.
+ *
+ * Verified upstream shape (matches_event / match_info payloads):
+ *   "match_penalties": { "<teamId>": [ {player_id, player_name:{…}, score:0|1}, … ], … }
+ * Attempts are listed in shooting order. Returns null when the field is
+ * absent, empty, or in the flat score-pair form (match_periods covers that).
+ *
+ * @return array{home:array<int,array{player:array,scored:bool}>,
+ *               away:array<int,array{player:array,scored:bool}>,
+ *               score:array{0:int,1:int}}|null
+ */
+function penalty_shootout(array $src, int $homeId, int $awayId): ?array
+{
+    $v = $src['match_penalties'] ?? $src['penalties'] ?? null;
+    if (!is_array($v) || $homeId <= 0 || $awayId <= 0) return null;
+    $sides = [];
+    foreach ([$homeId, $awayId] as $tid) {
+        $list = $v[(string)$tid] ?? $v[$tid] ?? null;
+        if (!is_array($list)) continue;
+        $rows = [];
+        foreach ($list as $at) {
+            if (!is_array($at) || !array_key_exists('score', $at)) continue;
+            $rows[] = [
+                'player' => is_array($at['player_name'] ?? null) ? $at['player_name'] : [],
+                'scored' => (int)$at['score'] === 1,
+            ];
+        }
+        if ($rows) $sides[$tid] = $rows;
+    }
+    if (empty($sides[$homeId]) && empty($sides[$awayId])) return null;
+    $h = $sides[$homeId] ?? [];
+    $a = $sides[$awayId] ?? [];
+    return [
+        'home'  => $h,
+        'away'  => $a,
+        'score' => [
+            count(array_filter($h, fn($r) => $r['scored'])),
+            count(array_filter($a, fn($r) => $r['scored'])),
+        ],
+    ];
 }
 
 /**
@@ -881,7 +932,13 @@ function event_type(array $ev): array
     return $map[$type] ?? ['key' => 'other', 'label' => '', 'icon' => 'dot'];
 }
 
-/** Label for type-100 period markers based on their status code. */
+/**
+ * Label for type-100 period markers based on their status code.
+ * Chronology verified against a full ET+pens match payload:
+ *   1 kickoff · 2 half-time · 3 second-half start · 5/6 end of regulation ·
+ *   7 ET1 start · 8 ET1 end · 9 ET2 start · 10 end of extra time ·
+ *   11/13 penalty shootout · 4 match end.
+ */
 function period_label(array $ev): string
 {
     $status = (int)($ev['status'] ?? 0);
@@ -890,8 +947,12 @@ function period_label(array $ev): string
         2       => t('match.halftime'),
         3       => t('match.secondhalf'),
         4       => t('match.fulltime'),
-        5, 6    => t('match.extratime'),
-        7, 8, 13=> t('match.penalties'),
+        5, 6    => t('match.end_regulation'),
+        7       => t('match.et1_start'),
+        8       => t('match.et1_end'),
+        9       => t('match.et2_start'),
+        10      => t('match.et_end'),
+        11, 13  => t('match.pens_start'),
         default => t('match.halftime'),
     };
 }

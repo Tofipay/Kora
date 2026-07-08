@@ -7,12 +7,16 @@
 <div class="stat-bars">
 <?php foreach ($labels as $key):
     if ($key === 'expected_goals') {
-        $hv = $hStats['expected_goals'] ?? null;
-        $av = $aStats['expected_goals'] ?? null;
-        if ($hv === null && $av === null) continue; // xG not provided upstream yet
+        // Upstream reports expected goals as `xg` (string, e.g. "0.96")
+        $hRaw = $hStats['expected_goals'] ?? $hStats['xg'] ?? null;
+        $aRaw = $aStats['expected_goals'] ?? $aStats['xg'] ?? null;
+        if ($hRaw === null && $aRaw === null) continue; // xG not provided upstream yet
+        $hv = (float)$hRaw;
+        $av = (float)$aRaw;
+    } else {
+        $hv = (float)($hStats[$key] ?? 0);
+        $av = (float)($aStats[$key] ?? 0);
     }
-    $hv = (float)($hStats[$key] ?? 0);
-    $av = (float)($aStats[$key] ?? 0);
     if ($hv == 0 && $av == 0 && !in_array($key, ['ball_possession'], true)) continue;
     $total = $hv + $av;
     $hp = $total > 0 ? round($hv / $total * 100) : 50;

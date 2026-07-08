@@ -34,7 +34,14 @@ final class MatchCenter
 
         // Period-by-period scores (extra time + penalty shootout) ride on the
         // matches_event payload; fall back to match_info if it ever carries them.
-        $periods = match_periods(is_array($eventsData) && $eventsData ? $eventsData : $info);
+        $periodsSrc = is_array($eventsData) && $eventsData ? $eventsData : $info;
+        $periods = match_periods($periodsSrc);
+
+        // Per-player shootout (taker, order, scored/missed) for the shootout UI.
+        $homeIdC = (int)($info['home_team']['row_id'] ?? 0);
+        $awayIdC = (int)($info['away_team']['row_id'] ?? 0);
+        $shootout = penalty_shootout($periodsSrc, $homeIdC, $awayIdC)
+                 ?? penalty_shootout($info, $homeIdC, $awayIdC);
 
         $lineupData = Api::matchLineup($id);
         $lineups = is_array($lineupData['lineup'] ?? null) ? $lineupData['lineup'] : [];
@@ -114,6 +121,7 @@ final class MatchCenter
             'seoH2'        => $sm['h2'],
             'events'       => $events,
             'periods'      => $periods,
+            'shootout'     => $shootout,
             'lineups'      => $lineups,
             'stats'        => $stats,
             'referees'     => $referees,

@@ -9,11 +9,16 @@ $awayId = (int)($away['row_id'] ?? 0);
 $ts = (int)($m['match_timestamp'] ?? 0);
 $videoLinks = is_array($m['video_links'] ?? null) ? $m['video_links'] : [];
 
-/* Extra time & penalty shootout (see match_periods) */
+/* Extra time & penalty shootout (see match_periods / penalty_shootout) */
 $periods  = is_array($periods ?? null) ? $periods : match_periods($m);
-$pens     = $periods['pens'] ?? null;                 // [home, away] shootout
+$shootout = is_array($shootout ?? null) ? $shootout : penalty_shootout($m, $homeId, $awayId);
+$pens     = $periods['pens'] ?? ($shootout['score'] ?? null);   // [home, away] shootout totals
 $penWinner = $pens ? ($pens[0] > $pens[1] ? 'home' : ($pens[1] > $pens[0] ? 'away' : null)) : null;
 $penWinnerName = $penWinner === 'home' ? team_name($home) : ($penWinner === 'away' ? team_name($away) : '');
+/* Two-legged tie aggregate (cup rounds) — flat pair or preformatted string */
+$aggPair = is_array($m['agg_result'] ?? null) ? score_pair($m['agg_result']) : null;
+$aggText = $aggPair ? ($aggPair[0] . ' - ' . $aggPair[1])
+         : (is_string($m['agg_result'] ?? null) && trim((string)$m['agg_result']) !== '' ? trim((string)$m['agg_result']) : '');
 
 /* Key events = everything except period markers & subs & yellows */
 $keyEvents = array_values(array_filter($events, function ($ev) {
@@ -52,6 +57,7 @@ $aStats = $statsByTeam[$awayId] ?? [];
       <a class="mh-team" href="<?= e(team_url($home)) ?>">
         <img src="<?= e(team_img($home, '128')) ?>" alt="<?= e(team_name($home)) ?>" width="76" height="76">
         <b><?= e(team_name($home)) ?></b>
+        <?php if (!empty($home['world_ranking'])): ?><small class="mh-rank" title="<?= e(t('match.fifa_rank')) ?>">FIFA #<?= (int)$home['world_ranking'] ?></small><?php endif; ?>
       </a>
       <div class="mh-center">
         <?php if ($state['started']): ?>
@@ -84,6 +90,9 @@ $aStats = $statsByTeam[$awayId] ?? [];
           <?php elseif (!empty($periods['has_et'])): ?>
           <small class="mh-pens-note"><?= e(t('match.after_et')) ?></small>
           <?php endif; ?>
+          <?php if ($aggText !== ''): ?>
+          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <span dir="ltr"><?= e($aggText) ?></span></small>
+          <?php endif; ?>
         <?php else: ?>
           <div class="mh-time" data-ts="<?= $ts ?>"><?= e(format_ts_time($ts)) ?></div>
           <div class="countdown" data-countdown="<?= $ts ?>" aria-label="<?= e(t('match.kickoff_in')) ?>">
@@ -94,6 +103,7 @@ $aStats = $statsByTeam[$awayId] ?? [];
       <a class="mh-team" href="<?= e(team_url($away)) ?>">
         <img src="<?= e(team_img($away, '128')) ?>" alt="<?= e(team_name($away)) ?>" width="76" height="76">
         <b><?= e(team_name($away)) ?></b>
+        <?php if (!empty($away['world_ranking'])): ?><small class="mh-rank" title="<?= e(t('match.fifa_rank')) ?>">FIFA #<?= (int)$away['world_ranking'] ?></small><?php endif; ?>
       </a>
     </div>
     <?php // Compact meta row: venue · kickoff date/time · round ?>
@@ -183,14 +193,66 @@ $aStats = $statsByTeam[$awayId] ?? [];
         </div>
         <?php endif; ?>
 
+        <?php if ($shootout && ($shootout['home'] || $shootout['away'])): ?>
+        <div class="card glass-soft pen-shootout">
+          <h3 class="card-title"><?= e(t('match.penalties')) ?>
+            <?php if ($pens): ?><span class="ps-final" dir="ltr"><?= (int)$pens[0] ?> - <?= (int)$pens[1] ?></span><?php endif; ?>
+          </h3>
+          <?php foreach ([['side' => 'home', 'team' => $home, 'idx' => 0], ['side' => 'away', 'team' => $away, 'idx' => 1]] as $psRow):
+              $attempts = $shootout[$psRow['side']]; if (!$attempts) continue; ?>
+          <div class="ps-team<?= $penWinner === $psRow['side'] ? ' ps-winner' : '' ?>">
+            <div class="ps-team-head">
+              <img src="<?= e(team_img($psRow['team'])) ?>" alt="" width="24" height="24">
+              <b><?= e(team_name($psRow['team'])) ?></b>
+              <?php if ($pens): ?><span class="ps-count"><?= (int)$pens[$psRow['idx']] ?>/<?= count($attempts) ?></span><?php endif; ?>
+            </div>
+            <ol class="ps-attempts">
+              <?php foreach ($attempts as $i => $at): $pl = $at['player']; ?>
+              <li class="ps-chip <?= $at['scored'] ? 'is-scored' : 'is-missed' ?>"
+                  title="<?= e(player_label($pl)) ?> — <?= e($at['scored'] ? t('match.pen_scored') : t('match.pen_missed')) ?>">
+                <span class="ps-photo">
+                  <img src="<?= e(player_img($pl, '64')) ?>" alt="" width="34" height="34" loading="lazy">
+                  <i class="ps-badge" aria-hidden="true">
+                    <?php if ($at['scored']): ?>
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m4.5 12.8 5 5L19.5 7"/></svg>
+                    <?php else: ?>
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m6.5 6.5 11 11m0-11-11 11"/></svg>
+                    <?php endif; ?>
+                  </i>
+                  <em class="ps-order"><?= $i + 1 ?></em>
+                </span>
+                <span class="ps-name"><?= e(player_label($pl)) ?></span>
+              </li>
+              <?php endforeach; ?>
+            </ol>
+          </div>
+          <?php endforeach; ?>
+          <?php if ($penWinnerName !== ''): ?>
+          <p class="sb-note"><?= e(t('match.won_pens', ['team' => $penWinnerName])) ?></p>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($videoLinks) && $state['started']): ?>
         <div class="card glass-soft">
           <h3 class="card-title"><?= e(t('match.highlights')) ?></h3>
           <div class="video-links">
-            <?php foreach ($videoLinks as $v): if (empty($v['video_link'])) continue; ?>
+            <?php
+            $vidProvider = static function (string $u): string {
+                $h = strtolower((string)(parse_url($u, PHP_URL_HOST) ?: ''));
+                if (str_contains($h, 'youtu')) return 'YouTube';
+                if (str_contains($h, 'fifa'))  return 'FIFA+';
+                if (str_contains($h, 'x.com') || str_contains($h, 'twitter')) return 'X';
+                if (str_contains($h, 'dailymotion')) return 'Dailymotion';
+                return preg_replace('/^www\./', '', $h) ?: '';
+            };
+            $vn = 0;
+            foreach ($videoLinks as $v): if (empty($v['video_link'])) continue; $vn++;
+                $prov = $vidProvider((string)$v['video_link']); ?>
               <a class="video-link card-hover" href="<?= e($v['video_link']) ?>" target="_blank" rel="noopener nofollow">
                 <span class="hl-play"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
-                <span><?= e(t('match.highlights')) ?></span>
+                <span><?= e(t('match.highlights')) ?> <?= $vn > 1 || count($videoLinks) > 1 ? $vn : '' ?></span>
+                <?php if ($prov !== ''): ?><small class="vl-provider" dir="ltr"><?= e($prov) ?></small><?php endif; ?>
               </a>
             <?php endforeach; ?>
           </div>
