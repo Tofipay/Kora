@@ -1,0 +1,90 @@
+# ============================================================
+# Qamhad Live — Apache rewrite rules (document root = public/)
+# Clean URLs: no .php, no index.php, no query-string routing.
+# ============================================================
+
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # ---- Canonical host + HTTPS: everything → https://www.qamhad.com ----
+  # One-hop 301, preserving the full path + query string. Local dev skips
+  # all three rules. The redirect path is captured from THE_REQUEST (the
+  # original request line) — never from the rewritten filesystem path — so
+  # an internal public/ prefix from the root-folder router can never leak
+  # into the address bar, on Apache or LiteSpeed.
+  RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1|192\.168\..*|10\..*|.*\.(test|local))(:\d+)?$ [NC]
+  RewriteRule ^ - [S=3]
+
+  # 1) A leaked/bookmarked /public URL → same URL without the prefix.
+  RewriteCond %{THE_REQUEST} \s/public(/\S*)?\s [NC]
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # 2) Wrong host (qamhad.com, live.qamhad.com, …) → canonical www.
+  RewriteCond %{HTTP_HOST} !^www\.qamhad\.com$ [NC]
+  RewriteCond %{THE_REQUEST} \s(/\S*)\s
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # 3) Plain http → https. PROXY-AWARE: Cloudflare & other TLS-terminating
+  #    proxies talk plain HTTP to the origin while sending
+  #    X-Forwarded-Proto/X-Forwarded-SSL/CF-Visitor. Checking only %{HTTPS}
+  #    would loop forever (ERR_TOO_MANY_REDIRECTS).
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{SERVER_PORT} !=443
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteCond %{HTTP:X-Forwarded-SSL} !on [NC]
+  RewriteCond %{HTTP:CF-Visitor} !https [NC]
+  RewriteCond %{THE_REQUEST} \s(/\S*)\s
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # ---- First-party JSON proxy: /api/*.php execute directly ----
+  RewriteCond %{REQUEST_URI} ^/api/ [NC]
+  RewriteRule \.php$ - [L]
+
+  # ---- Legacy .php URLs → front controller issues the 301 ----
+  RewriteRule \.php$ index.php [L,QSA]
+
+  # ---- Static assets are served directly ----
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # ---- Everything else → front controller ----
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+# ---- Compression ----
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml application/manifest+json text/xml application/xml
+</IfModule>
+
+# ---- Browser caching ----
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/webp "access plus 1 month"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/manifest+json "access plus 1 week"
+</IfModule>
+
+# ---- Security headers ----
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  <FilesMatch "\.(css|js|svg|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+AddDefaultCharset UTF-8
+
+

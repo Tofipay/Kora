@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /api/live-scores
+Disallow: /admin
+Disallow: /api/
+Disallow: /cron/
+Disallow: /search?
+Disallow: /favorites
+
+Sitemap: https://www.qamhad.com/sitemap.xml
+Sitemap: https://www.qamhad.com/sitemap-ar.xml
+Sitemap: https://www.qamhad.com/sitemap-en.xml
+Sitemap: https://www.qamhad.com/sitemap-match.xml
+Sitemap: https://www.qamhad.com/sitemap-news.xml
+Sitemap: https://www.qamhad.com/sitemap-images.xml
