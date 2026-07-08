@@ -19,10 +19,16 @@ $isAr = Lang::isRtl();
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <?php
 // hreflang alternates — always absolute on the canonical domain and
-// percent-encoded (Arabic slugs) via absolute_url(). x-default = Arabic.
-$curPath = strtok($_SERVER['REQUEST_URI'] ?? '/', '?') ?: '/';
-$arPath  = preg_replace('#^/en(/|$)#', '/', $curPath) ?: '/';
-$enPath  = Lang::current() === 'en' ? $curPath : $altPath;
+// percent-encoded (Arabic slugs) via absolute_url(). The current page links
+// itself with its canonical slug; the OTHER language always comes from
+// Lang::alternatePath() (bare-id form, one 301 to its own slug) so both
+// directions derive identically and never carry a foreign-language slug.
+// x-default = the Arabic URL (Arabic is the primary audience).
+// REQUEST_URI arrives percent-encoded — decode before absolute_url() so the
+// path is encoded exactly once (never %25D8 double-encoding).
+$curPath = rawurldecode(strtok($_SERVER['REQUEST_URI'] ?? '/', '?') ?: '/');
+$arPath  = Lang::current() === 'ar' ? $curPath : ($altPath ?: '/');
+$enPath  = Lang::current() === 'en' ? $curPath : ($altPath ?: '/en');
 ?>
 <link rel="alternate" hreflang="ar" href="<?= e(absolute_url($arPath)) ?>">
 <link rel="alternate" hreflang="en" href="<?= e(absolute_url($enPath)) ?>">

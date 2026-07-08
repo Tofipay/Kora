@@ -163,6 +163,23 @@ final class Sitemap
         header('Content-Type: application/xml; charset=utf-8');
         header('Cache-Control: public, max-age=600');
 
+        // Validate BEFORE building: a matching If-None-Match must not cost the
+        // full build. The seed is a 5-minute time bucket — fresh enough for
+        // live-score crawling, cheap enough that conditional GETs short-circuit.
+        $bucket = intdiv(time(), 300);
+        http_cache_validate($bucket * 300, 'sitemap-match-' . $bucket);
+
+        // Whole-body disk cache: a cold build fans out to many upstream calls
+        // (8 dates x 2 languages x 3 feed URLs); if the upstream is slow or
+        // down that could exceed PHP's execution limit and 500 the sitemap.
+        // Serving the last rendered body for 5 minutes caps the worst case.
+        $bodyKey = 'sitemap-match-body-v1';
+        $cached = \Qamhad\Core\Cache::get($bodyKey, 300);
+        if (is_string($cached) && $cached !== '') {
+            echo $cached;
+            exit;
+        }
+
         $original = Lang::current();
         $urls = [];
         $liveSeen = false;
@@ -224,15 +241,18 @@ final class Sitemap
 
         Lang::boot($original);
 
-        // Live days must revalidate fast; quiet days can be cached longer.
-        http_cache_validate(time() - (time() % ($liveSeen ? 60 : 600)), 'sitemap-match-' . count($urls));
-        self::emitUrlset($urls);
+        ob_start();
+        self::emitUrlset($urls, false);
+        $xml = (string)ob_get_clean();
+        \Qamhad\Core\Cache::set($bodyKey, $xml);
+        echo $xml;
+        exit;
     }
 
     /* ---------------- shared urlset emitter ---------------- */
 
     /** @param array<int,array<string,mixed>> $urls */
-    private static function emitUrlset(array $urls): void
+    private static function emitUrlset(array $urls, bool $terminate = true): void
     {
         $seen = [];
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -251,7 +271,7 @@ final class Sitemap
             echo '<changefreq>' . $u['freq'] . '</changefreq><priority>' . $u['prio'] . '</priority></url>' . "\n";
         }
         echo '</urlset>';
-        exit;
+        if ($terminate) exit;
     }
 
     /* ---------------- Google News (ar + en) ---------------- */

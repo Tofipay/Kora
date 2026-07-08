@@ -10,12 +10,18 @@ final class Lang
 {
     private static string $current = 'ar';
     private static array $dict = [];
+    /** @var array<string,array> per-language dictionary memo — boot() is called
+     *  inside loops (sitemaps, ping engine), so the dict file must load once. */
+    private static array $dicts = [];
 
     public static function boot(string $lang): void
     {
         self::$current = in_array($lang, ['ar', 'en'], true) ? $lang : 'ar';
-        $file = APP_DIR . '/Lang/' . self::$current . '.php';
-        self::$dict = is_file($file) ? (require $file) : [];
+        if (!isset(self::$dicts[self::$current])) {
+            $file = APP_DIR . '/Lang/' . self::$current . '.php';
+            self::$dicts[self::$current] = is_file($file) ? (require $file) : [];
+        }
+        self::$dict = self::$dicts[self::$current];
     }
 
     public static function current(): string

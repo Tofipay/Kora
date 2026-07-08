@@ -47,7 +47,7 @@ final class Ping
                 $hash = ($st['key'] ?? '') . '|' . (int)($m['home_scores'] ?? 0)
                       . '-' . (int)($m['away_scores'] ?? 0) . '|' . (string)($m['match_status'] ?? '');
                 $current[$id] = $hash;
-                if (($prev[(string)$id] ?? $prev[$id] ?? null) === $hash) continue;
+                if (($prev[$id] ?? null) === $hash) continue;
 
                 $changedIds[] = $id;
                 foreach (['ar', 'en'] as $lang) {
