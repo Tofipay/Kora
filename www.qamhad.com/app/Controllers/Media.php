@@ -34,7 +34,10 @@ final class Media
             && function_exists('imagewebp')
             && !preg_match('/\.(webp|gif)$/i', $file);
 
-        $cacheKey  = md5($upstreamPath);
+        // 'v2': key version bump — earlier builds could cache a non-image
+        // body (upstream HTML error page) for missing renders; new keys make
+        // any such poisoned entries unreachable so they simply expire.
+        $cacheKey  = md5('v2|' . $upstreamPath);
         $baseFile  = MEDIA_CACHE_DIR . '/' . $cacheKey;
         $metaFile  = $baseFile . '.meta';
         $webpFile  = $baseFile . '.webp';
@@ -57,12 +60,29 @@ final class Media
 
         if (!$fresh && !$upstreamDown && !$knownMissing) {
             $bin = self::fetch(UPSTREAM_IMG . '/' . $upstreamPath);
-            // Requested render missing → retry once at the kind's fallback size.
-            if ($bin === 'notfound' && $fallbackSize !== '') {
-                $alt = self::fetch(UPSTREAM_IMG . '/' . $kind . '/' . $fallbackSize . '/' . $file);
-                if (is_array($alt)) $bin = $alt;
+            // Requested render unavailable (missing upstream, 4xx, or an
+            // HTML error body) → walk the kind's OTHER sizes until one yields
+            // a real image. The preferred fallback size goes first; a network
+            // failure aborts the walk (that's an outage, not a missing file).
+            if ($bin === 'notfound' && $size !== '') {
+                foreach (array_unique(array_merge(
+                    $fallbackSize !== '' ? [$fallbackSize] : [],
+                    MEDIA_KINDS[$kind]
+                )) as $alt) {
+                    if ($alt === $size) continue;
+                    $try = self::fetch(UPSTREAM_IMG . '/' . $kind . '/' . $alt . '/' . $file);
+                    if (is_array($try)) { $bin = $try; break; }
+                    if ($try === null) { $bin = null; break; }
+                }
             }
             if (is_array($bin)) {
+                // Large renders must really BE large: Google Discover needs
+                // 1200px-wide covers, but the upstream CDN often tops out at
+                // a smaller render. Upscale once at cache-fill time so the
+                // /1200 URL always delivers the promised width.
+                if ($size !== '' && (int)$size >= 1200) {
+                    $bin = self::ensureWidth($bin, (int)$size);
+                }
                 @file_put_contents($baseFile, $bin['body'], LOCK_EX);
                 @file_put_contents($metaFile, $bin['type'], LOCK_EX);
                 @unlink($webpFile); // invalidate converted copy
@@ -129,13 +149,55 @@ final class Media
         curl_close($ch);
 
         if ($body === false || $errno !== 0 || $code === 0) return null;          // transport failure
-        if ($code === 404 || $code === 410) return 'notfound';                    // this file only
+        // Any client error means THIS render doesn't exist / isn't served
+        // (404, 410, 403 anti-bot…) — never a reason to back off globally.
+        // 408/429 are transient server-side pressure → treated as outage.
+        if ($code >= 400 && $code < 500 && $code !== 408 && $code !== 429) return 'notfound';
         if ($code !== 200 || strlen((string)$body) === 0) return null;            // upstream trouble
         if (!str_starts_with($type, 'image/')) {
-            // Some CDNs return octet-stream; infer from magic bytes
-            $type = self::sniff((string)$body) ?? 'image/png';
+            // Some CDNs return octet-stream; infer from magic bytes. A body
+            // that is not a real image (HTML error/anti-bot page served with
+            // 200) must NEVER be cached or sent as an image — treat it like a
+            // missing render so the size-fallback chain can kick in.
+            $sniffed = self::sniff((string)$body);
+            if ($sniffed === null) return 'notfound';
+            $type = $sniffed;
         }
         return ['body' => (string)$body, 'type' => $type];
+    }
+
+    /**
+     * Guarantee a minimum pixel width: if the fetched image is narrower than
+     * $target, upscale it proportionally with GD (JPEG/PNG only — GIF may be
+     * animated and WebP re-encoding happens later anyway). Returns the input
+     * unchanged whenever upscaling is impossible or unnecessary, so this can
+     * never lose an image.
+     * @param array{body:string,type:string} $bin
+     * @return array{body:string,type:string}
+     */
+    private static function ensureWidth(array $bin, int $target): array
+    {
+        if (!function_exists('imagescale') || !in_array($bin['type'], ['image/jpeg', 'image/png'], true)) {
+            return $bin;
+        }
+        $dim = @getimagesizefromstring($bin['body']);
+        if (!is_array($dim) || (int)$dim[0] <= 0 || (int)$dim[0] >= $target) return $bin;
+
+        $img = @imagecreatefromstring($bin['body']);
+        if (!$img) return $bin;
+        $scaled = imagescale($img, $target, -1, IMG_BICUBIC);
+        imagedestroy($img);
+        if (!$scaled) return $bin;
+
+        ob_start();
+        $ok = $bin['type'] === 'image/png'
+            ? imagepng($scaled, null, 6)
+            : imagejpeg($scaled, null, 82);
+        $out = (string)ob_get_clean();
+        imagedestroy($scaled);
+
+        if (!$ok || $out === '') return $bin;
+        return ['body' => $out, 'type' => $bin['type']];
     }
 
     private static function sniff(string $bin): ?string

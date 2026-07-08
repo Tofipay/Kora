@@ -164,6 +164,14 @@ function media_url(string $kind, string $size, ?string $file, string $fallback):
         // Absolute upstream URL — rewrite through proxy if it's the known CDN
         $p = parse_url((string)$file, PHP_URL_PATH);
         if ($p && str_starts_with((string)parse_url((string)$file, PHP_URL_HOST), 'imgs.')) {
+            // Honor the REQUESTED size when the CDN path is kind/size/file —
+            // otherwise a detail payload carrying e.g. …/news/640/x.jpg would
+            // silently pin the image to 640 no matter what the caller asked.
+            if (preg_match('#^/([a-z]+)/\d{2,4}/([A-Za-z0-9._\-]+)$#i', $p, $mm)
+                && isset(MEDIA_KINDS[$mm[1]])
+                && in_array($size, MEDIA_KINDS[$mm[1]], true)) {
+                return "/media/{$mm[1]}/{$size}/{$mm[2]}";
+            }
             return '/media' . $p;
         }
         return (string)$file; // unknown external image, leave as-is
