@@ -9,6 +9,22 @@ $awayId = (int)($away['row_id'] ?? 0);
 $ts = (int)($m['match_timestamp'] ?? 0);
 $videoLinks = is_array($m['video_links'] ?? null) ? $m['video_links'] : [];
 
+/* Video helpers: provider from host, YouTube thumbnail from the video id */
+$vidProvider = static function (string $u): string {
+    $h = strtolower((string)(parse_url($u, PHP_URL_HOST) ?: ''));
+    if (str_contains($h, 'youtu')) return 'YouTube';
+    if (str_contains($h, 'fifa'))  return 'FIFA+';
+    if (str_contains($h, 'x.com') || str_contains($h, 'twitter')) return 'X';
+    if (str_contains($h, 'dailymotion')) return 'Dailymotion';
+    return preg_replace('/^www\./', '', $h) ?: '';
+};
+$ytThumb = static function (string $u): string {
+    if (preg_match('#(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{6,20})#i', $u, $mm)) {
+        return 'https://i.ytimg.com/vi/' . $mm[1] . '/hqdefault.jpg';
+    }
+    return '';
+};
+
 /* Extra time & penalty shootout (see match_periods / penalty_shootout) */
 $periods  = is_array($periods ?? null) ? $periods : match_periods($m);
 $shootout = is_array($shootout ?? null) ? $shootout : penalty_shootout($m, $homeId, $awayId);
@@ -61,37 +77,48 @@ $aStats = $statsByTeam[$awayId] ?? [];
       </a>
       <div class="mh-center">
         <?php if ($state['started']): ?>
-          <div class="mh-score"><span data-hs><?= $hs ?></span><i>:</i><span data-as><?= $as ?></span></div>
-          <?php if ($state['live'] && !empty($state['clock'])): $clk = $state['clock'];
-              $R = 30; $CIRC = round(2 * M_PI * $R, 2); ?>
-          <div class="live-ring" role="timer" aria-label="<?= e($clk['label']) ?>">
-            <svg viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
-              <circle class="ring-bg" cx="36" cy="36" r="<?= $R ?>"/>
-              <circle class="ring-fg" cx="36" cy="36" r="<?= $R ?>"
-                      stroke-dasharray="<?= $CIRC ?>"
-                      stroke-dashoffset="<?= round($CIRC * (1 - $clk['progress']), 2) ?>"
-                      data-ring="<?= $CIRC ?>"/>
-            </svg>
-            <b class="ring-min" data-status<?= live_clock_attrs($state) ?>><?= e($clk['label']) ?></b>
-            <i class="ring-pulse" aria-hidden="true"></i>
+          <?php /* Reference layout: home number · status pill (or live ring)
+                   in the middle · away number. Numbers follow the page
+                   direction so each sits on its own team's side. */ ?>
+          <div class="mh-score">
+            <span data-hs><?= $hs ?></span>
+            <span class="mh-mid">
+            <?php if ($state['live'] && !empty($state['clock'])): $clk = $state['clock'];
+                $R = 30; $CIRC = round(2 * M_PI * $R, 2); ?>
+              <div class="live-ring" role="timer" aria-label="<?= e($clk['label']) ?>">
+                <svg viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
+                  <circle class="ring-bg" cx="36" cy="36" r="<?= $R ?>"/>
+                  <circle class="ring-fg" cx="36" cy="36" r="<?= $R ?>"
+                          stroke-dasharray="<?= $CIRC ?>"
+                          stroke-dashoffset="<?= round($CIRC * (1 - $clk['progress']), 2) ?>"
+                          data-ring="<?= $CIRC ?>"/>
+                </svg>
+                <b class="ring-min" data-status<?= live_clock_attrs($state) ?>><?= e($clk['label']) ?></b>
+                <i class="ring-pulse" aria-hidden="true"></i>
+              </div>
+            <?php else: ?>
+              <span class="mh-status is-ft" data-status><?= e($state['label']) ?></span>
+            <?php endif; ?>
+            </span>
+            <span data-as><?= $as ?></span>
           </div>
+          <?php if ($state['live'] && !empty($state['clock'])): ?>
           <span class="mh-status is-live"><?= e(t('status.live')) ?></span>
-          <?php else: ?>
-          <span class="mh-status is-ft" data-status><?= e($state['label']) ?></span>
           <?php endif; ?>
           <?php if ($pens): ?>
           <div class="mh-pens" aria-label="<?= e(t('match.penalties')) ?>">
-            <span class="mh-pens-label"><?= e(t('match.penalties')) ?></span>
             <b class="<?= $penWinner === 'home' ? 'is-win' : '' ?>"><?= (int)$pens[0] ?></b>
-            <i>-</i>
+            <span class="mh-pens-label"><?= e(t('match.penalties')) ?></span>
             <b class="<?= $penWinner === 'away' ? 'is-win' : '' ?>"><?= (int)$pens[1] ?></b>
           </div>
           <?php if ($penWinnerName !== ''): ?><small class="mh-pens-note"><?= e(t('match.won_pens', ['team' => $penWinnerName])) ?></small><?php endif; ?>
           <?php elseif (!empty($periods['has_et'])): ?>
           <small class="mh-pens-note"><?= e(t('match.after_et')) ?></small>
           <?php endif; ?>
-          <?php if ($aggText !== ''): ?>
-          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <span dir="ltr"><?= e($aggText) ?></span></small>
+          <?php if ($aggPair): ?>
+          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <span class="agg-pair"><span><?= (int)$aggPair[0] ?></span>-<span><?= (int)$aggPair[1] ?></span></span></small>
+          <?php elseif ($aggText !== ''): ?>
+          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <?= e($aggText) ?></small>
           <?php endif; ?>
         <?php else: ?>
           <div class="mh-time" data-ts="<?= $ts ?>"><?= e(format_ts_time($ts)) ?></div>
@@ -149,6 +176,9 @@ $aStats = $statsByTeam[$awayId] ?? [];
     <nav class="tabs glass-soft" role="tablist">
       <button class="tab active" data-tab="overview"><?= e(t('match.overview')) ?></button>
       <button class="tab" data-tab="events"><?= e(t('match.events')) ?></button>
+      <?php if (!empty($videoLinks) && $state['started']): ?>
+      <button class="tab" data-tab="videos"><?= e(t('match.videos')) ?></button>
+      <?php endif; ?>
       <button class="tab" data-tab="lineups"><?= e(t('match.lineups')) ?></button>
       <button class="tab" data-tab="stats"><?= e(t('match.stats')) ?></button>
       <button class="tab" data-tab="news"><?= e(t('match.news')) ?></button>
@@ -196,7 +226,7 @@ $aStats = $statsByTeam[$awayId] ?? [];
         <?php if ($shootout && ($shootout['home'] || $shootout['away'])): ?>
         <div class="card glass-soft pen-shootout">
           <h3 class="card-title"><?= e(t('match.penalties')) ?>
-            <?php if ($pens): ?><span class="ps-final" dir="ltr"><?= (int)$pens[0] ?> - <?= (int)$pens[1] ?></span><?php endif; ?>
+            <?php if ($pens): ?><span class="ps-final"><span><?= (int)$pens[0] ?></span><i>-</i><span><?= (int)$pens[1] ?></span></span><?php endif; ?>
           </h3>
           <?php foreach ([['side' => 'home', 'team' => $home, 'idx' => 0], ['side' => 'away', 'team' => $away, 'idx' => 1]] as $psRow):
               $attempts = $shootout[$psRow['side']]; if (!$attempts) continue; ?>
@@ -235,23 +265,16 @@ $aStats = $statsByTeam[$awayId] ?? [];
 
         <?php if (!empty($videoLinks) && $state['started']): ?>
         <div class="card glass-soft">
-          <h3 class="card-title"><?= e(t('match.highlights')) ?></h3>
+          <h3 class="card-title"><?= e(t('match.highlights')) ?>
+            <a class="view-all" href="#videos" data-goto-tab="videos"><?= e(t('match.videos')) ?> ›</a>
+          </h3>
           <div class="video-links">
-            <?php
-            $vidProvider = static function (string $u): string {
-                $h = strtolower((string)(parse_url($u, PHP_URL_HOST) ?: ''));
-                if (str_contains($h, 'youtu')) return 'YouTube';
-                if (str_contains($h, 'fifa'))  return 'FIFA+';
-                if (str_contains($h, 'x.com') || str_contains($h, 'twitter')) return 'X';
-                if (str_contains($h, 'dailymotion')) return 'Dailymotion';
-                return preg_replace('/^www\./', '', $h) ?: '';
-            };
-            $vn = 0;
-            foreach ($videoLinks as $v): if (empty($v['video_link'])) continue; $vn++;
+            <?php $vn = 0;
+            foreach (array_slice($videoLinks, 0, 3) as $v): if (empty($v['video_link'])) continue; $vn++;
                 $prov = $vidProvider((string)$v['video_link']); ?>
               <a class="video-link card-hover" href="<?= e($v['video_link']) ?>" target="_blank" rel="noopener nofollow">
                 <span class="hl-play"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
-                <span><?= e(t('match.highlights')) ?> <?= $vn > 1 || count($videoLinks) > 1 ? $vn : '' ?></span>
+                <span><?= e(t('match.highlights')) ?> <?= count($videoLinks) > 1 ? $vn : '' ?></span>
                 <?php if ($prov !== ''): ?><small class="vl-provider" dir="ltr"><?= e($prov) ?></small><?php endif; ?>
               </a>
             <?php endforeach; ?>
@@ -361,6 +384,50 @@ $aStats = $statsByTeam[$awayId] ?? [];
       </div>
     <?php endif; ?>
   </section>
+
+  <!-- ============ VIDEOS ============ -->
+  <?php if (!empty($videoLinks) && $state['started']): ?>
+  <section class="tab-panel" data-panel="videos">
+    <div class="card glass-soft">
+      <h3 class="card-title"><?= e(t('match.videos')) ?></h3>
+      <div class="videos-grid" data-videos-grid>
+        <?php $vi = 0;
+        foreach ($videoLinks as $v): if (empty($v['video_link'])) continue; $vi++;
+            $u = (string)$v['video_link'];
+            $prov = $vidProvider($u);
+            $thumb = $ytThumb($u); ?>
+        <a class="vcard card-hover<?= $vi > 6 ? ' vcard-more' : '' ?>"<?= $vi > 6 ? ' hidden' : '' ?>
+           href="<?= e($u) ?>" target="_blank" rel="noopener nofollow">
+          <span class="vc-thumb">
+            <span class="vc-thumb-ph" aria-hidden="true">
+              <img src="/assets/brand/icon.svg" alt="" width="46" height="46" loading="lazy">
+            </span>
+            <?php if ($thumb !== ''): ?>
+            <img src="<?= e($thumb) ?>" alt="" loading="lazy" width="480" height="270" onerror="this.remove()">
+            <?php endif; ?>
+            <span class="vc-play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <?php if ($prov !== ''): ?><span class="vc-provider" dir="ltr"><?= e($prov) ?></span><?php endif; ?>
+          </span>
+          <span class="vc-body">
+            <b><?= e(t('match.highlights')) ?> <?= count($videoLinks) > 1 ? $vi : '' ?></b>
+            <small><?= e(team_name($home)) ?> <?= e(t('match.vs')) ?> <?= e(team_name($away)) ?></small>
+          </span>
+        </a>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($vi > 6): ?>
+      <div class="show-more-wrap">
+        <button class="btn btn-ghost" type="button" data-show-more="[data-videos-grid] .vcard-more">
+          <?= e(t('misc.show_more')) ?>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+      </div>
+      <?php endif; ?>
+    </div>
+  </section>
+  <?php endif; ?>
 
   <!-- ============ LINEUPS ============ -->
   <section class="tab-panel" data-panel="lineups">

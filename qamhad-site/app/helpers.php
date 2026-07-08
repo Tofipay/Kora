@@ -160,6 +160,9 @@ function id_from_slug(string $slug): int
 function media_url(string $kind, string $size, ?string $file, string $fallback): string
 {
     if (empty($file)) return $fallback;
+    // Upstream "default.*" placeholders carry the provider's own logo —
+    // never show it; use our first-party fallback instead.
+    if (preg_match('#(^|/)default\.(png|jpe?g|gif|webp)$#i', (string)$file)) return $fallback;
     if (preg_match('#^https?://#i', (string)$file)) {
         // Absolute upstream URL — rewrite through proxy if it's the known CDN
         $p = parse_url((string)$file, PHP_URL_PATH);
@@ -184,13 +187,13 @@ function media_url(string $kind, string $size, ?string $file, string $fallback):
 function team_img($teamOrFile, string $size = '64'): string
 {
     $file = is_array($teamOrFile) ? ($teamOrFile['image'] ?? $teamOrFile['logo'] ?? null) : $teamOrFile;
-    return media_url('teams', $size, $file, '/assets/img/team.svg');
+    return media_url('teams', $size, $file, '/assets/brand/icon.svg');
 }
 
 function league_img($lgOrFile, string $size = '128'): string
 {
     $file = is_array($lgOrFile) ? ($lgOrFile['image'] ?? null) : $lgOrFile;
-    return media_url('championship', $size, $file, '/assets/img/league.svg');
+    return media_url('championship', $size, $file, '/assets/brand/icon.svg');
 }
 
 function news_img($nOrFile, string $size = '640'): string

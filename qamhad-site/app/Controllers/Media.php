@@ -25,6 +25,15 @@ final class Media
         if (!isset(MEDIA_KINDS[$kind])) self::fail(404);
         if ($size !== '' && !in_array($size, MEDIA_KINDS[$kind], true)) self::fail(404);
 
+        // Upstream "default.*" placeholders carry the provider's own logo —
+        // never proxy them; serve the site's brand mark instead. Covers
+        // hardcoded /media/…/default.png URLs from old pages and caches.
+        if (preg_match('/^default\./i', $file)) {
+            header('Cache-Control: public, max-age=86400');
+            header('Location: /assets/brand/icon.svg', true, 302);
+            exit;
+        }
+
         // Fallback size to try if the requested render is missing upstream.
         $fb = (string)(MEDIA_FALLBACK_SIZE[$kind] ?? '');
         $fallbackSize = ($size !== '' && $fb !== '' && $fb !== $size) ? $fb : '';

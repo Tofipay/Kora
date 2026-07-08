@@ -445,7 +445,7 @@ html.dark .is-soon { color: var(--primary); }
 .fc-team img { aspect-ratio: 1; object-fit: contain; border-radius: 50%; background: var(--surface-2); padding: 4px; flex: none; }
 .fc-team b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .fc-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.fc-score { font-size: 24px; font-weight: 900; }
+.fc-score { font-size: 24px; font-weight: 900; display: inline-flex; align-items: center; gap: 6px; }
 .fc-time { font-size: 20px; font-weight: 900; color: var(--primary-600); direction: ltr; }
 html.dark .fc-time { color: var(--primary); }
 .fc-date { color: var(--text-3); font-size: 11px; text-align: center; }
@@ -647,16 +647,23 @@ html.dark .bn-item.active { color: var(--primary); }
 .mh-team { min-width: 0; }
 .mh-team b { font-size: clamp(14px, 2.6vw, 18px); max-width: 100%; overflow-wrap: anywhere; }
 .mh-center { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 10px; }
-.mh-score { font-size: clamp(34px, 7vw, 52px); font-weight: 900; display: flex; gap: 10px; align-items: center; }
+/* Score row, reference style: home number · status pill / live ring · away
+   number. Follows the page direction so each number sits on its team's side. */
+.mh-score { font-size: clamp(34px, 7vw, 52px); font-weight: 900; display: flex; gap: clamp(12px, 3.5vw, 22px); align-items: center; }
 .mh-score i { color: var(--text-3); font-style: normal; font-weight: 300; }
+.mh-score .mh-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 74px; }
 .mh-time { font-size: clamp(24px, 5vw, 34px); font-weight: 900; color: var(--primary-600); direction: ltr; }
 html.dark .mh-time { color: var(--primary); }
-.mh-status { font-size: 13px; font-weight: 800; padding: 4px 14px; border-radius: 999px; }
+.mh-status {
+  font-size: 13px; font-weight: 800; padding: 6px 18px; border-radius: 999px;
+  background: var(--glass-soft); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--line); box-shadow: var(--shadow-1);
+}
 .mh-pens {
   display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800;
-  color: var(--text-2); direction: ltr; white-space: nowrap;
+  color: var(--text-2); white-space: nowrap;
   background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
-  padding: 4px 14px; box-shadow: var(--shadow-1);
+  padding: 5px 16px; box-shadow: var(--shadow-1);
 }
 .mh-pens .mh-pens-label { font-size: 11.5px; font-weight: 800; color: var(--text-2); white-space: nowrap; }
 .mh-pens i { color: var(--text-3); font-style: normal; }
@@ -677,7 +684,10 @@ html.dark .mh-pens b.is-win { color: var(--primary); }
 .sb-head .sb-team { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; min-width: 0; }
 .sb-head .sb-team img { border-radius: 6px; flex: none; }
 .sb-head .sb-team-a { justify-content: flex-end; }
-.sb-head .sb-total { display: inline-flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 900; direction: ltr; }
+/* Score pairs are home-first in the DOM and must follow the page direction
+   (home = right in RTL) so each number sits on its team's side. Forcing LTR
+   here put the away score under the home team — the reversal bug. */
+.sb-head .sb-total { display: inline-flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 900; }
 .sb-head .sb-total i { color: var(--text-3); font-style: normal; font-weight: 300; }
 .sb-rows { list-style: none; margin: 8px 0 0; padding: 0; }
 .sb-rows li { display: grid; grid-template-columns: 2.2rem 1fr 2.2rem; align-items: center; padding: 7px 0; font-weight: 800; }
@@ -1363,7 +1373,7 @@ html[dir="rtl"] .wt-back svg { transform: scaleX(-1); }
 .wt-teams { display: flex; align-items: center; gap: 14px; font-size: 14px; }
 .wt-teams span { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .wt-teams img { border-radius: 50%; }
-.wt-score { font-weight: 900; font-size: 17px; } .wt-vs { color: var(--text-3); }
+.wt-score { font-weight: 900; font-size: 17px; display: inline-flex; align-items: center; gap: 5px; font-style: normal; } .wt-vs { color: var(--text-3); }
 
 .player-shell { border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-2); }
 /* The overlay classes below set display:flex, which would override the UA
@@ -1475,14 +1485,17 @@ html[dir="rtl"] .pl-big-play svg { transform: scaleX(-1); }
 
 /* Aggregate note under the hero score */
 .mh-agg { font-weight: 800; }
+.agg-pair { display: inline-flex; gap: 3px; }
 
 /* ---------- Penalty shootout (Sofascore-style takers board) ---------- */
 .pen-shootout .card-title { justify-content: space-between; }
 .ps-final {
-  font-size: 15px; font-weight: 900; direction: ltr;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 15px; font-weight: 900;
   color: var(--primary-700); background: var(--primary-soft);
   padding: 3px 13px; border-radius: 999px;
 }
+.ps-final i { font-style: normal; font-weight: 400; opacity: .6; }
 html.dark .ps-final { color: var(--primary); }
 
 .ps-team { padding: 12px 0 6px; }
@@ -1557,3 +1570,48 @@ html.dark .tl-injury { color: #fbbf24; }
 }
 .video-link:hover .vl-provider { color: var(--primary-700); background: var(--primary-soft); }
 html.dark .video-link:hover .vl-provider { color: var(--primary); }
+
+/* ---------- Videos tab (match highlights grid) ---------- */
+.videos-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.vcard {
+  display: flex; flex-direction: column; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+  overflow: hidden; box-shadow: var(--shadow-1);
+}
+.vc-thumb {
+  position: relative; aspect-ratio: 16/9; display: block;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 22%, var(--ink)), var(--ink) 75%);
+  overflow: hidden;
+}
+.vc-thumb > img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s var(--ease-out); }
+.vcard:hover .vc-thumb > img { transform: scale(1.05); }
+.vc-thumb-ph {
+  position: absolute; inset: 0; display: grid; place-items: center; opacity: .9;
+}
+.vc-thumb-ph img { width: 46px; height: 46px; }
+.vc-play {
+  position: absolute; inset: 0; margin: auto; width: 46px; height: 46px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 92%, #fff);
+  color: #06281b; box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  transition: transform .2s var(--ease-spring);
+}
+html[dir="rtl"] .vc-play svg { transform: scaleX(-1); }
+.vcard:hover .vc-play { transform: scale(1.1); }
+.vc-provider {
+  position: absolute; top: 8px; inset-inline-end: 8px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .02em; color: #fff;
+  background: rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  padding: 3px 10px; border-radius: 999px;
+}
+.vc-body { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 13px; }
+.vc-body b { font-size: 13.5px; }
+.vc-body small { color: var(--text-3); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.show-more-wrap { display: flex; justify-content: center; padding-top: 16px; }
+.show-more-wrap .btn svg { transition: transform .2s; }
+.show-more-wrap .btn:hover svg { transform: translateY(2px); }
+.card-title .view-all { margin-inline-start: auto; font-size: 12.5px; }
+.vc-thumb > img { position: relative; z-index: 1; }

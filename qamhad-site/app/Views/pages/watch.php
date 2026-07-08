@@ -20,7 +20,7 @@ $serversJson = array_map(fn($s) => [
     <div class="wt-teams">
       <span><img src="<?= e(team_img($home)) ?>" alt="" width="24" height="24"><b><?= e(team_name($home)) ?></b></span>
       <?php $st = match_state($m); if ($st['started']): ?>
-        <em class="wt-score"><?= (int)($m['home_scores'] ?? 0) ?> - <?= (int)($m['away_scores'] ?? 0) ?></em>
+        <em class="wt-score"><span><?= (int)($m['home_scores'] ?? 0) ?></span><i class="wt-vs">-</i><span><?= (int)($m['away_scores'] ?? 0) ?></span></em>
       <?php else: ?><em class="wt-vs"><?= e(t('match.vs')) ?></em><?php endif; ?>
       <span><b><?= e(team_name($away)) ?></b><img src="<?= e(team_img($away)) ?>" alt="" width="24" height="24"></span>
     </div>

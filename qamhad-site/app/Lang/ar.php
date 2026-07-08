@@ -58,6 +58,7 @@ return [
     // Match center
     'match.overview'   => 'التفاصيل',
     'match.events'     => 'الأحداث',
+    'match.videos'     => 'الفيديوهات',
     'match.lineups'    => 'التشكيلة',
     'match.stats'      => 'الإحصائيات',
     'match.news'       => 'الأخبار',
@@ -285,6 +286,7 @@ return [
     'misc.min'        => 'دقيقة',
     'misc.updated'    => 'آخر تحديث',
     'misc.loading'    => 'جارٍ التحميل…',
+    'misc.show_more'  => 'عرض المزيد',
     'misc.retry'     => 'إعادة المحاولة',
     'misc.error'      => 'حدث خطأ، حاول مجدداً',
     'misc.offline'    => 'أنت غير متصل بالإنترنت',

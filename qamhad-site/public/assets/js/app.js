@@ -96,6 +96,22 @@
     });
   });
 
+  /* "Show more" reveal (videos grid etc.): un-hide the targeted items once */
+  $$('[data-show-more]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$(btn.getAttribute('data-show-more')).forEach(el => el.hidden = false);
+      const wrap = btn.closest('.show-more-wrap');
+      (wrap || btn).remove();
+    });
+  });
+  /* In-page links that jump to a tab (e.g. overview highlights → videos) */
+  $$('[data-goto-tab]').forEach(a => {
+    a.addEventListener('click', e => {
+      const btn = $('.tab[data-tab="' + a.getAttribute('data-goto-tab') + '"]');
+      if (btn) { e.preventDefault(); btn.click(); btn.scrollIntoView({ block: 'nearest' }); }
+    });
+  });
+
   /* ---------------- Player stat rings (draw + count up) ---------------- */
   function animateRings(root) {
     (root || document).querySelectorAll('.rc-fg[data-target]').forEach(fg => {

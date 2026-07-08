@@ -58,6 +58,7 @@ return [
     // Match center
     'match.overview'   => 'Overview',
     'match.events'     => 'Events',
+    'match.videos'     => 'Videos',
     'match.lineups'    => 'Lineups',
     'match.stats'      => 'Stats',
     'match.news'       => 'News',
@@ -285,6 +286,7 @@ return [
     'misc.min'        => 'min',
     'misc.updated'    => 'Last updated',
     'misc.loading'    => 'Loading…',
+    'misc.show_more'  => 'Show more',
     'misc.retry'     => 'Retry',
     'misc.error'      => 'Something went wrong, try again',
     'misc.offline'    => 'You are offline',
