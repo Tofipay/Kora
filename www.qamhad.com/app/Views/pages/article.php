@@ -13,7 +13,14 @@
   </header>
 
   <figure class="article-cover">
-    <img src="<?= e(news_img($n, '640')) ?>" alt="<?= e($n['title'] ?? '') ?>" width="960" height="540" fetchpriority="high">
+    <?php /* 1200px master render — Google Discover requires images 1200px+
+             wide, and Google Images indexes what the <img> actually loads
+             (matches the NewsArticle schema + og:image + image sitemap, all
+             already on the 1200 render). srcset keeps phones on the 640. */ ?>
+    <img src="<?= e(news_img($n, '1200')) ?>"
+         srcset="<?= e(news_img($n, '640')) ?> 640w, <?= e(news_img($n, '1200')) ?> 1200w"
+         sizes="(max-width: 720px) 100vw, 960px"
+         alt="<?= e($n['title'] ?? '') ?>" width="1200" height="675" fetchpriority="high">
   </figure>
 
   <div class="article-body">

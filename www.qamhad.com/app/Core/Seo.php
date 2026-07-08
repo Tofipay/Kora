@@ -332,9 +332,16 @@ final class Seo
     }
 
     /**
-     * ItemList of today's matches for the homepage / listing pages.
-     * Each entry is a SportsEvent → strong freshness + coverage signal for
-     * "مباريات اليوم بث مباشر". $matches is the raw API list; capped for size.
+     * ItemList of match pages for the homepage / listing pages — Google's
+     * "summary page" carousel form: each ListItem carries ONLY position + url.
+     *
+     * Deliberately NO nested SportsEvent entities here. Google validates every
+     * typed entity inside an ItemList as a standalone event (location must be
+     * a Place, image/offers/organizer/performer/description expected) — data
+     * the day-list feed cannot provide, so each entry surfaced in Search
+     * Console as an "invalid item". The full, valid SportsEvent lives on each
+     * match page itself; this list only signals coverage + discovery.
+     * $matches is the raw API list; capped for size.
      */
     public static function matchListSchema(array $matches, string $name, string $listUrl, int $limit = 30): array
     {
@@ -344,31 +351,10 @@ final class Seo
             if ($pos >= $limit) break;
             if (!is_array($m) || empty($m['match_id'])) continue;
             $pos++;
-            $home = team_of($m, 'home');
-            $away = team_of($m, 'away');
-            $start = (int)($m['match_timestamp'] ?? 0);
-            if (!$start) $start = to_ts($m['match_date'] ?? '');
-            $mUrl = absolute_url(match_url($m));
-            $stadium = trim((string)($m['Stadium'] ?? ''));
             $items[] = [
                 '@type' => 'ListItem',
                 'position' => $pos,
-                'item' => [
-                    '@type' => 'SportsEvent',
-                    'name' => team_name($home) . ' ' . t('match.vs') . ' ' . team_name($away),
-                    'url' => $mUrl,
-                    'sport' => 'Soccer',
-                    // Include the fields Google requires of an Event so these
-                    // nested items never surface as "incomplete event" issues.
-                    'eventStatus' => 'https://schema.org/EventScheduled',
-                    'startDate' => $start ? date('c', $start) : (string)($m['match_date'] ?? ''),
-                    'endDate' => $start ? date('c', $start + 7200) : (string)($m['match_date'] ?? ''),
-                    'location' => $stadium !== ''
-                        ? ['@type' => 'Place', 'name' => $stadium, 'address' => $stadium]
-                        : ['@type' => 'VirtualLocation', 'url' => $mUrl],
-                    'homeTeam' => ['@type' => 'SportsTeam', 'name' => team_name($home)],
-                    'awayTeam' => ['@type' => 'SportsTeam', 'name' => team_name($away)],
-                ],
+                'url' => absolute_url(match_url($m)),
             ];
         }
         return [
