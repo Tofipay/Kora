@@ -10,6 +10,18 @@ final class View
     {
         $seo = $seo ?? new Seo();
         $data['seo'] = $seo;
+        // HTML must never be stored stale: revalidate on every load. Controllers
+        // that set their own Cache-Control (match/news, for crawler freshness)
+        // keep it; only pages without one get the safe revalidate default.
+        // Combined with the service worker's network-first strategy, users never
+        // need to clear their browser cache to see a new release.
+        if (!headers_sent()) {
+            $hasCache = false;
+            foreach (headers_list() as $h) {
+                if (stripos($h, 'Cache-Control:') === 0) { $hasCache = true; break; }
+            }
+            if (!$hasCache) header('Cache-Control: no-cache, must-revalidate');
+        }
         extract($data, EXTR_SKIP);
         $contentView = APP_DIR . '/Views/pages/' . $view . '.php';
         require APP_DIR . '/Views/layout/base.php';

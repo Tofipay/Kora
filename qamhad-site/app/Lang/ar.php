@@ -288,6 +288,9 @@ return [
     'misc.updated'    => 'آخر تحديث',
     'misc.loading'    => 'جارٍ التحميل…',
     'misc.show_more'  => 'عرض المزيد',
+    'misc.update_ready' => 'يوجد إصدار جديد من الموقع',
+    'misc.update_now'   => 'تحديث الآن',
+    'misc.update_later' => 'لاحقاً',
 
     // Videos section
     'videos.title'    => 'الفيديوهات',

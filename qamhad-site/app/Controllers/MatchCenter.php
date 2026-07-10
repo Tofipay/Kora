@@ -20,7 +20,7 @@ final class MatchCenter
         $info = Api::matchInfo($id);
         if (empty($info) || empty($info['match_id'])) View::notFound();
 
-        Settings::trackHit('match');
+        Settings::trackHit('match', team_name(team_of($info, 'home')) . ' × ' . team_name(team_of($info, 'away')));
 
         // Canonical slug URL — redirect /match/123 or stale slugs
         $canonical = match_url($info);

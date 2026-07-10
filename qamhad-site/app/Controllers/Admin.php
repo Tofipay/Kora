@@ -36,6 +36,7 @@ final class Admin
 
         match (true) {
             $action === '' || $action === 'dashboard' => self::render('dashboard', self::dashboardData()),
+            $action === 'update'        => self::updateSite(),
             $action === 'branding'      => self::branding(),
             $action === 'seo'           => self::seo(),
             $action === 'homepage'      => self::homepage(),
@@ -175,17 +176,98 @@ final class Admin
 
     /* ---------------- Sections ---------------- */
 
+    /**
+     * "تحديث الموقع" — publish a new release to every client at once.
+     * Bumps the global build token (so each visitor's service worker sees a
+     * new /sw.js?v= and prompts "update now"), clears the API cache and resets
+     * OPcache. No one has to clear their browser cache.
+     */
+    private static function updateSite(): void
+    {
+        Settings::merge('system', ['build' => date('Ymd-His'), 'updated_at' => date('c')]);
+        $removed = Cache::flush();
+        if (function_exists('opcache_reset')) @opcache_reset();
+        $_SESSION['qflash'] = 'تم نشر إصدار جديد وتحديث الكاش (' . $removed . ' ملف). سيصل التحديث لكل المستخدمين تلقائياً.';
+        View::redirect('/' . ADMIN_PATH, 302);
+    }
+
     private static function dashboardData(): array
     {
         $a = Settings::get('analytics', []);
+        if (!is_array($a)) $a = [];
         $days = is_array($a['days'] ?? null) ? $a['days'] : [];
         ksort($days);
+
+        // Truthful roll-ups from the daily buckets.
+        $today = date('Y-m-d');
+        $sum = function (int $back) use ($days): int {
+            $from = date('Y-m-d', strtotime("-{$back} days"));
+            $t = 0;
+            foreach ($days as $d => $row) { if ($d >= $from) $t += (int)($row['total'] ?? 0); }
+            return $t;
+        };
+        // Prune the online ring to the last 5 minutes for an accurate count.
+        $online = is_array($a['online'] ?? null) ? $a['online'] : [];
+        $now = time();
+        $onlineNow = 0;
+        foreach ($online as $ts) { if ($now - (int)$ts <= 300) $onlineNow++; }
+
+        $topOf = function (string $type, int $n = 6) use ($a): array {
+            $rows = is_array($a['top'][$type] ?? null) ? $a['top'][$type] : [];
+            arsort($rows);
+            return array_slice($rows, 0, $n, true);
+        };
+
+        $flash = $_SESSION['qflash'] ?? null;
+        unset($_SESSION['qflash']);
+
         return [
-            'total'   => (int)($a['total'] ?? 0),
-            'days'    => array_slice($days, -14, null, true),
-            'cache'   => Cache::stats(),
-            'tokens'  => count(Settings::get('push_tokens', []) ?: []),
-            'emails'  => count(Settings::get('newsletter', []) ?: []),
+            'total'    => (int)($a['total'] ?? 0),
+            'today'    => (int)($days[$today]['total'] ?? 0),
+            'week'     => $sum(7),
+            'month'    => $sum(30),
+            'onlineNow'=> $onlineNow,
+            'days'     => array_slice($days, -14, null, true),
+            'sources'  => is_array($a['sources'] ?? null) ? $a['sources'] : [],
+            'devices'  => is_array($a['devices'] ?? null) ? $a['devices'] : [],
+            'browsers' => is_array($a['browsers'] ?? null) ? $a['browsers'] : [],
+            'topMatches' => $topOf('match'),
+            'topNews'    => $topOf('article'),
+            'topVideos'  => $topOf('video'),
+            'topChamps'  => $topOf('videos'),
+            'cache'    => Cache::stats(),
+            'tokens'   => count(Settings::get('push_tokens', []) ?: []),
+            'emails'   => count(Settings::get('newsletter', []) ?: []),
+            'server'   => self::serverMetrics(),
+            'build'    => build_token(),
+            'flash'    => $flash,
+        ];
+    }
+
+    /** Real server metrics readable from PHP (RAM/CPU/disk/cache/PHP). */
+    private static function serverMetrics(): array
+    {
+        $load = function_exists('sys_getloadavg') ? @sys_getloadavg() : null;
+        $cores = 0;
+        if (is_readable('/proc/cpuinfo')) $cores = substr_count((string)@file_get_contents('/proc/cpuinfo'), "\nprocessor");
+        $memTotal = $memAvail = 0;
+        if (is_readable('/proc/meminfo')) {
+            $mi = (string)@file_get_contents('/proc/meminfo');
+            if (preg_match('/MemTotal:\s+(\d+)/', $mi, $m)) $memTotal = (int)$m[1] * 1024;
+            if (preg_match('/MemAvailable:\s+(\d+)/', $mi, $m)) $memAvail = (int)$m[1] * 1024;
+        }
+        $diskTotal = @disk_total_space(STORAGE_DIR) ?: 0;
+        $diskFree  = @disk_free_space(STORAGE_DIR) ?: 0;
+        return [
+            'php'        => PHP_VERSION,
+            'load'       => is_array($load) ? round((float)$load[0], 2) : null,
+            'cores'      => $cores ?: null,
+            'mem_total'  => $memTotal,
+            'mem_used'   => $memTotal && $memAvail ? $memTotal - $memAvail : 0,
+            'php_mem'    => memory_get_peak_usage(true),
+            'disk_total' => $diskTotal,
+            'disk_used'  => $diskTotal && $diskFree ? $diskTotal - $diskFree : 0,
+            'opcache'    => function_exists('opcache_get_status') && @opcache_get_status(false)['opcache_enabled'],
         ];
     }
 

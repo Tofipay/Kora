@@ -322,9 +322,59 @@
     $('#install-btn').hidden = true;
   });
 
-  /* ---------------- Service worker ---------------- */
+  /* ---------------- Service worker + auto-update prompt ---------------- */
   if ('serviceWorker' in navigator) {
-    addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    const isAr = () => document.documentElement.lang === 'ar';
+    // Register with the build token so a new release = a byte-different SW URL,
+    // which the browser installs and we surface as an in-page update prompt.
+    const swUrl = '/sw.js?v=' + encodeURIComponent(Q.build || 'base');
+    let reloading = false;
+
+    function showUpdatePrompt(worker) {
+      if ($('#update-bar')) return;
+      const bar = document.createElement('div');
+      bar.id = 'update-bar';
+      bar.className = 'update-bar';
+      bar.setAttribute('role', 'alert');
+      bar.innerHTML =
+        '<span class="ub-txt">' + (Q.t.update_ready || (isAr() ? 'يوجد إصدار جديد من الموقع' : 'A new version is available')) + '</span>' +
+        '<div class="ub-actions">' +
+          '<button class="ub-btn ub-now" type="button">' + (Q.t.update_now || (isAr() ? 'تحديث الآن' : 'Update now')) + '</button>' +
+          '<button class="ub-btn ub-later" type="button">' + (Q.t.update_later || (isAr() ? 'لاحقاً' : 'Later')) + '</button>' +
+        '</div>';
+      document.body.appendChild(bar);
+      requestAnimationFrame(() => bar.classList.add('show'));
+      bar.querySelector('.ub-later').addEventListener('click', () => { bar.classList.remove('show'); setTimeout(() => bar.remove(), 350); });
+      bar.querySelector('.ub-now').addEventListener('click', () => {
+        bar.querySelector('.ub-now').disabled = true;
+        if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
+        // Fallback if controllerchange doesn't fire quickly.
+        setTimeout(() => { if (!reloading) location.reload(); }, 1500);
+      });
+    }
+
+    addEventListener('load', () => {
+      navigator.serviceWorker.register(swUrl).then(reg => {
+        // Already a waiting worker (updated on a previous visit)?
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdatePrompt(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            // Installed + an existing controller = this is an UPDATE, not first load.
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt(nw);
+          });
+        });
+        // Poll for updates periodically (catches server-side build bumps).
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      }).catch(() => {});
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      });
+    });
   }
 
   /* ---------------- Push notifications (topic bottom sheet) ---------------- */
@@ -448,8 +498,16 @@
         if (data && data.html) {
           const tmp = document.createElement('div');
           tmp.innerHTML = data.html;
+          // Guard against any overlap between pages: never append a card whose
+          // link is already on the page (no duplicates, no lost videos).
+          const seen = new Set($$('[data-video-card]', vGrid).map(c => c.getAttribute('href')));
           const frag = document.createDocumentFragment();
-          while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+          $$('[data-video-card]', tmp).forEach(card => {
+            const h = card.getAttribute('href');
+            if (h && seen.has(h)) return;
+            if (h) seen.add(h);
+            frag.appendChild(card);
+          });
           vGrid.appendChild(frag);
         }
         nextSkip = data && data.has_more ? data.next_skip : null;

@@ -288,6 +288,9 @@ return [
     'misc.updated'    => 'Last updated',
     'misc.loading'    => 'Loading…',
     'misc.show_more'  => 'Show more',
+    'misc.update_ready' => 'A new version is available',
+    'misc.update_now'   => 'Update now',
+    'misc.update_later' => 'Later',
 
     // Videos section
     'videos.title'    => 'Videos',

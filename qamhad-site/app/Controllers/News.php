@@ -39,7 +39,6 @@ final class News
     {
         $id = id_from_slug($slug);
         if (!$id) View::notFound();
-        Settings::trackHit('article');
 
         $n = Api::newsDetail($id);
         // If the detail endpoint was blocked (anti-bot placeholder), fall back
@@ -51,6 +50,7 @@ final class News
             $partial = !empty($n);
         }
         if (empty($n) || empty($n['id'])) View::notFound();
+        Settings::trackHit('article', (string)($n['title'] ?? ''));
 
         $canonical = news_url($n);
         if ('/news/' . $slug !== preg_replace('#^/en#', '', $canonical)) {

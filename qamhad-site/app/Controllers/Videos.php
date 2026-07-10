@@ -18,8 +18,6 @@ final class Videos
     /** GET /videos[?champ=ID] — highlights grid with championship tabs. */
     public static function index(): void
     {
-        Settings::trackHit('videos');
-
         $champ = isset($_GET['champ']) ? preg_replace('/[^0-9]/', '', (string)$_GET['champ']) : '';
         $champ = $champ !== '' ? $champ : 'all';
 
@@ -30,6 +28,7 @@ final class Videos
         foreach ($categories as $c) {
             if ((string)$c['id'] === $champ) { $activeTitle = (string)$c['title']; break; }
         }
+        Settings::trackHit('videos', $activeTitle);
 
         header('Cache-Control: public, max-age=600');
 
@@ -56,7 +55,6 @@ final class Videos
     public static function watch(string $ytId): void
     {
         if (!preg_match('/^[A-Za-z0-9_-]{11}$/', $ytId)) View::notFound();
-        Settings::trackHit('video');
 
         $lookup  = VideoFeed::findByYoutubeId($ytId);
         $video   = $lookup['video'];
@@ -65,6 +63,7 @@ final class Videos
         // Title/championship: from the feed when known, else a sensible default
         // so a shared/deep-linked id still renders a valid page.
         $title = $video['title'] ?? t('videos.watch_default');
+        Settings::trackHit('video', $title);
         $champ = $video['champ_title'] ?? '';
         $date  = $video['created_at'] ?? '';
 

@@ -160,9 +160,9 @@ function id_from_slug(string $slug): int
 function media_url(string $kind, string $size, ?string $file, string $fallback): string
 {
     if (empty($file)) return $fallback;
-    // Upstream "default.*" placeholders carry the provider's own logo —
-    // never show it; use our first-party fallback instead.
-    if (preg_match('#(^|/)default\.(png|jpe?g|gif|webp)$#i', (string)$file)) return $fallback;
+    // Upstream placeholders (default.png, video_default.png, *_default.*)
+    // carry the provider's own logo — never show it; use our brand fallback.
+    if (preg_match('#(^|/)[a-z0-9_]*default\.(png|jpe?g|gif|webp)$#i', (string)$file)) return $fallback;
     if (preg_match('#^https?://#i', (string)$file)) {
         // Absolute upstream URL — rewrite through proxy if it's the known CDN
         $p = parse_url((string)$file, PHP_URL_PATH);
@@ -1119,4 +1119,19 @@ function notify_topics(): array
         ['slug' => 'nt_egy',   'ar' => 'منتخب مصر',           'en' => 'Egypt NT'],
         ['slug' => 'nt_alg',   'ar' => 'منتخب الجزائر',       'en' => 'Algeria NT'],
     ];
+}
+
+/**
+ * Global build token used to bust caches across ALL clients at once.
+ *
+ * Returns the admin-set version (bumped by the "تحديث الموقع" button) when
+ * present, otherwise the code build constant. Appending it to the service
+ * worker URL and asset URLs guarantees every visitor picks up a new release
+ * without ever clearing their browser cache.
+ */
+function build_token(): string
+{
+    $sys = Settings::get('system', []);
+    $v = is_array($sys) ? trim((string)($sys['build'] ?? '')) : '';
+    return $v !== '' ? $v : \Qamhad\Core\Seo::BUILD;
 }

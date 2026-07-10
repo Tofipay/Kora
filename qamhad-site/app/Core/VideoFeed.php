@@ -23,14 +23,26 @@ namespace Qamhad\Core;
  */
 final class VideoFeed
 {
-    private const BASE      = 'https://www.ysscores.com/ar/';
+    private const HOST      = 'https://www.ysscores.com/';
     private const PAGE_SIZE = 80;                 // upstream page size
+    private const RETRIES   = 2;                  // curl attempts on transient failure
     private const UA        = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                             . 'AppleWebKit/537.36 (KHTML, like Gecko) '
                             . 'Chrome/125.0.0.0 Safari/537.36';
 
     /** Per-request memo of the CSRF handshake so one page view = one session. */
     private static ?array $session = null;
+
+    /**
+     * Language-aware upstream base. The video section exists per language on
+     * the source (…/ar/video vs …/en/video); pick it from the active site
+     * language so an English visitor gets English titles. Cache keys derive
+     * from this, so ar/en feeds are cached independently.
+     */
+    private static function base(): string
+    {
+        return self::HOST . (Lang::current() === 'en' ? 'en' : 'ar') . '/';
+    }
 
     /* ============================================================
      *  Public API
@@ -44,7 +56,7 @@ final class VideoFeed
      */
     public static function categories(): array
     {
-        $key = self::BASE . 'video#categories';
+        $key = self::base() . 'video#categories';
         $cached = Cache::get($key, CACHE_TTL_LEAGUES);
         if (is_array($cached) && $cached) return $cached;
 
@@ -80,7 +92,7 @@ final class VideoFeed
         $champ = preg_match('/^\d+$/', $champ) ? $champ : 'all';
         $skip  = max(0, $skip);
 
-        $key = self::BASE . "video#feed|{$champ}|{$skip}";
+        $key = self::base() . "video#feed|{$champ}|{$skip}";
         $cached = Cache::get($key, CACHE_TTL_NEWS);
         if (is_array($cached) && !empty($cached['success'])) return $cached;
 
@@ -146,13 +158,13 @@ final class VideoFeed
             'Content-Type: application/x-www-form-urlencoded; charset=UTF-8',
             'X-CSRF-Token: ' . $s['csrf'],
             'X-Requested-With: XMLHttpRequest',
-            'Referer: ' . self::BASE . 'video',
+            'Referer: ' . self::base() . 'video',
             'Accept: application/json, text/javascript, */*; q=0.01',
             'Accept-Language: ar,en;q=0.9',
         ];
         if (!empty($s['cookies'])) $headers[] = 'Cookie: ' . $s['cookies'];
 
-        [$code, $raw] = self::curl(self::BASE . $endpoint, [
+        [$code, $raw] = self::curl(self::base() . $endpoint, [
             CURLOPT_POST       => true,
             CURLOPT_POSTFIELDS => http_build_query($post),
             CURLOPT_HTTPHEADER => $headers,
@@ -196,7 +208,9 @@ final class VideoFeed
             $thumb = "https://i.ytimg.com/vi/{$ytId}/hqdefault.jpg";
         } else {
             $t = (string)($item['v_image'] ?? '');
-            if ($t !== '' && !preg_match('#(^|/)default\.#i', $t)) {
+            // Skip provider placeholder logos (default.png, video_default.png,
+            // *_default.*) — the card falls back to the Qamhad brand mark.
+            if ($t !== '' && !preg_match('#(^|/)[a-z0-9_]*default\.#i', $t)) {
                 if (preg_match('#^https?://#i', $t)) $thumb = $t;
                 elseif ($t !== '') $thumb = 'https://www.ysscores.com/' . ltrim(preg_replace('#^[./]+#', '', $t), '/');
             }
@@ -218,7 +232,7 @@ final class VideoFeed
     {
         if (self::$session !== null) return self::$session;
 
-        [$code, $resp, $hdr] = self::curl(self::BASE . 'video', [CURLOPT_HEADER => true], true);
+        [$code, $resp, $hdr] = self::curl(self::base() . 'video', [CURLOPT_HEADER => true], true);
         $body = is_string($resp) ? substr($resp, (int)$hdr) : '';
         $head = is_string($resp) ? substr($resp, 0, (int)$hdr) : '';
 
@@ -239,26 +253,58 @@ final class VideoFeed
     }
 
     /**
-     * Thin curl wrapper. Returns [httpCode, body|response, headerSize?].
+     * curl wrapper with retry + smart timeout + error logging.
+     * Retries transient failures (network error / 5xx / 429) with a short
+     * backoff; 4xx are returned immediately (not retryable). Returns
+     * [httpCode, body|response, headerSize?].
+     *
      * @return array{0:int,1:?string,2:int}
      */
     private static function curl(string $url, array $opts = [], bool $withHeader = false): array
     {
-        $ch = curl_init();
-        curl_setopt_array($ch, $opts + [
-            CURLOPT_URL            => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_USERAGENT      => self::UA,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_ENCODING       => 'gzip',
-        ]);
-        $resp = curl_exec($ch);
-        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $hsz  = $withHeader ? (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE) : 0;
-        curl_close($ch);
-        return [$code, $resp === false ? null : (string)$resp, $hsz];
+        $lastCode = 0; $resp = null; $hsz = 0;
+
+        for ($attempt = 1; $attempt <= self::RETRIES; $attempt++) {
+            $ch = curl_init();
+            curl_setopt_array($ch, $opts + [
+                CURLOPT_URL            => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS      => 3,
+                CURLOPT_USERAGENT      => self::UA,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_ENCODING       => 'gzip',
+            ]);
+            $resp = curl_exec($ch);
+            $lastCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = $resp === false ? (string)curl_error($ch) : '';
+            $hsz  = $withHeader ? (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE) : 0;
+            curl_close($ch);
+
+            // Success (2xx/3xx) → return immediately.
+            if ($resp !== false && $lastCode >= 200 && $lastCode < 400) {
+                return [$lastCode, (string)$resp, $hsz];
+            }
+            // Non-retryable client errors → return as-is.
+            if ($lastCode >= 400 && $lastCode < 500 && $lastCode !== 429) {
+                self::log("GET {$url} → HTTP {$lastCode}");
+                return [$lastCode, $resp === false ? null : (string)$resp, $hsz];
+            }
+            // Transient: log and back off before the next attempt.
+            self::log("GET {$url} attempt {$attempt}/" . self::RETRIES
+                . " → " . ($lastCode ?: 'network') . ($err !== '' ? " ({$err})" : ''));
+            if ($attempt < self::RETRIES) usleep(300000 * $attempt);
+        }
+        return [$lastCode, $resp === false ? null : (string)$resp, $hsz];
+    }
+
+    /** Append a line to the video feed log (best-effort, capped). */
+    private static function log(string $msg): void
+    {
+        $file = defined('SETTINGS_DIR') ? SETTINGS_DIR . '/videos.log' : null;
+        if (!$file) return;
+        if (is_file($file) && filesize($file) > 262144) @file_put_contents($file, '');
+        @file_put_contents($file, '[' . date('c') . '] ' . $msg . "\n", FILE_APPEND | LOCK_EX);
     }
 }

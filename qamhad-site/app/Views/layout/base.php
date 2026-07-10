@@ -93,10 +93,12 @@ $enPath  = Lang::current() === 'en' ? $curPath : ($altPath ?: '/en');
 window.QAMHAD = {
   lang: '<?= Lang::current() ?>',
   prefix: '<?= Lang::prefix() ?>',
+  build: '<?= e(build_token()) ?>',
   t: { am:'<?= e(t('misc.am')) ?>', pm:'<?= e(t('misc.pm')) ?>', copied:'<?= e(t('misc.copy_done')) ?>',
        live:'<?= e(t('status.live')) ?>', ft:'<?= e(t('status.finished')) ?>',
        ht:'<?= e(t('status.halftime')) ?>', pens:'<?= e(t('match.penalties')) ?>',
-       d:'<?= e(t('misc.days')) ?>', h:'<?= e(t('misc.hours')) ?>', m:'<?= e(t('misc.minutes')) ?>', s:'<?= e(t('misc.seconds')) ?>' },
+       d:'<?= e(t('misc.days')) ?>', h:'<?= e(t('misc.hours')) ?>', m:'<?= e(t('misc.minutes')) ?>', s:'<?= e(t('misc.seconds')) ?>',
+       update_ready:'<?= e(t('misc.update_ready')) ?>', update_now:'<?= e(t('misc.update_now')) ?>', update_later:'<?= e(t('misc.update_later')) ?>' },
   fcm: <?= json_encode(array_intersect_key(is_array($fcm) ? $fcm : [], array_flip(['apiKey','authDomain','projectId','messagingSenderId','appId','vapidKey'])), JSON_UNESCAPED_SLASHES) ?: '{}' ?>
 };
 </script>
