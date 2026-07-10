@@ -45,7 +45,8 @@ $router->get('/news/page/{n:\d+}', fn($a) => News::index((int)$a['n']));
 $router->get('/news/{slug}', fn($a) => News::show($a['slug']));
 
 /* ---------- Videos (highlights) ---------- */
-$router->get('/videos', [Videos::class, 'index']);
+$router->get('/videos', fn() => Videos::index(1));
+$router->get('/videos/page/{n:\d+}', fn($a) => Videos::index((int)$a['n']));
 /* Note: the router uses "}" as the placeholder terminator, so a {11} quantifier
    can't appear in the constraint — match a segment and length-check in watch(). */
 $router->get('/video/{ytId:[A-Za-z0-9_\-]+}', fn($a) => Videos::watch($a['ytId']));

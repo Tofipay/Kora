@@ -291,6 +291,7 @@ return [
     'misc.update_ready' => 'A new version is available',
     'misc.update_now'   => 'Update now',
     'misc.update_later' => 'Later',
+    'misc.updating'     => 'Updating the site...',
 
     // Videos section
     'videos.title'    => 'Videos',

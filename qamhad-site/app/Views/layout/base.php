@@ -93,7 +93,7 @@ window.QAMHAD = {
        live:'<?= e(t('status.live')) ?>', ft:'<?= e(t('status.finished')) ?>',
        ht:'<?= e(t('status.halftime')) ?>', pens:'<?= e(t('match.penalties')) ?>',
        d:'<?= e(t('misc.days')) ?>', h:'<?= e(t('misc.hours')) ?>', m:'<?= e(t('misc.minutes')) ?>', s:'<?= e(t('misc.seconds')) ?>',
-       update_ready:'<?= e(t('misc.update_ready')) ?>', update_now:'<?= e(t('misc.update_now')) ?>', update_later:'<?= e(t('misc.update_later')) ?>' },
+       update_ready:'<?= e(t('misc.update_ready')) ?>', update_now:'<?= e(t('misc.update_now')) ?>', update_later:'<?= e(t('misc.update_later')) ?>', updating:'<?= e(t('misc.updating')) ?>' },
   fcm: <?= json_encode(array_intersect_key(is_array($fcm) ? $fcm : [], array_flip(['apiKey','authDomain','projectId','messagingSenderId','appId','vapidKey'])), JSON_UNESCAPED_SLASHES) ?: '{}' ?>
 };
 </script>
@@ -128,22 +128,23 @@ window.QAMHAD = {
 <script src="<?= e(asset_url('/assets/js/api-service.js')) ?>" defer></script>
 <script src="<?= e(asset_url('/assets/js/app.js')) ?>" defer></script>
 
-<!-- Google AdSense — Auto Ads. Loaded AFTER the page is interactive (idle),
-     so it never competes with first paint / LCP. Auto ads still scan and
-     inject once the script runs. Kept to a single injection site-wide. -->
+<!-- Google AdSense — Auto Ads. Loaded on the FIRST user interaction
+     (scroll / touch / click / key) with a 6s fallback timer, so it can never
+     affect first paint, LCP, TBT or the Lighthouse trace. Real visitors get
+     ads within their first gesture; the script is injected exactly once. -->
 <script>
 (function () {
-  var loaded = false;
+  var loaded = false, evs = ['scroll', 'touchstart', 'pointerdown', 'keydown', 'mousemove'];
   function loadAds() {
     if (loaded) return; loaded = true;
+    evs.forEach(function (e) { removeEventListener(e, loadAds, { passive: true }); });
     var s = document.createElement('script');
     s.async = true; s.crossOrigin = 'anonymous';
     s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6543754410644923';
     document.head.appendChild(s);
   }
-  // Prefer idle time; fall back to the load event, then a hard timeout.
-  if (document.readyState === 'complete') { ('requestIdleCallback' in window ? requestIdleCallback(loadAds, { timeout: 3000 }) : setTimeout(loadAds, 1200)); }
-  else { addEventListener('load', function () { ('requestIdleCallback' in window ? requestIdleCallback(loadAds, { timeout: 3000 }) : setTimeout(loadAds, 1200)); }); }
+  evs.forEach(function (e) { addEventListener(e, loadAds, { passive: true, once: true }); });
+  setTimeout(loadAds, 6000);
 })();
 </script>
 </body>

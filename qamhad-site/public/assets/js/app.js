@@ -323,37 +323,90 @@
   });
 
   /* ---------------- Service worker + auto-update prompt ----------------
-   * Robust update flow (avoids the "prompt keeps reappearing / update does
-   * nothing" pitfalls):
-   *  - register with updateViaCache:'none' so the browser always revalidates
-   *    sw.js itself (otherwise a cached sw.js never sees a new build)
-   *  - the build token is in the URL, so a new release = a new SW to install
-   *  - show the prompt ONCE per build; "later" silences it for this build in
-   *    the session so it doesn't nag on every page load
-   *  - "update now" always targets registration.waiting, then a single
-   *    controllerchange triggers exactly one reload (with a hard fallback)
+   * Rebuilt update flow. Root causes of the old bugs, fixed here:
+   *  1. "Nothing happens on update / random reloads": the old global
+   *     controllerchange→reload fired on FIRST install too (clients.claim),
+   *     causing surprise reloads. Reload is now gated behind a user-initiated
+   *     flag, so it happens exactly once and only when the user clicked.
+   *  2. "Prompt reappears after reopening the site": dismissal was stored in
+   *     sessionStorage keyed by the CURRENT build. It is now stored in
+   *     localStorage keyed by the NEW build (read from the waiting worker's
+   *     scriptURL ?v=...), so each release prompts exactly once per browser.
+   *  3. "Update didn't actually update": clicking now (a) deletes every
+   *     Cache API cache from the page, (b) tells the waiting worker to take
+   *     over, (c) waits for it to activate, (d) saves the new version to
+   *     localStorage, then (e) reloads — with a hard 4s fallback reload.
    */
   if ('serviceWorker' in navigator) {
     const isAr = () => document.documentElement.lang === 'ar';
     const build = Q.build || 'base';
     const swUrl = '/sw.js?v=' + encodeURIComponent(build);
-    const dismissKey = 'q_upd_dismissed_' + build;
-    let reloading = false;
-    let promptShown = false;
     let registration = null;
+    let userUpdating = false;
+    let reloaded = false;
 
-    function doUpdate(btn) {
-      if (btn) btn.disabled = true;
-      const w = (registration && registration.waiting) || null;
-      if (w) w.postMessage({ type: 'SKIP_WAITING' });
-      // Hard fallback: reload even if controllerchange is slow/never fires.
-      setTimeout(() => { if (!reloading) { reloading = true; location.reload(); } }, 2000);
+    // Bookkeeping: remember the version this page was served with.
+    try { localStorage.setItem('q_build', build); } catch (e) {}
+
+    /** Build token of a worker, parsed from its registration URL. */
+    const workerBuild = w => {
+      try { return new URL(w.scriptURL).searchParams.get('v') || 'base'; } catch (e) { return 'base'; }
+    };
+
+    function reloadOnce() {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
     }
 
-    function showUpdatePrompt() {
-      if (promptShown || $('#update-bar')) return;
-      try { if (sessionStorage.getItem(dismissKey)) return; } catch (e) {}
-      promptShown = true;
+    // Reload ONLY when the user asked for the update (never on first install).
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (userUpdating) reloadOnce();
+    });
+
+    /** The actual update: clear caches → activate new worker → save → reload. */
+    async function applyUpdate(bar, newBuild) {
+      userUpdating = true;
+      // Loading state: spinner + "جاري تحديث الموقع..."
+      bar.classList.add('is-updating');
+      bar.innerHTML =
+        '<span class="ub-txt"><span class="ub-spin" aria-hidden="true"></span>' +
+        (Q.t.updating || (isAr() ? 'جاري تحديث الموقع...' : 'Updating the site...')) + '</span>';
+      // Hard fallback: never leave the user stuck on the spinner.
+      setTimeout(reloadOnce, 4000);
+      try {
+        // 1) Purge every SW cache from the page (works even if the swap fails).
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        // 2) Persist the new version so this release never prompts again.
+        try {
+          localStorage.setItem('q_build', newBuild);
+          localStorage.setItem('q_upd_done_' + newBuild, '1');
+        } catch (e) {}
+        // 3) Promote the waiting worker; controllerchange fires → reload.
+        const w = registration && registration.waiting;
+        if (w) w.postMessage({ type: 'SKIP_WAITING' });
+        else reloadOnce(); // no waiting worker (already active) → plain reload
+      } catch (e) { reloadOnce(); }
+    }
+
+    function showUpdatePrompt(waitingWorker) {
+      if ($('#update-bar')) return;
+      const newBuild = workerBuild(waitingWorker);
+      // Compare against the ACTIVE (old) worker — never against the page's
+      // build: HTML is no-cache so the page always carries the NEW build and
+      // comparing to it would suppress every prompt. Same active build means
+      // no real release change (e.g. a byte-level SW refresh).
+      const activeW = registration && registration.active;
+      if (activeW && workerBuild(activeW) === newBuild) return;
+      try {
+        // Already updated to, or dismissed, this exact release → stay silent.
+        if (localStorage.getItem('q_upd_done_' + newBuild)) return;
+        if (localStorage.getItem('q_upd_seen_' + newBuild)) return;
+        localStorage.setItem('q_upd_seen_' + newBuild, '1'); // prompt once per release
+      } catch (e) {}
       const bar = document.createElement('div');
       bar.id = 'update-bar';
       bar.className = 'update-bar';
@@ -367,33 +420,31 @@
       document.body.appendChild(bar);
       requestAnimationFrame(() => bar.classList.add('show'));
       bar.querySelector('.ub-later').addEventListener('click', () => {
-        try { sessionStorage.setItem(dismissKey, '1'); } catch (e) {}
-        bar.classList.remove('show'); setTimeout(() => bar.remove(), 350);
+        bar.classList.remove('show');
+        setTimeout(() => bar.remove(), 350);
       });
-      bar.querySelector('.ub-now').addEventListener('click', function () { doUpdate(this); });
+      bar.querySelector('.ub-now').addEventListener('click', () => applyUpdate(bar, newBuild));
     }
 
-    // One reload for the whole tab, no matter how many events fire.
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return;
-      reloading = true;
-      location.reload();
-    });
+    /** Watch an installing worker and prompt once it reaches "installed". */
+    function trackInstalling(worker) {
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        // installed + an existing controller = a genuine update (not first install)
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt(worker);
+      });
+    }
 
     addEventListener('load', () => {
       navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(reg => {
         registration = reg;
-        // A worker is already waiting (installed on a previous visit).
-        if (reg.waiting && navigator.serviceWorker.controller) showUpdatePrompt();
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener('statechange', () => {
-            // Installed while a controller exists = a genuine UPDATE (not first install).
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt();
-          });
-        });
-        // Catch server-side build bumps without needing a hard refresh.
+        // Handle EVERY possible state at resolve time — updatefound can fire
+        // before this callback runs (register() itself starts the install),
+        // so checking only reg.waiting silently misses updates.
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdatePrompt(reg.waiting);
+        else if (reg.installing) trackInstalling(reg.installing);
+        reg.addEventListener('updatefound', () => trackInstalling(reg.installing));
+        // Catch server-side build bumps during long sessions.
         setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
       }).catch(() => {});
     });
@@ -490,7 +541,7 @@
       iframe.className = 'vp-iframe';
       iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
       iframe.title = 'YouTube';
-      iframe.allow = 'accelerator; autoplay; encrypted-media; picture-in-picture; fullscreen';
+      iframe.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen';
       iframe.allowFullscreen = true;
       iframe.setAttribute('frameborder', '0');
       stage.innerHTML = '';
@@ -498,57 +549,12 @@
     });
   });
 
-  /* ---------------- Videos: search + load-more + infinite scroll ---------- */
+  /* ---------------- Videos: instant search over the current page ----------
+   * Pagination is fully server-rendered (5 per page, prev/next + numbers,
+   * like the News section) — no infinite scroll, no "show more". */
   const vGrid = $('[data-videos-grid]');
   if (vGrid) {
-    let loading = false;
-    let nextSkip = vGrid.getAttribute('data-next-skip');
-    nextSkip = nextSkip === '' ? null : +nextSkip;
-    const champ = vGrid.getAttribute('data-champ') || 'all';
-    const skel = $('[data-videos-skeleton]');
-    const moreWrap = $('[data-videos-more]');
-    const sentinel = $('[data-videos-sentinel]');
     const noResult = $('[data-videos-noresult]');
-
-    async function loadMore() {
-      if (loading || nextSkip == null) return;
-      loading = true;
-      if (skel) skel.hidden = false;
-      try {
-        const res = await fetch('/api/videos?champ=' + encodeURIComponent(champ) + '&skip=' + nextSkip, { headers: { Accept: 'application/json' } });
-        const data = await res.json();
-        if (data && data.html) {
-          const tmp = document.createElement('div');
-          tmp.innerHTML = data.html;
-          // Guard against any overlap between pages: never append a card whose
-          // link is already on the page (no duplicates, no lost videos).
-          const seen = new Set($$('[data-video-card]', vGrid).map(c => c.getAttribute('href')));
-          const frag = document.createDocumentFragment();
-          $$('[data-video-card]', tmp).forEach(card => {
-            const h = card.getAttribute('href');
-            if (h && seen.has(h)) return;
-            if (h) seen.add(h);
-            frag.appendChild(card);
-          });
-          vGrid.appendChild(frag);
-        }
-        nextSkip = data && data.has_more ? data.next_skip : null;
-        if (nextSkip == null && moreWrap) moreWrap.remove();
-      } catch (e) { /* keep the button for manual retry */ }
-      finally { loading = false; if (skel) skel.hidden = true; applyFilter(); }
-    }
-
-    const moreBtn = $('[data-load-more]');
-    if (moreBtn) moreBtn.addEventListener('click', loadMore);
-
-    if (sentinel && 'IntersectionObserver' in window) {
-      const io = new IntersectionObserver(entries => {
-        entries.forEach(en => { if (en.isIntersecting) loadMore(); });
-      }, { rootMargin: '600px 0px' });
-      io.observe(sentinel);
-    }
-
-    // Instant client-side search across loaded cards
     const searchInput = $('#videos-search');
     function applyFilter() {
       if (!searchInput) return;

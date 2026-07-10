@@ -291,6 +291,7 @@ return [
     'misc.update_ready' => 'يوجد إصدار جديد من الموقع',
     'misc.update_now'   => 'تحديث الآن',
     'misc.update_later' => 'لاحقاً',
+    'misc.updating'     => 'جاري تحديث الموقع...',
 
     // Videos section
     'videos.title'    => 'الفيديوهات',

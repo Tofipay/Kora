@@ -1640,15 +1640,23 @@ html.dark .vc-champ { color: var(--primary); }
 .vc-date { font-size: 11px; color: var(--text-3); font-weight: 700; }
 .vc-img { position: relative; z-index: 1; }
 
-/* Skeleton loading cards */
-.videos-skeleton { margin-top: 14px; }
-.vcard-skel { pointer-events: none; }
-.vcard-skel .vc-thumb { aspect-ratio: 16/9; border-radius: 0; }
-.skel-line { height: 12px; border-radius: 6px; margin: 6px 0; }
-.skel-line.short { width: 55%; }
-.vcard-skel .vc-body { padding: 12px 14px 14px; }
-
-.videos-sentinel { display: block; height: 1px; }
+/* Numbered pagination (videos — News-style) */
+.page-numbers { display: inline-flex; align-items: center; gap: 6px; }
+.page-num {
+  min-width: 36px; height: 36px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px; font-weight: 800; font-size: 13.5px;
+  color: var(--text-2); background: var(--surface); border: 1px solid var(--line);
+  transition: border-color .2s, color .2s;
+  font-variant-numeric: tabular-nums;
+}
+.page-num:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); color: var(--primary-700); }
+html.dark .page-num:hover { color: var(--primary); }
+.page-num.is-current {
+  color: #06281b; border-color: transparent;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 72%, var(--accent)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 16px color-mix(in srgb, var(--primary) 35%, transparent);
+}
 
 /* ---------- In-site video watch page ---------- */
 .video-page { padding: 16px 0 30px; }
@@ -1797,3 +1805,12 @@ html[dir="rtl"] .switch input:checked + .switch-track::after { transform: transl
 .ub-now { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 65%, var(--accent))); color: #06281b; }
 .ub-later { background: var(--surface-2); color: var(--text-2); }
 .ub-later:hover { color: var(--text); }
+/* Update bar — loading state ("جاري تحديث الموقع...") */
+.update-bar .ub-txt { display: inline-flex; align-items: center; gap: 10px; }
+.ub-spin {
+  width: 17px; height: 17px; flex: none; border-radius: 50%;
+  border: 2.5px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-top-color: var(--primary);
+  animation: spin 0.9s linear infinite;
+}
+.update-bar.is-updating { justify-content: center; }

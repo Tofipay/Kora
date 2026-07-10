@@ -191,6 +191,53 @@ final class VideoFeed
         ];
     }
 
+    /**
+     * Site-facing pagination: fixed pages of $perPage videos, News-style.
+     *
+     * Upstream serves raw chunks of 80 (video_champ / video_more + raw_skip).
+     * Site page N maps onto the raw feed by absolute index — page N covers
+     * raw items [(N-1)*perPage, N*perPage) — so numbering is stable, nothing
+     * repeats and nothing is skipped. Items with missing data are dropped
+     * AFTER slicing, so a page may rarely show fewer than $perPage cards but
+     * the sequence never breaks.
+     *
+     * @return array{items:array<int,array>,page:int,has_next:bool,has_prev:bool}
+     */
+    public static function page(string $champ = 'all', int $page = 1, int $perPage = 5): array
+    {
+        $page    = max(1, $page);
+        $offset  = ($page - 1) * $perPage;                       // absolute raw index
+        $chunkNo = intdiv($offset, self::PAGE_SIZE);             // upstream chunk
+        $inChunk = $offset % self::PAGE_SIZE;                    // offset inside it
+
+        $chunk = self::videos($champ, $chunkNo * self::PAGE_SIZE);
+        $raw   = $chunk['data'];
+
+        // PAGE_SIZE (80) is a multiple of $perPage (5), so a site page never
+        // straddles two upstream chunks — one fetch per page, no overlap.
+        $slice = array_slice($raw, $inChunk, $perPage);
+
+        // Drop incomplete videos (no title or no playable link) — never render
+        // an empty card.
+        $items = array_values(array_filter($slice, static fn(array $v): bool =>
+            trim((string)($v['title'] ?? '')) !== '' && trim((string)($v['video_url'] ?? '')) !== ''
+        ));
+
+        // Next page exists if this chunk holds items beyond our window, or the
+        // chunk is FULL and upstream reports more. A short chunk (< 80) is the
+        // final one — upstream's count>0 "has_more" must not invent a page.
+        $chunkFull = count($raw) >= self::PAGE_SIZE;
+        $hasNext   = count($raw) > $inChunk + $perPage
+                  || ($chunkFull && !empty($chunk['has_more']));
+
+        return [
+            'items'    => $items,
+            'page'     => $page,
+            'has_next' => $hasNext,
+            'has_prev' => $page > 1,
+        ];
+    }
+
     /** Normalize one raw upstream item into the shape the views expect. */
     private static function normalize(array $item): array
     {

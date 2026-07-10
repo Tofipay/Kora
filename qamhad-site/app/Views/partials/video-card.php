@@ -6,9 +6,13 @@
  */
 $yt    = (string)($v['youtube_id'] ?? '');
 $thumb = (string)($v['thumbnail'] ?? '');
-$title = (string)($v['title'] ?? '');
+$title = trim((string)($v['title'] ?? ''));
 $champ = (string)($v['champ_title'] ?? '');
 $date  = (string)($v['created_at'] ?? '');
+
+// Incomplete video (no title or no playable link) → render nothing rather
+// than an empty card. The feed filters these too; this is the last guard.
+if ($title === '' || trim((string)($v['video_url'] ?? '')) === '') return;
 $dTs   = $date !== '' ? to_ts($date) : 0;
 $dLabel = $dTs ? format_date_short($dTs) : '';
 

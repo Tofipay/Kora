@@ -15,14 +15,24 @@ use Qamhad\Core\View;
  */
 final class Videos
 {
-    /** GET /videos[?champ=ID] — highlights grid with championship tabs. */
-    public static function index(): void
+    /** Videos per page — News-style numbered pagination. */
+    private const PER_PAGE = 5;
+
+    /**
+     * GET /videos[?champ=ID] and /videos/page/{n}[?champ=ID]
+     * Highlights grid with championship tabs + prev/next + page numbers.
+     */
+    public static function index(int $page = 1): void
     {
+        $page  = max(1, $page);
         $champ = isset($_GET['champ']) ? preg_replace('/[^0-9]/', '', (string)$_GET['champ']) : '';
         $champ = $champ !== '' ? $champ : 'all';
 
         $categories = VideoFeed::categories();
-        $first      = VideoFeed::videos($champ, 0);
+        $result     = VideoFeed::page($champ, $page, self::PER_PAGE);
+
+        // Past the end of the feed → real 404 (same behaviour as News).
+        if ($page > 1 && empty($result['items'])) View::notFound();
 
         $activeTitle = 'الكل';
         foreach ($categories as $c) {
@@ -32,10 +42,13 @@ final class Videos
 
         header('Cache-Control: public, max-age=600');
 
+        $qs = $champ !== 'all' ? '?champ=' . rawurlencode($champ) : '';
+        $pagePath = fn(int $n): string => path($n <= 1 ? 'videos' : 'videos/page/' . $n) . $qs;
+
         $seo = (new Seo())
-            ->title(t('videos.title') . ' — ' . \Qamhad\Core\Lang::siteName())
+            ->title(t('videos.title') . ($page > 1 ? ' — ' . t('news.page', ['n' => $page]) : '') . ' — ' . \Qamhad\Core\Lang::siteName())
             ->description(t('videos.subtitle'))
-            ->canonical(path('videos'))
+            ->canonical(path($page > 1 ? 'videos/page/' . $page : 'videos'))
             ->breadcrumbs([
                 [t('nav.home'), path('/')],
                 [t('videos.title'), path('videos')],
@@ -45,9 +58,11 @@ final class Videos
             'categories'  => $categories,
             'champ'       => $champ,
             'activeTitle' => $activeTitle,
-            'items'       => $first['data'],
-            'hasMore'     => $first['has_more'],
-            'nextSkip'    => $first['next_skip'],
+            'items'       => $result['items'],
+            'page'        => $page,
+            'hasNext'     => $result['has_next'],
+            'hasPrev'     => $result['has_prev'],
+            'pagePath'    => $pagePath,
         ], $seo);
     }
 
