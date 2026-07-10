@@ -6,6 +6,7 @@ namespace Qamhad\Controllers;
 use Qamhad\Core\Api;
 use Qamhad\Core\Notifier;
 use Qamhad\Core\Settings;
+use Qamhad\Core\VideoFeed;
 use Qamhad\Core\View;
 
 /**
@@ -34,6 +35,32 @@ final class ApiJson
             $out[] = $row;
         }
         View::json(['ok' => true, 'ts' => time(), 'matches' => $out]);
+    }
+
+    /**
+     * Paginated video feed for infinite scroll / "show more".
+     * GET /api/videos?champ=all&skip=80 → { html, has_more, next_skip }
+     * Returns server-rendered cards so markup stays identical to SSR.
+     */
+    public static function videos(): void
+    {
+        $champ = isset($_GET['champ']) ? preg_replace('/[^0-9]/', '', (string)$_GET['champ']) : '';
+        $champ = $champ !== '' ? $champ : 'all';
+        $skip  = isset($_GET['skip']) ? max(0, (int)$_GET['skip']) : 0;
+
+        $res  = VideoFeed::videos($champ, $skip);
+        $html = '';
+        foreach ($res['data'] as $v) {
+            $html .= View::partial('video-card', ['v' => $v]);
+        }
+        header('Cache-Control: public, max-age=600');
+        View::json([
+            'ok'        => true,
+            'html'      => $html,
+            'count'     => $res['count'],
+            'has_more'  => $res['has_more'],
+            'next_skip' => $res['next_skip'],
+        ]);
     }
 
     public static function match(int $id): void
@@ -82,21 +109,42 @@ final class ApiJson
         View::json(['ok' => true]);
     }
 
-    /** Store FCM tokens for the notifications manager. */
+    /** Store FCM tokens + their subscribed topics for the notifications manager. */
     public static function pushSubscribe(): void
     {
         $raw = json_decode((string)file_get_contents('php://input'), true) ?: [];
         $token = trim((string)($raw['token'] ?? ''));
         if ($token === '' || strlen($token) > 4096) View::json(['ok' => false], 422);
 
+        // Validate requested topics against the known list; empty → 'all'.
+        $valid = array_column(notify_topics(), 'slug');
+        $topics = array_values(array_intersect(
+            is_array($raw['topics'] ?? null) ? array_map('strval', $raw['topics']) : [],
+            $valid
+        ));
+        if (!$topics) $topics = ['all'];
+
         $tokens = Settings::get('push_tokens', []);
         if (!is_array($tokens)) $tokens = [];
-        if (!in_array($token, array_column($tokens, 'token'), true)) {
-            $tokens[] = ['token' => $token, 'at' => date('c'), 'topics' => $raw['topics'] ?? ['all']];
-            if (count($tokens) > 20000) $tokens = array_slice($tokens, -20000);
-            Settings::set('push_tokens', $tokens);
+
+        // Update in place if the token already exists (re-saving new topics),
+        // otherwise append.
+        $found = false;
+        foreach ($tokens as &$row) {
+            if (is_array($row) && ($row['token'] ?? '') === $token) {
+                $row['topics'] = $topics;
+                $row['at']     = date('c');
+                $found = true;
+                break;
+            }
         }
-        View::json(['ok' => true]);
+        unset($row);
+        if (!$found) {
+            $tokens[] = ['token' => $token, 'at' => date('c'), 'topics' => $topics];
+            if (count($tokens) > 20000) $tokens = array_slice($tokens, -20000);
+        }
+        Settings::set('push_tokens', $tokens);
+        View::json(['ok' => true, 'topics' => $topics]);
     }
 
     /**

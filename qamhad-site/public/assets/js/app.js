@@ -327,19 +327,52 @@
     addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
 
-  /* ---------------- Push notifications (FCM) ---------------- */
+  /* ---------------- Push notifications (topic bottom sheet) ---------------- */
   const notifyBtn = $('#notify-btn');
+  const sheet = $('#notify-sheet');
+  const ar = () => document.documentElement.lang === 'ar';
   if (notifyBtn) {
-    if (!('Notification' in window) || !Q.fcm || !Q.fcm.apiKey) {
-      notifyBtn.addEventListener('click', () => {
+    const configured = ('Notification' in window) && Q.fcm && Q.fcm.apiKey;
+    const openSheet = () => {
+      if (!sheet) return;
+      sheet.hidden = false;
+      requestAnimationFrame(() => sheet.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+    };
+    const closeSheet = () => {
+      if (!sheet) return;
+      sheet.classList.remove('open');
+      document.body.style.overflow = '';
+      setTimeout(() => { sheet.hidden = true; }, 320);
+    };
+    notifyBtn.addEventListener('click', () => {
+      if (!configured) {
         Notification && Notification.requestPermission && Notification.requestPermission();
-        QToast(document.documentElement.lang === 'ar' ? 'الإشعارات غير مهيأة بعد' : 'Notifications not configured yet');
+        QToast(ar() ? 'الإشعارات غير مهيأة بعد' : 'Notifications not configured yet');
+        return;
+      }
+      // restore previously chosen topics
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem('q_topics') || '[]'); } catch (e) {}
+      if (saved.length) $$('#notify-sheet input[type=checkbox]').forEach(c => { c.checked = saved.includes(c.value); });
+      openSheet();
+    });
+    if (sheet) {
+      $$('[data-sheet-close]', sheet).forEach(el => el.addEventListener('click', closeSheet));
+      // "select all" master toggle
+      const master = $('[data-topics-all]', sheet);
+      if (master) master.addEventListener('change', () => {
+        $$('#notify-sheet .topic-row input[type=checkbox]').forEach(c => { c.checked = master.checked; });
       });
-    } else {
-      notifyBtn.addEventListener('click', async () => {
+      const saveBtn = $('[data-topics-save]', sheet);
+      if (saveBtn) saveBtn.addEventListener('click', async () => {
+        const topics = $$('#notify-sheet .topic-row input:checked').map(c => c.value);
+        if (!topics.length) { QToast(ar() ? 'اختر بطولة واحدة على الأقل' : 'Pick at least one'); return; }
+        saveBtn.disabled = true;
+        saveBtn.classList.add('is-loading');
         try {
           const perm = await Notification.requestPermission();
-          if (perm !== 'granted') return;
+          if (perm !== 'granted') { QToast(ar() ? 'تم رفض الإذن' : 'Permission denied'); return; }
           const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
           const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
           const app = initializeApp(Q.fcm);
@@ -349,12 +382,110 @@
           if (token) {
             await fetch('/api/push-subscribe', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token, topics: ['all'] })
+              body: JSON.stringify({ token, topics })
             });
-            QToast(document.documentElement.lang === 'ar' ? 'تم تفعيل الإشعارات ✓' : 'Notifications enabled ✓');
+            localStorage.setItem('q_topics', JSON.stringify(topics));
+            QToast(ar() ? 'تم تفعيل الإشعارات ✓' : 'Notifications enabled ✓');
+            closeSheet();
           }
-        } catch (err) { QToast(document.documentElement.lang === 'ar' ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications'); }
+        } catch (err) {
+          QToast(ar() ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
+        } finally {
+          saveBtn.disabled = false; saveBtn.classList.remove('is-loading');
+        }
       });
+    }
+  }
+
+  /* ---------------- Copy-link buttons ---------------- */
+  $$('[data-copy-link]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-copy-link') || location.href;
+      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+        .then(() => QToast(ar() ? 'تم نسخ الرابط ✓' : 'Link copied ✓'))
+        .catch(() => QToast(url));
+    });
+  });
+
+  /* ---------------- In-site YouTube player (click poster → iframe) --------- */
+  $$('[data-yt-player]').forEach(stage => {
+    const playBtn = $('[data-yt-play]', stage);
+    if (!playBtn) return;
+    playBtn.addEventListener('click', () => {
+      const id = stage.getAttribute('data-yt');
+      if (!id) return;
+      const iframe = document.createElement('iframe');
+      iframe.className = 'vp-iframe';
+      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+      iframe.title = 'YouTube';
+      iframe.allow = 'accelerator; autoplay; encrypted-media; picture-in-picture; fullscreen';
+      iframe.allowFullscreen = true;
+      iframe.setAttribute('frameborder', '0');
+      stage.innerHTML = '';
+      stage.appendChild(iframe);
+    });
+  });
+
+  /* ---------------- Videos: search + load-more + infinite scroll ---------- */
+  const vGrid = $('[data-videos-grid]');
+  if (vGrid) {
+    let loading = false;
+    let nextSkip = vGrid.getAttribute('data-next-skip');
+    nextSkip = nextSkip === '' ? null : +nextSkip;
+    const champ = vGrid.getAttribute('data-champ') || 'all';
+    const skel = $('[data-videos-skeleton]');
+    const moreWrap = $('[data-videos-more]');
+    const sentinel = $('[data-videos-sentinel]');
+    const noResult = $('[data-videos-noresult]');
+
+    async function loadMore() {
+      if (loading || nextSkip == null) return;
+      loading = true;
+      if (skel) skel.hidden = false;
+      try {
+        const res = await fetch('/api/videos?champ=' + encodeURIComponent(champ) + '&skip=' + nextSkip, { headers: { Accept: 'application/json' } });
+        const data = await res.json();
+        if (data && data.html) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = data.html;
+          const frag = document.createDocumentFragment();
+          while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+          vGrid.appendChild(frag);
+        }
+        nextSkip = data && data.has_more ? data.next_skip : null;
+        if (nextSkip == null && moreWrap) moreWrap.remove();
+      } catch (e) { /* keep the button for manual retry */ }
+      finally { loading = false; if (skel) skel.hidden = true; applyFilter(); }
+    }
+
+    const moreBtn = $('[data-load-more]');
+    if (moreBtn) moreBtn.addEventListener('click', loadMore);
+
+    if (sentinel && 'IntersectionObserver' in window) {
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(en => { if (en.isIntersecting) loadMore(); });
+      }, { rootMargin: '600px 0px' });
+      io.observe(sentinel);
+    }
+
+    // Instant client-side search across loaded cards
+    const searchInput = $('#videos-search');
+    function applyFilter() {
+      if (!searchInput) return;
+      const q = searchInput.value.trim().toLowerCase();
+      let shown = 0;
+      $$('[data-video-card]', vGrid).forEach(card => {
+        const t = (card.querySelector('.vc-title')?.textContent || '').toLowerCase();
+        const c = (card.querySelector('.vc-champ')?.textContent || '').toLowerCase();
+        const hit = !q || t.includes(q) || c.includes(q);
+        card.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      if (noResult) noResult.hidden = !(q && shown === 0);
+    }
+    if (searchInput) {
+      let deb;
+      searchInput.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(applyFilter, 150); });
     }
   }
 })();

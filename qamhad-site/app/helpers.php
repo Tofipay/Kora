@@ -1086,3 +1086,37 @@ function site_logo(bool $dark = false): string
     if (!empty($s[$key])) return '/assets/uploads/' . $s[$key];
     return $dark ? '/assets/brand/logo-dark.svg' : '/assets/brand/logo.svg';
 }
+
+/**
+ * Notification topics — the leagues/teams a visitor can subscribe to from the
+ * notification bottom sheet. Each topic has a stable slug (the FCM/topic key,
+ * also stored per-token) and a bilingual label. Extend this list to add a new
+ * topic; the sheet, the stored subscription and the sender all read from here.
+ *
+ * @return array<int,array{slug:string,ar:string,en:string}>
+ */
+function notify_topics(): array
+{
+    return [
+        ['slug' => 'ucl',      'ar' => 'دوري أبطال أوروبا',  'en' => 'UEFA Champions League'],
+        ['slug' => 'epl',      'ar' => 'الدوري الإنجليزي',    'en' => 'Premier League'],
+        ['slug' => 'laliga',   'ar' => 'الدوري الإسباني',     'en' => 'La Liga'],
+        ['slug' => 'spl',      'ar' => 'الدوري السعودي',      'en' => 'Saudi Pro League'],
+        ['slug' => 'seriea',   'ar' => 'الدوري الإيطالي',     'en' => 'Serie A'],
+        ['slug' => 'ligue1',   'ar' => 'الدوري الفرنسي',      'en' => 'Ligue 1'],
+        ['slug' => 'worldcup', 'ar' => 'كأس العالم',          'en' => 'World Cup'],
+        ['slug' => 'afccup',   'ar' => 'كأس آسيا',            'en' => 'AFC Asian Cup'],
+        ['slug' => 'acl',      'ar' => 'دوري أبطال آسيا',     'en' => 'AFC Champions League'],
+        ['slug' => 'caf',      'ar' => 'دوري أبطال أفريقيا',  'en' => 'CAF Champions League'],
+        ['slug' => 'egypt',    'ar' => 'الدوري المصري',       'en' => 'Egyptian Premier League'],
+        ['slug' => 'morocco',  'ar' => 'الدوري المغربي',      'en' => 'Botola (Morocco)'],
+        ['slug' => 'iraq',     'ar' => 'الدوري العراقي',      'en' => 'Iraqi League'],
+        ['slug' => 'qatar',    'ar' => 'الدوري القطري',       'en' => 'Qatar Stars League'],
+        ['slug' => 'uae',      'ar' => 'الدوري الإماراتي',    'en' => 'UAE Pro League'],
+        ['slug' => 'turkey',   'ar' => 'الدوري التركي',       'en' => 'Süper Lig (Turkey)'],
+        ['slug' => 'nt_ksa',   'ar' => 'منتخب السعودية',      'en' => 'Saudi Arabia NT'],
+        ['slug' => 'nt_mar',   'ar' => 'منتخب المغرب',        'en' => 'Morocco NT'],
+        ['slug' => 'nt_egy',   'ar' => 'منتخب مصر',           'en' => 'Egypt NT'],
+        ['slug' => 'nt_alg',   'ar' => 'منتخب الجزائر',       'en' => 'Algeria NT'],
+    ];
+}

@@ -20,6 +20,7 @@ $isActive = function (string $p) use ($bare): string {
       <a class="nav-link<?= $isActive('/matches') ?: $isActive('/') ?>" href="<?= e(path('matches')) ?>"><?= e(t('nav.matches')) ?></a>
       <a class="nav-link nav-live<?= $isActive('/live') ?>" href="<?= e(path('live')) ?>"><span class="live-dot"></span><?= e(t('nav.live')) ?></a>
       <a class="nav-link<?= $isActive('/news') ?>" href="<?= e(path('news')) ?>"><?= e(t('nav.news')) ?></a>
+      <a class="nav-link<?= $isActive('/videos') ?: $isActive('/video') ?>" href="<?= e(path('videos')) ?>"><?= e(t('nav.videos')) ?></a>
       <a class="nav-link<?= $isActive('/standings') ?>" href="<?= e(path('standings')) ?>"><?= e(t('nav.standings')) ?></a>
       <a class="nav-link<?= $isActive('/top-scorers') ?>" href="<?= e(path('top-scorers')) ?>"><?= e(t('nav.scorers')) ?></a>
       <a class="nav-link<?= $isActive('/leagues') ?>" href="<?= e(path('leagues')) ?>"><?= e(t('nav.leagues')) ?></a>

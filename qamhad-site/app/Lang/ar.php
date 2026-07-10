@@ -3,6 +3,7 @@ return [
     // Navigation
     'nav.matches'    => 'المباريات',
     'nav.news'       => 'الأخبار',
+    'nav.videos'     => 'الفيديوهات',
     'nav.standings'  => 'الترتيب',
     'nav.favorites'  => 'المفضلة',
     'nav.more'       => 'المزيد',
@@ -287,6 +288,19 @@ return [
     'misc.updated'    => 'آخر تحديث',
     'misc.loading'    => 'جارٍ التحميل…',
     'misc.show_more'  => 'عرض المزيد',
+
+    // Videos section
+    'videos.title'    => 'الفيديوهات',
+    'videos.subtitle' => 'ملخصات وأهداف أحدث المباريات، مقسّمة حسب البطولة',
+    'videos.search'   => 'ابحث في الفيديوهات…',
+    'videos.by_champ' => 'حسب البطولة',
+    'videos.none'     => 'لا توجد فيديوهات متاحة حالياً',
+    'videos.no_match' => 'لا توجد فيديوهات مطابقة لبحثك',
+    'videos.related'  => 'فيديوهات مشابهة',
+    'videos.play'     => 'تشغيل الفيديو',
+    'videos.copy_link'=> 'نسخ الرابط',
+    'videos.link_copied' => 'تم نسخ الرابط ✓',
+    'videos.watch_default' => 'ملخص المباراة',
     'misc.retry'     => 'إعادة المحاولة',
     'misc.error'      => 'حدث خطأ، حاول مجدداً',
     'misc.offline'    => 'أنت غير متصل بالإنترنت',

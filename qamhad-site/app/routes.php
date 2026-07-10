@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 use Qamhad\Controllers\{
     Home, Matches, MatchCenter, Leagues, Teams, Players, News, Search,
-    Standings, Scorers, StaticPages, Sitemap, Media, Admin, ApiJson
+    Standings, Scorers, StaticPages, Sitemap, Media, Admin, ApiJson, Videos
 };
 
 /* ---------- Core pages ---------- */
@@ -44,6 +44,12 @@ $router->get('/news', fn() => News::index(1));
 $router->get('/news/page/{n:\d+}', fn($a) => News::index((int)$a['n']));
 $router->get('/news/{slug}', fn($a) => News::show($a['slug']));
 
+/* ---------- Videos (highlights) ---------- */
+$router->get('/videos', [Videos::class, 'index']);
+/* Note: the router uses "}" as the placeholder terminator, so a {11} quantifier
+   can't appear in the constraint — match a segment and length-check in watch(). */
+$router->get('/video/{ytId:[A-Za-z0-9_\-]+}', fn($a) => Videos::watch($a['ytId']));
+
 $router->get('/standings', [Standings::class, 'index']);
 $router->get('/top-scorers', [Scorers::class, 'index']);
 
@@ -70,6 +76,7 @@ $router->get('/media/{path:.+}', fn($a) => Media::serve($a['path']));
 
 /* ---------- Internal JSON API (live refresh, PWA) ---------- */
 $router->get('/api/live-scores', [ApiJson::class, 'liveScores']);
+$router->get('/api/videos', [ApiJson::class, 'videos']);
 $router->get('/api/match/{id:\d+}', fn($a) => ApiJson::match((int)$a['id']));
 $router->post('/api/newsletter', [ApiJson::class, 'newsletter']);
 $router->post('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);

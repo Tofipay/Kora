@@ -64,6 +64,12 @@ $enPath  = Lang::current() === 'en' ? $curPath : ($altPath ?: '/en');
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://i.ytimg.com">
+<link rel="dns-prefetch" href="https://www.youtube-nocookie.com">
+
+<!-- Google AdSense — Auto Ads (loaded once, site-wide) -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6543754410644923" crossorigin="anonymous"></script>
+
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
 
@@ -119,6 +125,7 @@ window.QAMHAD = {
 
 <?php require APP_DIR . '/Views/layout/footer.php'; ?>
 <?php require APP_DIR . '/Views/layout/bottomnav.php'; ?>
+<?php require APP_DIR . '/Views/layout/notify-sheet.php'; ?>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="<?= e(asset_url('/assets/js/api-service.js')) ?>" defer></script>
