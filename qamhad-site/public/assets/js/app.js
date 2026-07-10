@@ -322,16 +322,38 @@
     $('#install-btn').hidden = true;
   });
 
-  /* ---------------- Service worker + auto-update prompt ---------------- */
+  /* ---------------- Service worker + auto-update prompt ----------------
+   * Robust update flow (avoids the "prompt keeps reappearing / update does
+   * nothing" pitfalls):
+   *  - register with updateViaCache:'none' so the browser always revalidates
+   *    sw.js itself (otherwise a cached sw.js never sees a new build)
+   *  - the build token is in the URL, so a new release = a new SW to install
+   *  - show the prompt ONCE per build; "later" silences it for this build in
+   *    the session so it doesn't nag on every page load
+   *  - "update now" always targets registration.waiting, then a single
+   *    controllerchange triggers exactly one reload (with a hard fallback)
+   */
   if ('serviceWorker' in navigator) {
     const isAr = () => document.documentElement.lang === 'ar';
-    // Register with the build token so a new release = a byte-different SW URL,
-    // which the browser installs and we surface as an in-page update prompt.
-    const swUrl = '/sw.js?v=' + encodeURIComponent(Q.build || 'base');
+    const build = Q.build || 'base';
+    const swUrl = '/sw.js?v=' + encodeURIComponent(build);
+    const dismissKey = 'q_upd_dismissed_' + build;
     let reloading = false;
+    let promptShown = false;
+    let registration = null;
 
-    function showUpdatePrompt(worker) {
-      if ($('#update-bar')) return;
+    function doUpdate(btn) {
+      if (btn) btn.disabled = true;
+      const w = (registration && registration.waiting) || null;
+      if (w) w.postMessage({ type: 'SKIP_WAITING' });
+      // Hard fallback: reload even if controllerchange is slow/never fires.
+      setTimeout(() => { if (!reloading) { reloading = true; location.reload(); } }, 2000);
+    }
+
+    function showUpdatePrompt() {
+      if (promptShown || $('#update-bar')) return;
+      try { if (sessionStorage.getItem(dismissKey)) return; } catch (e) {}
+      promptShown = true;
       const bar = document.createElement('div');
       bar.id = 'update-bar';
       bar.className = 'update-bar';
@@ -344,36 +366,36 @@
         '</div>';
       document.body.appendChild(bar);
       requestAnimationFrame(() => bar.classList.add('show'));
-      bar.querySelector('.ub-later').addEventListener('click', () => { bar.classList.remove('show'); setTimeout(() => bar.remove(), 350); });
-      bar.querySelector('.ub-now').addEventListener('click', () => {
-        bar.querySelector('.ub-now').disabled = true;
-        if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
-        // Fallback if controllerchange doesn't fire quickly.
-        setTimeout(() => { if (!reloading) location.reload(); }, 1500);
+      bar.querySelector('.ub-later').addEventListener('click', () => {
+        try { sessionStorage.setItem(dismissKey, '1'); } catch (e) {}
+        bar.classList.remove('show'); setTimeout(() => bar.remove(), 350);
       });
+      bar.querySelector('.ub-now').addEventListener('click', function () { doUpdate(this); });
     }
 
+    // One reload for the whole tab, no matter how many events fire.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+
     addEventListener('load', () => {
-      navigator.serviceWorker.register(swUrl).then(reg => {
-        // Already a waiting worker (updated on a previous visit)?
-        if (reg.waiting && navigator.serviceWorker.controller) showUpdatePrompt(reg.waiting);
+      navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(reg => {
+        registration = reg;
+        // A worker is already waiting (installed on a previous visit).
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdatePrompt();
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           if (!nw) return;
           nw.addEventListener('statechange', () => {
-            // Installed + an existing controller = this is an UPDATE, not first load.
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt(nw);
+            // Installed while a controller exists = a genuine UPDATE (not first install).
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdatePrompt();
           });
         });
-        // Poll for updates periodically (catches server-side build bumps).
-        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+        // Catch server-side build bumps without needing a hard refresh.
+        setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
       }).catch(() => {});
-
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (reloading) return;
-        reloading = true;
-        location.reload();
-      });
     });
   }
 

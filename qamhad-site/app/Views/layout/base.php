@@ -64,11 +64,6 @@ $enPath  = Lang::current() === 'en' ? $curPath : ($altPath ?: '/en');
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://i.ytimg.com">
-<link rel="dns-prefetch" href="https://www.youtube-nocookie.com">
-
-<!-- Google AdSense — Auto Ads (loaded once, site-wide) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6543754410644923" crossorigin="anonymous"></script>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
@@ -132,5 +127,24 @@ window.QAMHAD = {
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="<?= e(asset_url('/assets/js/api-service.js')) ?>" defer></script>
 <script src="<?= e(asset_url('/assets/js/app.js')) ?>" defer></script>
+
+<!-- Google AdSense — Auto Ads. Loaded AFTER the page is interactive (idle),
+     so it never competes with first paint / LCP. Auto ads still scan and
+     inject once the script runs. Kept to a single injection site-wide. -->
+<script>
+(function () {
+  var loaded = false;
+  function loadAds() {
+    if (loaded) return; loaded = true;
+    var s = document.createElement('script');
+    s.async = true; s.crossOrigin = 'anonymous';
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6543754410644923';
+    document.head.appendChild(s);
+  }
+  // Prefer idle time; fall back to the load event, then a hard timeout.
+  if (document.readyState === 'complete') { ('requestIdleCallback' in window ? requestIdleCallback(loadAds, { timeout: 3000 }) : setTimeout(loadAds, 1200)); }
+  else { addEventListener('load', function () { ('requestIdleCallback' in window ? requestIdleCallback(loadAds, { timeout: 3000 }) : setTimeout(loadAds, 1200)); }); }
+})();
+</script>
 </body>
 </html>

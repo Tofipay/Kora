@@ -175,7 +175,10 @@ final class VideoFeed
         if (!is_array($data)) return ['success' => false, 'error' => 'bad-json'];
 
         $videos = array_map([self::class, 'normalize'], $data);
-        $hasMore = count($videos) >= self::PAGE_SIZE;
+        // YSScores keeps a "more" affordance as long as the current page
+        // returned ANY videos; the end is reached when a page returns none
+        // (next_skip → null). Matches video_champ/video_more + raw_skip (+80).
+        $hasMore = count($videos) > 0;
 
         return [
             'success'   => true,
