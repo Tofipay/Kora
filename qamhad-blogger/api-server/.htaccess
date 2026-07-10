@@ -1,0 +1,60 @@
+# ============================================================================
+#  Qamhad Live API — Apache configuration
+# ============================================================================
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+# ---- Force HTTPS (Cloudflare aware) ----
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Behind Cloudflare/any proxy: honour X-Forwarded-Proto.
+    RewriteCond %{HTTP:X-Forwarded-Proto} =http [OR]
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1) [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Real files/dirs are served directly (matches.php, media.php, assets…).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Everything else → front controller (pretty URLs: /matches, /media/…, /stream).
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# ---- Never expose the engine, storage or dotfiles ----
+RewriteRule ^(engine|storage)/ - [F,L]
+<FilesMatch "\.(json|log|md|sql)$">
+    Require all denied
+</FilesMatch>
+<Files ".htaccess">
+    Require all denied
+</Files>
+
+# ---- Compression ----
+<IfModule mod_brotli.c>
+    AddOutputFilterByType BROTLI_COMPRESS application/json application/xml text/plain text/css application/javascript image/svg+xml
+</IfModule>
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/json application/xml text/plain text/css application/javascript image/svg+xml
+</IfModule>
+
+# ---- Caching for the media proxy ----
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpe?g|webp|gif|svg|ico)$">
+        Header set Cache-Control "public, max-age=604800, immutable"
+    </FilesMatch>
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# ---- HTTP/2 & keep-alive hints (harmless if unsupported) ----
+<IfModule mod_http2.c>
+    Protocols h2 h2c http/1.1
+</IfModule>
+
+# ---- PHP hardening ----
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag expose_php Off
+</IfModule>

@@ -1,0 +1,14 @@
+{
+    "primary": "#0d9488",
+    "secondary": "#0f766e",
+    "accent": "#f59e0b",
+    "font_ar": "Cairo",
+    "dark_mode": "auto",
+    "social": {
+        "facebook": "",
+        "twitter": "",
+        "youtube": "",
+        "telegram": "",
+        "instagram": ""
+    }
+}
