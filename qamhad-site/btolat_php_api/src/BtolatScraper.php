@@ -249,6 +249,20 @@ final class BtolatScraper
         }
         $mediaUrl ??= $this->metaContent($xpath, 'property', 'og:video');
 
+        // Extract from ld+json
+        $ldJsonNode = $this->firstNode($xpath, "//script[@type='application/ld+json']");
+        if ($ldJsonNode instanceof DOMElement) {
+            $ldJson = json_decode($ldJsonNode->textContent, true);
+            if (is_array($ldJson) && ($ldJson['@type'] ?? null) === 'VideoObject') {
+                if (isset($ldJson['embedURL'])) {
+                    $embedUrl = $ldJson['embedURL'];
+                    $provider = 'ld_json'; // Or determine based on embedURL content
+                }
+                // Prioritize mediaUrl from ld+json if available and not already set
+                $mediaUrl ??= $ldJson['contentUrl'] ?? null;
+            }
+        }
+
         $provider = null;
         $embedUrl = null;
         $externalUrl = null;
@@ -259,7 +273,7 @@ final class BtolatScraper
             $embedUrl = $youtube->getAttribute('src');
         }
 
-        $xStatus = $this->firstNode($xpath, "//blockquote[contains(@class, 'twitter-tweet')]//a[contains(@href, 'x.com/') and contains(@href, '/status/')]");
+        $xStatus = $this->firstNode($xpath, "//blockquote[contains(@class, 'twitter-tweet')]//a[(contains(@href, 'twitter.com/') or contains(@href, 'x.com/')) and contains(@href, '/status/')]");
         if ($xStatus instanceof DOMElement) {
             $provider = 'x';
             $externalUrl = preg_replace('/\?.*$/', '', $xStatus->getAttribute('href'));

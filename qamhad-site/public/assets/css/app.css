@@ -1814,3 +1814,24 @@ html[dir="rtl"] .switch input:checked + .switch-track::after { transform: transl
   animation: spin 0.9s linear infinite;
 }
 .update-bar.is-updating { justify-content: center; }
+
+/* ---------- Video player: X embed + blocked-embed fallback ---------- */
+.vp-stage.vp-x {
+  aspect-ratio: auto; height: clamp(420px, 90vw, 620px);
+  background: var(--surface); display: flex; align-items: stretch;
+}
+.vp-x-frame { background: #fff; }
+html.dark .vp-x-frame { background: var(--surface); }
+.vp-blocked { position: absolute; inset: 0; }
+.vp-blocked-bg {
+  width: 100%; height: 100%; object-fit: cover; filter: blur(6px) brightness(.45);
+}
+.vp-blocked-note {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px; text-align: center;
+  padding: 22px; color: #fff;
+}
+.vp-blocked-note p { max-width: 480px; font-weight: 700; font-size: 14.5px; line-height: 1.8; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.vp-blocked-note .btn { margin: 0; }
+.vp-static-note { pointer-events: auto; }
+.vp-static-note p { color: #fff; }

@@ -530,23 +530,95 @@
     });
   });
 
-  /* ---------------- In-site YouTube player (click poster → iframe) --------- */
+  /* ---------------- In-site YouTube player (click poster → iframe) ---------
+   * With data-yt-guard: listens to the YouTube iframe-API postMessage channel
+   * and catches embed-block errors (101/150 — e.g. beIN SPORTS MENA). On
+   * block it swaps to the in-site X embed when data-x-fallback exists, else
+   * shows the [data-yt-blocked] template (poster + platform button). */
   $$('[data-yt-player]').forEach(stage => {
     const playBtn = $('[data-yt-play]', stage);
     if (!playBtn) return;
     playBtn.addEventListener('click', () => {
       const id = stage.getAttribute('data-yt');
       if (!id) return;
+      const guard = stage.hasAttribute('data-yt-guard');
+      const xFallback = stage.getAttribute('data-x-fallback');
+      const blockedTpl = $('template[data-yt-blocked]', stage);
+
       const iframe = document.createElement('iframe');
       iframe.className = 'vp-iframe';
-      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id
+        + '?autoplay=1&rel=0&modestbranding=1&playsinline=1'
+        + (guard ? '&enablejsapi=1&origin=' + encodeURIComponent(location.origin) : '');
       iframe.title = 'YouTube';
       iframe.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen';
       iframe.allowFullscreen = true;
       iframe.setAttribute('frameborder', '0');
-      stage.innerHTML = '';
-      stage.appendChild(iframe);
+
+      function showBlocked() {
+        if (xFallback) {
+          // Best outcome: play the same clip via the X post, still in-site.
+          const x = document.createElement('iframe');
+          x.className = 'vp-iframe vp-x-frame';
+          x.src = xFallback;
+          x.title = 'X';
+          x.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+          x.allowFullscreen = true;
+          stage.classList.add('vp-x');
+          stage.replaceChildren(x);
+        } else if (blockedTpl) {
+          stage.replaceChildren(blockedTpl.content.cloneNode(true));
+        }
+      }
+
+      if (guard) {
+        const onMsg = e => {
+          if (!/https:\/\/www\.youtube(-nocookie)?\.com$/.test(e.origin)) return;
+          let d = e.data;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch (err) { return; } }
+          if (d && d.event === 'onError' && [101, 150, '101', '150'].includes(d.info)) {
+            removeEventListener('message', onMsg);
+            showBlocked();
+          }
+        };
+        addEventListener('message', onMsg);
+        iframe.addEventListener('load', () => {
+          // Handshake: ask the player to start emitting events to this window.
+          try {
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'q-yt', channel: 'widget' }), '*');
+            iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onError'], id: 'q-yt', channel: 'widget' }), '*');
+          } catch (err) { /* cross-origin quirks — guard is best-effort */ }
+        });
+      }
+
+      const keepTpl = blockedTpl; // preserve the template through the swap
+      stage.replaceChildren(iframe);
+      if (keepTpl) stage.appendChild(keepTpl);
     });
+  });
+
+  /* ---------------- HLS streams (m3u8) via the site's hls.js vendor ------- */
+  $$('video[data-hls]').forEach(videoEl => {
+    const src = videoEl.getAttribute('data-hls');
+    if (!src) return;
+    if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+      videoEl.src = src; // Safari & friends play HLS natively
+      return;
+    }
+    const boot = () => {
+      if (window.Hls && window.Hls.isSupported()) {
+        const hls = new Hls({ maxBufferLength: 30 });
+        hls.loadSource(src);
+        hls.attachMedia(videoEl);
+      } else {
+        videoEl.src = src; // last resort
+      }
+    };
+    if (window.Hls) { boot(); return; }
+    const s = document.createElement('script');
+    s.src = '/assets/vendor/hls.min.js';
+    s.onload = boot;
+    document.head.appendChild(s);
   });
 
   /* ---------------- Videos: instant search over the current page ----------

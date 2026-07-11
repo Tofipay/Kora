@@ -74,6 +74,7 @@ $router->get('/sitemap-en.xml', [Sitemap::class, 'english']);
 $router->get('/sitemap-match.xml', [Sitemap::class, 'matches']);
 $router->get('/sitemap-news.xml', [Sitemap::class, 'news']);
 $router->get('/sitemap-images.xml', [Sitemap::class, 'images']);
+$router->get('/sitemap-video.xml', [Sitemap::class, 'videos']);
 
 /* ---------- First-party media proxy ---------- */
 $router->get('/media/{path:.+}', fn($a) => Media::serve($a['path']));

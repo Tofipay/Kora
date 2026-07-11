@@ -13,3 +13,4 @@ Sitemap: https://www.qamhad.com/sitemap-en.xml
 Sitemap: https://www.qamhad.com/sitemap-match.xml
 Sitemap: https://www.qamhad.com/sitemap-news.xml
 Sitemap: https://www.qamhad.com/sitemap-images.xml
+Sitemap: https://www.qamhad.com/sitemap-video.xml

@@ -2,19 +2,35 @@
 use Qamhad\Core\View;
 /**
  * In-site Btolat player page. Expects: $v (VideoFeed::find result), $related.
- * Renders whichever provider the source exposes:
- *   - youtube      → poster → youtube-nocookie iframe (existing JS)
- *   - direct/mp4   → native <video> with poster (no JS needed)
- *   - x / unknown  → poster + open buttons (post/source page)
- * Same design language as the legacy watch page (vp-* components).
+ *
+ * Playback priority — ALWAYS inside the site, never a hop to the source:
+ *   1. media_url        → native <video>; .m3u8 attaches hls.js (site vendor)
+ *   2. youtube_id       → poster → youtube-nocookie iframe with embed-block
+ *                         detection (errors 101/150, e.g. beIN SPORTS MENA);
+ *                         on block it AUTO-falls back to the X embed when one
+ *                         exists, else shows the blocked note + platform button
+ *   3. tweet_id         → X post embedded IN-SITE (platform.twitter.com)
+ *   4. nothing exposed  → poster + note (no source-site link, ever)
+ *
+ * Platform buttons (YouTube / X) are always offered when known — the user
+ * chooses between in-site playback and the platform.
  */
 $title    = (string)$v['title'];
 $poster   = (string)$v['thumbnail'];
 $champ    = (string)$v['champ_title'];
 $shareUrl = SITE_URL . path('video/' . (int)$v['id']);
-$provider = (string)($v['provider'] ?? '');
 $media    = (string)($v['media_url'] ?? '');
-$external = (string)($v['external_url'] ?? ($v['page_url'] ?? ''));
+$isHls    = !empty($v['is_hls']);
+$ytId     = (string)($v['youtube_id'] ?? '');
+$tweetId  = (string)($v['tweet_id'] ?? '');
+$xUrl     = (string)($v['x_url'] ?? '');
+$isAr     = \Qamhad\Core\Lang::current() === 'ar';
+
+/* X embed URL — official tweet embed frame, no widgets.js needed. */
+$xEmbed = $tweetId !== ''
+    ? 'https://platform.twitter.com/embed/Tweet.html?id=' . rawurlencode($tweetId)
+      . '&theme=light&hideCard=false&hideThread=true&lang=' . ($isAr ? 'ar' : 'en')
+    : '';
 ?>
 <section class="video-page">
   <div class="container">
@@ -23,9 +39,19 @@ $external = (string)($v['external_url'] ?? ($v['page_url'] ?? ''));
       <?= e(t('videos.title')) ?>
     </a>
 
-    <?php if ($provider === 'youtube' && !empty($v['youtube_id'])): ?>
-    <!-- YouTube: poster first, iframe injected on play (existing JS) -->
-    <div class="vp-stage" data-yt="<?= e((string)$v['youtube_id']) ?>" data-yt-player>
+    <?php if ($media !== ''): ?>
+    <!-- 1) Direct stream: native player; m3u8 goes through hls.js -->
+    <div class="vp-stage">
+      <video class="vp-iframe" controls playsinline preload="metadata"
+             <?= $isHls ? 'data-hls="' . e($media) . '"' : '' ?>
+             <?= $poster !== '' ? 'poster="' . e($poster) . '"' : '' ?>>
+        <?php if (!$isHls): ?><source src="<?= e($media) ?>"><?php endif; ?>
+      </video>
+    </div>
+    <?php elseif ($ytId !== ''): ?>
+    <!-- 2) YouTube with embed-block detection; X embed as automatic fallback -->
+    <div class="vp-stage" data-yt="<?= e($ytId) ?>" data-yt-player data-yt-guard
+         <?= $xEmbed !== '' ? 'data-x-fallback="' . e($xEmbed) . '"' : '' ?>>
       <button class="vp-poster" type="button" data-yt-play aria-label="<?= e(t('videos.play')) ?>">
         <?php if ($poster !== ''): ?>
         <img src="<?= e($poster) ?>" alt="<?= e($title) ?>" width="1280" height="720" fetchpriority="high" onerror="this.style.display='none'">
@@ -34,26 +60,34 @@ $external = (string)($v['external_url'] ?? ($v['page_url'] ?? ''));
           <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </span>
       </button>
+      <!-- Shown by JS only when YouTube reports embedding disabled (101/150) -->
+      <template data-yt-blocked>
+        <div class="vp-blocked">
+          <?php if ($poster !== ''): ?><img class="vp-blocked-bg" src="<?= e($poster) ?>" alt="" aria-hidden="true"><?php endif; ?>
+          <div class="vp-blocked-note">
+            <p><?= e(t('videos.blocked')) ?></p>
+            <a class="btn btn-primary" href="https://www.youtube.com/watch?v=<?= e($ytId) ?>" target="_blank" rel="noopener nofollow">
+              <?= e(t('videos.watch_on')) ?> YouTube
+            </a>
+          </div>
+        </div>
+      </template>
     </div>
-    <?php elseif ($media !== ''): ?>
-    <!-- Direct stream from the source: native player, zero extra JS -->
-    <div class="vp-stage">
-      <video class="vp-iframe" controls playsinline preload="metadata"
-             <?= $poster !== '' ? 'poster="' . e($poster) . '"' : '' ?>>
-        <source src="<?= e($media) ?>">
-      </video>
+    <?php elseif ($xEmbed !== ''): ?>
+    <!-- 3) X post embedded in-site -->
+    <div class="vp-stage vp-x">
+      <iframe class="vp-iframe vp-x-frame" src="<?= e($xEmbed) ?>" title="X"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
     </div>
     <?php else: ?>
-    <!-- X post / provider without a public stream: poster + open actions -->
+    <!-- 4) No public player exposed: poster + honest note (never a source link) -->
     <div class="vp-stage">
-      <a class="vp-poster" href="<?= e($external) ?>" target="_blank" rel="noopener nofollow" aria-label="<?= e(t('videos.play')) ?>">
+      <div class="vp-poster" aria-hidden="true">
         <?php if ($poster !== ''): ?>
         <img src="<?= e($poster) ?>" alt="<?= e($title) ?>" width="1280" height="720" fetchpriority="high" onerror="this.style.display='none'">
         <?php endif; ?>
-        <span class="vp-big-play" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </span>
-      </a>
+      </div>
+      <div class="vp-blocked-note vp-static-note"><p><?= e(t('videos.unavailable')) ?></p></div>
     </div>
     <?php endif; ?>
 
@@ -76,10 +110,16 @@ $external = (string)($v['external_url'] ?? ($v['page_url'] ?? ''));
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
           <?= e(t('videos.copy_link')) ?>
         </button>
-        <?php if ($provider === 'x' && $external !== ''): ?>
-        <a class="btn btn-ghost vp-act" href="<?= e($external) ?>" target="_blank" rel="noopener nofollow">
+        <?php if ($ytId !== ''): ?>
+        <a class="btn btn-ghost vp-act" href="https://www.youtube.com/watch?v=<?= e($ytId) ?>" target="_blank" rel="noopener nofollow">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M23 8s-.2-1.6-.9-2.3c-.9-.9-1.8-.9-2.3-1C16.6 4.5 12 4.5 12 4.5s-4.6 0-7.8.2c-.4.1-1.4.1-2.3 1C1.2 6.4 1 8 1 8S.8 9.9.8 11.8v1.7c0 1.9.2 3.8.2 3.8s.2 1.6.9 2.3c.9.9 2 .9 2.5 1 1.8.2 7.6.2 7.6.2s4.6 0 7.8-.3c.4-.1 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8v-1.7C23.2 9.9 23 8 23 8zM9.8 15.3V8.6l6.1 3.4-6.1 3.3z"/></svg>
+          <?= e(t('videos.watch_on')) ?> YouTube
+        </a>
+        <?php endif; ?>
+        <?php if ($xUrl !== ''): ?>
+        <a class="btn btn-ghost vp-act" href="<?= e($xUrl) ?>" target="_blank" rel="noopener nofollow">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.3-8.3L1.6 2h6.4l4.4 5.9L18.9 2z"/></svg>
-          X
+          <?= e(t('videos.watch_on')) ?> X
         </a>
         <?php endif; ?>
       </div>

@@ -97,6 +97,19 @@ final class Videos
             ]);
         if ($video['thumbnail'] !== '') $seo->image($video['thumbnail']);
 
+        // VideoObject structured data — the player_loc is the site's own page.
+        $vs = [
+            '@context'     => 'https://schema.org',
+            '@type'        => 'VideoObject',
+            'name'         => $video['title'],
+            'description'  => $video['champ_title'] !== '' ? ($video['title'] . ' · ' . $video['champ_title']) : $video['title'],
+            'embedUrl'     => SITE_URL . path('video/' . $id),
+        ];
+        if ($video['thumbnail'] !== '') $vs['thumbnailUrl'] = $video['thumbnail'];
+        if (!empty($video['youtube_id'])) $vs['contentUrl'] = 'https://www.youtube.com/watch?v=' . $video['youtube_id'];
+        elseif (!empty($video['media_url'])) $vs['contentUrl'] = $video['media_url'];
+        $seo->addJsonLd($vs);
+
         View::page('video-play', [
             'v'       => $video,
             'related' => $related,

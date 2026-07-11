@@ -40,7 +40,7 @@ final class Sitemap
         $now = date('c');
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-        foreach (['sitemap-ar.xml', 'sitemap-en.xml', 'sitemap-match.xml', 'sitemap-news.xml', 'sitemap-images.xml'] as $f) {
+        foreach (['sitemap-ar.xml', 'sitemap-en.xml', 'sitemap-match.xml', 'sitemap-news.xml', 'sitemap-images.xml', 'sitemap-video.xml'] as $f) {
             echo '  <sitemap><loc>' . htmlspecialchars(SITE_URL . '/' . $f, ENT_XML1) . '</loc>'
                 . '<lastmod>' . $now . '</lastmod></sitemap>' . "\n";
         }
@@ -348,6 +348,53 @@ final class Sitemap
         }
 
         Lang::boot($original);
+        echo '</urlset>';
+        exit;
+    }
+
+    /**
+     * sitemap-video.xml — Google video sitemap for the highlights section.
+     * Built from the first pages of the cached Btolat feed (fast: cache-hit
+     * for regular traffic, one upstream fetch per TTL otherwise). Every
+     * player_loc points at the SITE's own /video/{id} page.
+     */
+    public static function videos(): void
+    {
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        http_cache_validate(strtotime('today') ?: time(), 'sitemap-video-' . date('Y-m-d-H'));
+
+        // Up to 6 site pages (30 newest videos) — snappy and always fresh.
+        $items = [];
+        for ($p = 1; $p <= 6; $p++) {
+            $res = \Qamhad\Core\VideoFeed::page('all', $p);
+            foreach ($res['items'] as $v) $items[] = $v;
+            if (empty($res['has_next'])) break;
+        }
+
+        echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+            . ' xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">' . "\n";
+        $seen = [];
+        foreach ($items as $v) {
+            $id = (int)($v['id'] ?? 0);
+            if ($id < 1 || isset($seen[$id])) continue;
+            $seen[$id] = true;
+            $loc   = absolute_url(path('video/' . $id));
+            $title = htmlspecialchars((string)$v['title'], ENT_XML1);
+            $thumb = htmlspecialchars((string)($v['thumbnail'] ?: SITE_URL . '/assets/brand/og-default.png'), ENT_XML1);
+            $ts    = to_ts((string)($v['created_at'] ?? ''));
+            echo '  <url><loc>' . htmlspecialchars($loc, ENT_XML1) . '</loc>'
+                . '<video:video>'
+                . '<video:thumbnail_loc>' . $thumb . '</video:thumbnail_loc>'
+                . '<video:title>' . $title . '</video:title>'
+                . '<video:description>' . $title . '</video:description>'
+                . '<video:player_loc>' . htmlspecialchars($loc, ENT_XML1) . '</video:player_loc>'
+                . ($ts ? '<video:publication_date>' . date('c', $ts) . '</video:publication_date>' : '')
+                . '<video:family_friendly>yes</video:family_friendly>'
+                . '<video:live>no</video:live>'
+                . '</video:video></url>' . "\n";
+        }
         echo '</urlset>';
         exit;
     }

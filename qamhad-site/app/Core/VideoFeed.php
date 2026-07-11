@@ -62,13 +62,25 @@ final class VideoFeed
      * ============================================================ */
 
     /**
-     * Championship/team tabs for the filter bar, from the vendored
-     * ready-made category list. id = the Btolat category key (slug).
+     * The English site keeps the previous YSScores feed (its upstream has a
+     * dedicated /en/video section); Arabic uses Btolat. All entry points
+     * below dispatch on this flag.
+     */
+    private static function useYs(): bool
+    {
+        return Lang::current() === 'en';
+    }
+
+    /**
+     * Championship/team tabs for the filter bar.
+     * Arabic → the vendored Btolat ready-made category list (id = slug key).
+     * English → YSScores categories (id = numeric champ id).
      *
      * @return array<int,array{id:string,title:string}>
      */
     public static function categories(): array
     {
+        if (self::useYs()) return YsVideoFeed::categories();
         self::scraper(); // ensure classes are loaded
         $out = [];
         foreach (BtolatConfig::categories() as $key => $cat) {
@@ -80,6 +92,7 @@ final class VideoFeed
     /** Whether a category key exists (used to sanitize ?champ=). */
     public static function isCategory(string $key): bool
     {
+        if (self::useYs()) return $key === 'all' || preg_match('/^\d+$/', $key) === 1;
         self::scraper();
         return isset(BtolatConfig::categories()[$key]);
     }
@@ -98,6 +111,9 @@ final class VideoFeed
     {
         $champ = self::isCategory($champ) ? $champ : 'all';
         $page  = max(1, $page);
+
+        // English section → previous YSScores feed (already page-based).
+        if (self::useYs()) return YsVideoFeed::page($champ, $page, $perPage);
 
         $offset     = ($page - 1) * $perPage;                  // absolute raw index
         $sourcePage = intdiv($offset, self::SOURCE_BATCH) + 1; // 1-based source page
@@ -145,24 +161,46 @@ final class VideoFeed
         }
         if (trim((string)($d['title'] ?? '')) === '') return null;
 
-        $embed = (string)($d['embed_url'] ?? '');
-        $ytId  = null;
-        if (($d['provider'] ?? '') === 'youtube'
-            && preg_match('#(?:youtube(?:-nocookie)?\.com/(?:embed/|watch\?(?:.*&)?v=)|youtu\.be/)([A-Za-z0-9_-]{11})#i', $embed, $m)) {
+        $embed    = (string)($d['embed_url'] ?? '');
+        $external = (string)($d['external_url'] ?? '');
+        $media    = (string)($d['media_url'] ?? '');
+
+        // YouTube id — from the youtube provider OR an ld+json embedURL that
+        // points at YouTube (the v1.0.1 scraper reports those as 'ld_json').
+        $ytId = null;
+        if (preg_match('#(?:youtube(?:-nocookie)?\.com/(?:embed/|watch\?(?:.*&)?v=)|youtu\.be/)([A-Za-z0-9_-]{11})#i', $embed, $m)) {
             $ytId = $m[1];
         }
+
+        // X (Twitter) status id — from x.com OR twitter.com links — used for
+        // the IN-SITE tweet embed (platform.twitter.com/embed/Tweet.html).
+        $tweetId = null;
+        $xUrl    = null;
+        foreach ([$external, $embed] as $u) {
+            if ($u !== '' && preg_match('#(?:x\.com|twitter\.com)/[^/]+/status/(\d+)#i', $u, $m)) {
+                $tweetId = $m[1];
+                // Normalize the outbound button to x.com regardless of source.
+                $xUrl = preg_replace('#^https?://(?:www\.)?twitter\.com#i', 'https://x.com', preg_replace('/\?.*$/', '', $u));
+                break;
+            }
+        }
+
+        // Direct stream: mp4 vs HLS (m3u8 plays through the site's hls.js).
+        $isHls = $media !== '' && preg_match('/\.m3u8(\?|$)/i', $media) === 1;
 
         return [
             'id'           => $id,
             'title'        => trim((string)$d['title']),
-            'page_url'     => (string)($d['page_url'] ?? BtolatConfig::BASE_URL . '/video/' . $id),
             'thumbnail'    => (string)($d['thumbnail'] ?? ''),
             'champ_title'  => trim((string)($d['category']['name'] ?? '')),
             'provider'     => $d['provider'] ?? null,
             'embed_url'    => $embed !== '' ? $embed : null,
-            'external_url' => $d['external_url'] ?? null,
-            'media_url'    => $d['media_url'] ?? null,
+            'external_url' => $external !== '' ? $external : null,
+            'media_url'    => $media !== '' ? $media : null,
+            'is_hls'       => $isHls,
             'youtube_id'   => $ytId,
+            'tweet_id'     => $tweetId,
+            'x_url'        => $xUrl,
         ];
     }
 
