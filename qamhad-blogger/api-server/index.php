@@ -46,6 +46,18 @@ if (preg_match('#^assets/([A-Za-z0-9._\-]+)$#', $path, $m)) {
     exit;
 }
 
+/* Admin panel: /admin, /admin/channels, … → the original admin controller. */
+if ($path === 'admin' || $path === 'admin.php' || str_starts_with($path, 'admin/') || str_starts_with($path, 'admin.php/')) {
+    require __DIR__ . '/admin.php';
+    exit;
+}
+
+/* Front-controller route for the streaming proxy (/stream?url=…&sig=…). */
+if ($path === 'stream') {
+    require __DIR__ . '/stream.php';
+    exit;
+}
+
 /* Root → API index. */
 if ($path === '' || $path === 'index.php') {
     require_once __DIR__ . '/config.php';

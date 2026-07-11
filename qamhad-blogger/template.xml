@@ -68,13 +68,13 @@ body{background:#F5F7FA}
       <img alt='قمهد لايف' class='brand-logo dark-only' height='36' src='https://api.qamhad.com/assets/logo-dark.svg' width='150'/>
     </a>
     <nav aria-label='main' class='main-nav'>
-      <a class='nav-link' href='/matches'>المباريات</a>
-      <a class='nav-link nav-live' href='/live'><span class='live-dot'></span>مباشر</a>
-      <a class='nav-link' href='/news'>الأخبار</a>
-      <a class='nav-link' href='/videos'>الفيديوهات</a>
-      <a class='nav-link' href='/standings'>الترتيب</a>
-      <a class='nav-link' href='/top-scorers'>الهدافون</a>
-      <a class='nav-link' href='/leagues'>البطولات</a>
+      <a class='nav-link' data-ar='المباريات' data-en='Matches' href='/matches'>المباريات</a>
+      <a class='nav-link nav-live' href='/live'><span class='live-dot'></span><span data-ar='مباشر' data-en='Live'>مباشر</span></a>
+      <a class='nav-link' data-ar='الأخبار' data-en='News' href='/news'>الأخبار</a>
+      <a class='nav-link' data-ar='الفيديوهات' data-en='Videos' href='/videos'>الفيديوهات</a>
+      <a class='nav-link' data-ar='الترتيب' data-en='Standings' href='/standings'>الترتيب</a>
+      <a class='nav-link' data-ar='الهدافون' data-en='Scorers' href='/top-scorers'>الهدافون</a>
+      <a class='nav-link' data-ar='البطولات' data-en='Leagues' href='/leagues'>البطولات</a>
     </nav>
     <div class='header-actions'>
       <a aria-label='بحث' class='icon-btn' href='/search'>
@@ -87,6 +87,7 @@ body{background:#F5F7FA}
         <svg class='ic-moon' fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><path d='M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'/></svg>
         <svg class='ic-sun' fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><circle cx='12' cy='12' r='4'/><path d='M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg>
       </button>
+      <button class='lang-switch' id='lang-switch' type='button'>EN</button>
     </div>
   </div>
 </header>
@@ -102,26 +103,26 @@ body{background:#F5F7FA}
     <div class='footer-grid'>
       <div class='footer-brand'>
         <img alt='قمهد لايف' height='40' src='https://api.qamhad.com/assets/logo.svg' width='160'/>
-        <p class='muted'>نتائج مباشرة، مركز مباريات متكامل وأخبار كرة القدم لحظة بلحظة.</p>
+        <p class='muted' data-ar='نتائج مباشرة، مركز مباريات متكامل وأخبار كرة القدم لحظة بلحظة.' data-en='Live scores, a complete match center and football news in real time.'>نتائج مباشرة، مركز مباريات متكامل وأخبار كرة القدم لحظة بلحظة.</p>
       </div>
       <div>
-        <h4>الأقسام</h4>
-        <a href='/matches'>المباريات</a>
-        <a href='/live'>مباشر</a>
-        <a href='/standings'>الترتيب</a>
-        <a href='/top-scorers'>الهدافون</a>
+        <h4 data-ar='الأقسام' data-en='Sections'>الأقسام</h4>
+        <a data-ar='المباريات' data-en='Matches' href='/matches'>المباريات</a>
+        <a data-ar='مباشر' data-en='Live' href='/live'>مباشر</a>
+        <a data-ar='الترتيب' data-en='Standings' href='/standings'>الترتيب</a>
+        <a data-ar='الهدافون' data-en='Scorers' href='/top-scorers'>الهدافون</a>
       </div>
       <div>
-        <h4>المزيد</h4>
-        <a href='/news'>الأخبار</a>
-        <a href='/videos'>الفيديوهات</a>
-        <a href='/leagues'>البطولات</a>
+        <h4 data-ar='المزيد' data-en='More'>المزيد</h4>
+        <a data-ar='الأخبار' data-en='News' href='/news'>الأخبار</a>
+        <a data-ar='الفيديوهات' data-en='Videos' href='/videos'>الفيديوهات</a>
+        <a data-ar='البطولات' data-en='Leagues' href='/leagues'>البطولات</a>
       </div>
       <div>
-        <h4>الموقع</h4>
-        <a href='/about'>من نحن</a>
-        <a href='/contact'>اتصل بنا</a>
-        <a href='/privacy'>سياسة الخصوصية</a>
+        <h4 data-ar='الموقع' data-en='Site'>الموقع</h4>
+        <a data-ar='من نحن' data-en='About' href='/about'>من نحن</a>
+        <a data-ar='اتصل بنا' data-en='Contact' href='/contact'>اتصل بنا</a>
+        <a data-ar='سياسة الخصوصية' data-en='Privacy' href='/privacy'>سياسة الخصوصية</a>
       </div>
     </div>
     <div class='footer-bottom'>
@@ -134,23 +135,23 @@ body{background:#F5F7FA}
 <nav aria-label='mobile' class='bottom-nav glass'>
   <a class='bn-item' href='/matches'>
     <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><circle cx='12' cy='12' r='9'/><path d='M12 3v18M3.5 9h17M3.5 15h17' opacity='.4'/><circle cx='12' cy='12' r='3.2'/></svg>
-    <span>المباريات</span>
+    <span data-ar='المباريات' data-en='Matches'>المباريات</span>
   </a>
   <a class='bn-item' href='/news'>
     <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><rect height='16' rx='3' width='18' x='3' y='4'/><path d='M7 9h10M7 13h6'/></svg>
-    <span>الأخبار</span>
+    <span data-ar='الأخبار' data-en='News'>الأخبار</span>
   </a>
   <a class='bn-item' href='/videos'>
     <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><rect height='14' rx='4' width='20' x='2' y='5'/><path d='m10 9 5 3-5 3z' fill='currentColor' stroke='none'/></svg>
-    <span>الفيديوهات</span>
+    <span data-ar='الفيديوهات' data-en='Videos'>الفيديوهات</span>
   </a>
   <a class='bn-item' href='/standings'>
     <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><path d='M5 20V10M12 20V4M19 20v-7'/></svg>
-    <span>الترتيب</span>
+    <span data-ar='الترتيب' data-en='Standings'>الترتيب</span>
   </a>
   <a class='bn-item' href='/leagues'>
     <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><circle cx='5' cy='6' r='1.6'/><circle cx='5' cy='12' r='1.6'/><circle cx='5' cy='18' r='1.6'/><path d='M10 6h9M10 12h9M10 18h9'/></svg>
-    <span>المزيد</span>
+    <span data-ar='المزيد' data-en='More'>المزيد</span>
   </a>
 </nav>
 
@@ -178,7 +179,7 @@ body{background:#F5F7FA}
 'use strict';
 
 var API = ((document.querySelector('meta[name="qamhad:api"]')||{}).content || 'https://api.qamhad.com').replace(/\/+$/,'');
-var LANG = 'ar';
+var LANG = localStorage.getItem('q-lang')==='en' ? 'en' : 'ar';
 var main = document.getElementById('main');
 var bar  = document.getElementById('qLoading');
 
@@ -188,16 +189,33 @@ function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAl
 function toast(m){var t=$('#toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2600);}
 document.getElementById('qYear').textContent=new Date().getFullYear();
 
-/* ---------------- theme ---------------- */
-(function initTheme(){
-  var saved=localStorage.getItem('q_theme');
-  var dark = saved ? saved==='dark' : (window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.classList.toggle('dark',!!dark);
-})();
+/* ---------------- theme (exact parity with the original app.js) ---------------- */
+var docEl=document.documentElement;
+function applyTheme(mode){
+  var dark = mode==='dark' || (mode==='auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  docEl.classList.toggle('dark',dark);
+  var tc=$('meta[name="theme-color"]');if(tc)tc.content=dark?'#080E1A':'#16C784';
+}
+applyTheme(localStorage.getItem('q-theme')||'auto');
+if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if((localStorage.getItem('q-theme')||'auto')==='auto')applyTheme('auto');});}
 $('#theme-toggle').addEventListener('click',function(){
-  var d=document.documentElement.classList.toggle('dark');
-  localStorage.setItem('q_theme',d?'dark':'light');
-  var tc=$('meta[name="theme-color"]');if(tc)tc.content=d?'#080E1A':'#16C784';
+  var next=docEl.classList.contains('dark')?'light':'dark';
+  localStorage.setItem('q-theme',next);applyTheme(next);
+});
+
+/* ---------------- language (EN / عربي) ---------------- */
+function applyLang(){
+  docEl.setAttribute('lang',LANG);
+  docEl.setAttribute('dir',LANG==='en'?'ltr':'rtl');
+  $$('[data-ar]').forEach(function(el){var v=el.getAttribute(LANG==='en'?'data-en':'data-ar');if(v!=null)el.textContent=v;});
+  var ls=$('#lang-switch');if(ls)ls.textContent=LANG==='en'?'عربي':'EN';
+}
+applyLang();
+$('#lang-switch').addEventListener('click',function(){
+  LANG=LANG==='en'?'ar':'en';
+  localStorage.setItem('q-lang',LANG);
+  applyLang();
+  renderPath(false);
 });
 
 /* ---------------- favourites (localStorage) ---------------- */

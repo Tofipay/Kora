@@ -9,10 +9,16 @@
  */
 declare(strict_types=1);
 
-/** Public URL of the Blogger site the template runs on (for sitemaps/OG). */
+/** Public URL of the Blogger site the template runs on (for sitemaps/OG).
+ *  Override with env QAMHAD_BLOG_URL, or in storage/settings/branding.json
+ *  ("blog_url"). Defaults to the live custom domain. */
 function blog_url(): string
 {
-    return rtrim((string)(getenv('QAMHAD_BLOG_URL') ?: 'https://www.qamhad.com'), '/');
+    $env = getenv('QAMHAD_BLOG_URL');
+    if ($env) return rtrim((string)$env, '/');
+    $b = \Qamhad\Core\Settings::get('branding', []);
+    if (is_array($b) && !empty($b['blog_url'])) return rtrim((string)$b['blog_url'], '/');
+    return 'https://www.gamhed.online';
 }
 
 /** Absolute media-proxy URL on THIS API host: kind/size/filename. */
