@@ -1,25 +1,31 @@
 <?php
 /**
  * Video highlight card. Expects: $v (normalized VideoFeed item).
- * YouTube videos open the in-site player (/video/{id}); other providers
- * open externally. Thumbnail lazy-loads over a branded gradient fallback.
+ *
+ * Btolat items (numeric id) open the in-site player /video/{id}.
+ * Legacy YouTube items (youtube_id) open /video/{ytId} (match-page tab).
+ * Anything else opens its external URL. Thumbnail lazy-loads over a
+ * branded gradient fallback.
  */
 $yt    = (string)($v['youtube_id'] ?? '');
+$vid   = (int)($v['id'] ?? 0);
 $thumb = (string)($v['thumbnail'] ?? '');
 $title = trim((string)($v['title'] ?? ''));
 $champ = (string)($v['champ_title'] ?? '');
 $date  = (string)($v['created_at'] ?? '');
-
-// Incomplete video (no title or no playable link) → render nothing rather
-// than an empty card. The feed filters these too; this is the last guard.
-if ($title === '' || trim((string)($v['video_url'] ?? '')) === '') return;
 $dTs   = $date !== '' ? to_ts($date) : 0;
 $dLabel = $dTs ? format_date_short($dTs) : '';
 
-$isInternal = $yt !== '';
-$href   = $isInternal ? path('video/' . $yt) : (string)($v['video_url'] ?? '#');
-$target = $isInternal ? '' : ' target="_blank" rel="noopener nofollow"';
-$prov   = $v['video_type'] === 'youtube' ? 'YouTube' : ($v['video_type'] === 'fifa' ? 'FIFA+' : '');
+// Incomplete video (no title or no playable link) → render nothing rather
+// than an empty card. The feed filters these too; this is the last guard.
+if ($title === '' || (trim((string)($v['video_url'] ?? '')) === '' && $vid < 1 && $yt === '')) return;
+
+if ($vid > 0)      { $href = path('video/' . $vid);  $target = ''; }
+elseif ($yt !== ''){ $href = path('video/' . $yt);   $target = ''; }
+else               { $href = (string)$v['video_url']; $target = ' target="_blank" rel="noopener nofollow"'; }
+
+$prov = ($v['video_type'] ?? '') === 'youtube' ? 'YouTube'
+      : (($v['video_type'] ?? '') === 'fifa' ? 'FIFA+' : '');
 ?>
 <a class="vcard card-hover" href="<?= e($href) ?>"<?= $target ?> data-video-card>
   <span class="vc-thumb">

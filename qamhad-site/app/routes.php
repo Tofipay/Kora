@@ -44,11 +44,14 @@ $router->get('/news', fn() => News::index(1));
 $router->get('/news/page/{n:\d+}', fn($a) => News::index((int)$a['n']));
 $router->get('/news/{slug}', fn($a) => News::show($a['slug']));
 
-/* ---------- Videos (highlights) ---------- */
+/* ---------- Videos (highlights — Btolat source) ---------- */
 $router->get('/videos', fn() => Videos::index(1));
 $router->get('/videos/page/{n:\d+}', fn($a) => Videos::index((int)$a['n']));
-/* Note: the router uses "}" as the placeholder terminator, so a {11} quantifier
-   can't appear in the constraint — match a segment and length-check in watch(). */
+/* Numeric id → Btolat in-site player. Must be registered BEFORE the legacy
+   YouTube-id pattern so digits never fall through to it. */
+$router->get('/video/{id:\d+}', fn($a) => Videos::play((int)$a['id']));
+/* Legacy 11-char YouTube ids (match-page videos tab). The router uses "}" as
+   the placeholder terminator, so no {11} quantifier — length-checked in watch(). */
 $router->get('/video/{ytId:[A-Za-z0-9_\-]+}', fn($a) => Videos::watch($a['ytId']));
 
 $router->get('/standings', [Standings::class, 'index']);

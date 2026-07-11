@@ -9,27 +9,29 @@ use Qamhad\Core\VideoFeed;
 use Qamhad\Core\View;
 
 /**
- * Videos section — YSScores highlights, split by championship.
- * Listing (with client-side infinite scroll / search) + an in-site
- * YouTube watch page. Reuses VideoFeed's on-disk cache; no new API.
+ * Videos section — Btolat highlights (vendored btolat_php_api project),
+ * split by championship/team. News-style pagination (5 per page) + an
+ * in-site player page that renders the provider the source exposes
+ * (YouTube embed / direct MP4 / X post). The legacy /video/{youtubeId}
+ * player (used by the match-page videos tab) is kept intact.
  */
 final class Videos
 {
-    /** Videos per page — News-style numbered pagination. */
-    private const PER_PAGE = 5;
-
     /**
-     * GET /videos[?champ=ID] and /videos/page/{n}[?champ=ID]
-     * Highlights grid with championship tabs + prev/next + page numbers.
+     * GET /videos[?champ=KEY] and /videos/page/{n}[?champ=KEY]
+     * KEY is a Btolat category key from VideoFeed::categories() (e.g.
+     * world-cup, saudi-league, al-ahly). Unknown keys fall back to "all".
      */
     public static function index(int $page = 1): void
     {
         $page  = max(1, $page);
-        $champ = isset($_GET['champ']) ? preg_replace('/[^0-9]/', '', (string)$_GET['champ']) : '';
-        $champ = $champ !== '' ? $champ : 'all';
+        $champ = isset($_GET['champ'])
+            ? strtolower((string)preg_replace('/[^a-z0-9\-]/i', '', (string)$_GET['champ']))
+            : '';
+        $champ = $champ !== '' && VideoFeed::isCategory($champ) ? $champ : 'all';
 
         $categories = VideoFeed::categories();
-        $result     = VideoFeed::page($champ, $page, self::PER_PAGE);
+        $result     = VideoFeed::page($champ, $page, VideoFeed::PER_PAGE);
 
         // Past the end of the feed → real 404 (same behaviour as News).
         if ($page > 1 && empty($result['items'])) View::notFound();
@@ -66,27 +68,57 @@ final class Videos
         ], $seo);
     }
 
-    /** GET /video/{ytId} — professional in-site YouTube player page. */
+    /**
+     * GET /video/{id} (numeric) — in-site Btolat player page.
+     * Renders whatever the source exposes for this video: a YouTube embed,
+     * a direct MP4 stream, or an X post link — always inside the site.
+     */
+    public static function play(int $id): void
+    {
+        if ($id < 1) View::notFound();
+
+        $video = VideoFeed::find($id);
+        if ($video === null) View::notFound();
+        Settings::trackHit('video', $video['title']);
+
+        $related = VideoFeed::related($id, 8);
+
+        header('Cache-Control: public, max-age=1800');
+
+        $seo = (new Seo())
+            ->title($video['title'] . ' — ' . \Qamhad\Core\Lang::siteName())
+            ->description($video['champ_title'] !== '' ? ($video['title'] . ' · ' . $video['champ_title']) : $video['title'])
+            ->type('video.other')
+            ->canonical(path('video/' . $id))
+            ->breadcrumbs([
+                [t('nav.home'), path('/')],
+                [t('videos.title'), path('videos')],
+                [$video['title'], path('video/' . $id)],
+            ]);
+        if ($video['thumbnail'] !== '') $seo->image($video['thumbnail']);
+
+        View::page('video-play', [
+            'v'       => $video,
+            'related' => $related,
+        ], $seo);
+    }
+
+    /**
+     * GET /video/{ytId} (11-char YouTube id) — legacy in-site YouTube player.
+     * Still used by the match-page videos tab (match API video_links).
+     */
     public static function watch(string $ytId): void
     {
         if (!preg_match('/^[A-Za-z0-9_-]{11}$/', $ytId)) View::notFound();
 
-        $lookup  = VideoFeed::findByYoutubeId($ytId);
-        $video   = $lookup['video'];
-        $related = $lookup['related'];
-
-        // Title/championship: from the feed when known, else a sensible default
-        // so a shared/deep-linked id still renders a valid page.
-        $title = $video['title'] ?? t('videos.watch_default');
+        $title = t('videos.watch_default');
         Settings::trackHit('video', $title);
-        $champ = $video['champ_title'] ?? '';
-        $date  = $video['created_at'] ?? '';
 
         header('Cache-Control: public, max-age=1800');
 
         $seo = (new Seo())
             ->title($title . ' — ' . \Qamhad\Core\Lang::siteName())
-            ->description($champ !== '' ? ($title . ' · ' . $champ) : $title)
+            ->description($title)
             ->image("https://i.ytimg.com/vi/{$ytId}/hqdefault.jpg")
             ->type('video.other')
             ->canonical(path('video/' . $ytId))
@@ -99,9 +131,9 @@ final class Videos
         View::page('video-watch', [
             'ytId'    => $ytId,
             'title'   => $title,
-            'champ'   => $champ,
-            'date'    => $date,
-            'related' => $related,
+            'champ'   => '',
+            'date'    => '',
+            'related' => VideoFeed::related(0, 8),
         ], $seo);
     }
 }

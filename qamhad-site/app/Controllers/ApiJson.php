@@ -38,28 +38,30 @@ final class ApiJson
     }
 
     /**
-     * Paginated video feed for infinite scroll / "show more".
-     * GET /api/videos?champ=all&skip=80 → { html, has_more, next_skip }
+     * Paginated video feed (Btolat source, 5 per page like the section).
+     * GET /api/videos?champ=all&page=2 → { html, has_next, page }
      * Returns server-rendered cards so markup stays identical to SSR.
      */
     public static function videos(): void
     {
-        $champ = isset($_GET['champ']) ? preg_replace('/[^0-9]/', '', (string)$_GET['champ']) : '';
-        $champ = $champ !== '' ? $champ : 'all';
-        $skip  = isset($_GET['skip']) ? max(0, (int)$_GET['skip']) : 0;
+        $champ = isset($_GET['champ'])
+            ? strtolower((string)preg_replace('/[^a-z0-9\-]/i', '', (string)$_GET['champ']))
+            : '';
+        $champ = $champ !== '' && VideoFeed::isCategory($champ) ? $champ : 'all';
+        $page  = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
-        $res  = VideoFeed::videos($champ, $skip);
+        $res  = VideoFeed::page($champ, $page);
         $html = '';
-        foreach ($res['data'] as $v) {
+        foreach ($res['items'] as $v) {
             $html .= View::partial('video-card', ['v' => $v]);
         }
         header('Cache-Control: public, max-age=600');
         View::json([
-            'ok'        => true,
-            'html'      => $html,
-            'count'     => $res['count'],
-            'has_more'  => $res['has_more'],
-            'next_skip' => $res['next_skip'],
+            'ok'       => true,
+            'html'     => $html,
+            'count'    => count($res['items']),
+            'page'     => $res['page'],
+            'has_next' => $res['has_next'],
         ]);
     }
 
