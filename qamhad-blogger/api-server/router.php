@@ -39,6 +39,7 @@ function api_routes(): array
         'lineups'      => 'lineups.php',
         'events'       => 'events.php',
         'settings'     => 'settings.php',
+        'render'       => 'render.php',
         'media'        => 'media.php',
         'stream'       => 'stream.php',
         'sitemap'      => 'sitemap.php',

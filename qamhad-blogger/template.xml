@@ -1,325 +1,174 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE html>
-<html b:version='2' class='v2' expr:dir='data:blog.languageDirection' expr:lang='data:blog.locale' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<html b:version='2' class='v2' dir='rtl' lang='ar' xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
 <head>
 
-<!-- ================= Qamhad Live — Blogger template (SPA over api.qamhad.com) ================= -->
+<!-- =========================================================================
+     Qamhad Live — قمهد لايف · Native Blogger theme (1:1 of the PHP site)
+     The theme shell (header / nav / footer / router) is native Blogger XML.
+     Each page's BODY is the project's own markup, rendered by the API server
+     (render.php) with the original views + app.css, then composed here.
+     ========================================================================= -->
+
 <meta charset='UTF-8'/>
 <meta content='width=device-width, initial-scale=1, viewport-fit=cover' name='viewport'/>
-<meta content='#0d9488' name='theme-color'/>
-<meta content='yes' name='mobile-web-app-capable'/>
+<meta content='#16C784' name='theme-color'/>
+<meta content='light dark' name='color-scheme'/>
 <meta content='yes' name='apple-mobile-web-app-capable'/>
-<meta content='ie=edge' http-equiv='X-UA-Compatible'/>
+<meta content='yes' name='mobile-web-app-capable'/>
 
-<!-- The ONLY backend the template talks to. Change here if your API host differs. -->
+<!-- The ONLY backend the theme talks to. Change here if your API host differs. -->
 <meta content='https://api.qamhad.com' name='qamhad:api'/>
 
 <title><data:blog.pageTitle/></title>
 <meta expr:content='data:blog.metaDescription' name='description'/>
-
 <b:include data='blog' name='all-head-content'/>
 
 <link href='https://fonts.googleapis.com' rel='preconnect'/>
 <link crossorigin='anonymous' href='https://fonts.gstatic.com' rel='preconnect'/>
 <link href='https://api.qamhad.com' rel='preconnect'/>
-<link href='https://cdn.jsdelivr.net' rel='dns-prefetch'/>
-<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap' rel='stylesheet'/>
-<link href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css' rel='stylesheet'/>
+<link href='https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap' rel='stylesheet'/>
+
+<!-- The REAL Qamhad Live design system (identical to the PHP site). -->
+<link href='https://api.qamhad.com/assets/app.css' rel='stylesheet'/>
+
+<link href='https://api.qamhad.com/assets/favicon.svg' rel='icon' type='image/svg+xml'/>
+<link href='https://api.qamhad.com/assets/icon-192.png' rel='apple-touch-icon'/>
 
 <b:skin version='1.1'><![CDATA[
-/* ===== Blogger required skin variables (kept minimal) ===== */
-body { background:#f8fafc; }
+body{background:#F5F7FA}
 ]]></b:skin>
 
-<b:template-skin><![CDATA[
-body{margin:0;}
-]]></b:template-skin>
-
 <style>/*<![CDATA[
-:root{
-  --primary:#0d9488; --primary-dark:#0f766e; --accent:#f59e0b;
-  --bg:#f1f5f9; --surface:#ffffff; --surface-2:#f8fafc; --text:#0f172a;
-  --muted:#64748b; --border:#e2e8f0; --live:#ef4444; --ok:#16a34a;
-  --radius:18px; --radius-sm:12px; --shadow:0 6px 24px rgba(15,23,42,.08);
-  --glass:rgba(255,255,255,.72); --glass-brd:rgba(255,255,255,.5);
-  --header-h:60px; --nav-h:64px; --maxw:1180px;
-}
-html[data-theme="dark"]{
-  --bg:#0b1220; --surface:#111827; --surface-2:#0f172a; --text:#e5e7eb;
-  --muted:#94a3b8; --border:#1f2937; --glass:rgba(17,24,39,.72); --glass-brd:rgba(148,163,184,.15);
-  --shadow:0 6px 24px rgba(0,0,0,.4);
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{font-family:'Cairo',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);
-  line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
-  padding-top:var(--header-h);padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
-a{color:inherit;text-decoration:none}
-img{max-width:100%;display:block}
-button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.container{max-width:var(--maxw);margin:0 auto;padding:0 14px}
-.hidden{display:none !important}
-
-/* ===== Header ===== */
-.app-header{position:fixed;inset-inline:0;top:0;height:var(--header-h);z-index:60;
-  background:var(--glass);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);
-  border-bottom:1px solid var(--border)}
-.app-header .bar{max-width:var(--maxw);margin:0 auto;height:100%;padding:0 14px;display:flex;align-items:center;gap:12px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:19px}
-.brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-  display:grid;place-items:center;color:#fff;font-size:18px;box-shadow:0 4px 12px rgba(13,148,136,.4)}
-.brand small{color:var(--accent);font-size:11px;font-weight:700;display:block;line-height:1}
-.header-nav{display:flex;gap:4px;margin-inline-start:auto;overflow:auto;scrollbar-width:none}
-.header-nav::-webkit-scrollbar{display:none}
-.header-nav a{padding:8px 12px;border-radius:10px;font-weight:600;font-size:14px;color:var(--muted);white-space:nowrap;transition:.2s}
-.header-nav a:hover,.header-nav a.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent)}
-.icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:19px;color:var(--muted);transition:.2s}
-.icon-btn:hover{background:var(--surface-2);color:var(--primary)}
-.header-actions{display:flex;align-items:center;gap:2px;margin-inline-start:auto}
-@media(min-width:961px){.header-actions{margin-inline-start:8px}}
-@media(max-width:960px){.header-nav{display:none}}
-
-/* ===== Live bar ===== */
-.livebar{position:sticky;top:var(--header-h);z-index:50;background:var(--surface);border-bottom:1px solid var(--border);
-  display:flex;gap:10px;padding:8px 12px;overflow-x:auto;scrollbar-width:none}
-.livebar::-webkit-scrollbar{display:none}
-.livebar:empty{display:none}
-.live-chip{flex:0 0 auto;display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);
-  border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;white-space:nowrap}
-.live-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--live);animation:pulse 1.4s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-
-/* ===== Layout ===== */
-main{min-height:60vh;padding:16px 0 40px}
-.section-head{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
-.section-head h2{font-size:20px;margin:0;font-weight:800}
-.section-head .bi{color:var(--primary);font-size:20px}
-.section-head .more{margin-inline-start:auto;font-size:13px;color:var(--primary);font-weight:700}
-.grid{display:grid;gap:12px}
-.grid.cards{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-.grid.news{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
-.grid.leagues{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-.grid.videos{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-
-/* ===== Cards ===== */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-.card.pad{padding:14px}
-
-/* Match card */
-.match{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);
-  transition:transform .18s,box-shadow .18s;position:relative}
-.match:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(15,23,42,.14)}
-.match .lg{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px}
-.match .lg img{width:18px;height:18px;object-fit:contain;border-radius:4px}
-.match .row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
-.match .team{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-weight:700;font-size:13.5px}
-.match .team img{width:48px;height:48px;object-fit:contain}
-.match .mid{text-align:center;min-width:74px}
-.match .score{font-size:26px;font-weight:800;letter-spacing:1px}
-.match .vs{color:var(--muted);font-weight:800}
-.match .time{font-size:12.5px;color:var(--muted);font-weight:700}
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
-.badge.live{background:color-mix(in srgb,var(--live) 15%,transparent);color:var(--live)}
-.badge.live .dot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.4s infinite}
-.badge.fin{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
-.badge.up{background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary)}
-.match .watch{display:block;margin-top:11px;text-align:center;background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-  color:#fff;font-weight:800;padding:9px;border-radius:12px;font-size:13.5px}
-
-/* News card */
-.news-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .18s}
-.news-card:hover{transform:translateY(-3px)}
-.news-card .thumb{aspect-ratio:16/9;width:100%;object-fit:cover;background:var(--surface-2)}
-.news-card .body{padding:12px}
-.news-card h3{font-size:15px;margin:0 0 6px;font-weight:700;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.news-card .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
-
-/* League chip/card */
-.league-card{display:flex;flex-direction:column;align-items:center;gap:9px;padding:16px 10px;text-align:center;
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:.18s;font-weight:700;font-size:13px}
-.league-card:hover{transform:translateY(-3px);border-color:var(--primary)}
-.league-card img{width:52px;height:52px;object-fit:contain}
-
-/* Standings */
-.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow)}
-table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
-table.tbl th,table.tbl td{padding:10px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap}
-table.tbl th{background:var(--surface-2);font-weight:800;color:var(--muted);font-size:12px}
-table.tbl td.team-cell{text-align:start;font-weight:700}
-table.tbl .team-cell span{display:inline-flex;align-items:center;gap:8px}
-table.tbl .team-cell img{width:22px;height:22px;object-fit:contain}
-table.tbl tr:hover td{background:color-mix(in srgb,var(--primary) 6%,transparent)}
-.pos{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--surface-2);font-weight:800;font-size:12px}
-
-/* Chips / tabs */
-.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{flex:0 0 auto;padding:8px 16px;border-radius:999px;background:var(--surface);border:1px solid var(--border);
-  font-weight:700;font-size:13.5px;color:var(--muted);transition:.15s}
-.tab.active{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-color:transparent}
-
-/* Hero */
-.hero{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:var(--radius);
-  padding:26px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;margin-top:6px}
-.hero:before{content:"";position:absolute;inset-inline-end:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12)}
-.hero h1{margin:0 0 6px;font-size:24px;font-weight:800}
-.hero p{margin:0;opacity:.92;font-size:14px}
-
-/* Video */
-.video-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:.18s}
-.video-card:hover{transform:translateY(-3px)}
-.video-card .thumb{position:relative;aspect-ratio:16/9;background:#000}
-.video-card .thumb img{width:100%;height:100%;object-fit:cover}
-.video-card .thumb .play{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:44px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
-.video-card .body{padding:11px}
-.video-card h3{font-size:14px;margin:0;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-
-/* Player / team header */
-.entity-head{display:flex;align-items:center;gap:16px;padding:18px;background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
-.entity-head img{width:84px;height:84px;object-fit:contain;border-radius:14px;background:var(--surface-2);padding:6px}
-.entity-head h1{margin:0;font-size:22px}
-.entity-head .sub{color:var(--muted);font-weight:700;font-size:13.5px}
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
-.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center;box-shadow:var(--shadow)}
-.stat-box b{display:block;font-size:22px;color:var(--primary)}
-.stat-box span{font-size:12px;color:var(--muted);font-weight:700}
-
-/* Stat bars */
-.bar-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:10px 0}
-.bar-row .lab{font-size:12px;color:var(--muted);text-align:center;font-weight:700}
-.bar{height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden}
-.bar > i{display:block;height:100%;background:var(--primary)}
-
-/* Events timeline */
-.event{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px}
-.event .min{min-width:44px;font-weight:800;color:var(--primary)}
-.event .bi{font-size:16px}
-
-/* Search */
-.search-panel{position:fixed;inset:0;z-index:80;background:var(--bg);transform:translateY(-100%);transition:transform .28s;display:flex;flex-direction:column}
-.search-panel.open{transform:none}
-.search-top{display:flex;gap:8px;padding:12px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center}
-.search-top input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);font-size:15px;color:var(--text)}
-.search-body{padding:14px;overflow:auto}
-.suggest{display:flex;align-items:center;gap:10px;padding:11px;border-radius:12px;background:var(--surface);border:1px solid var(--border);margin-bottom:8px;font-weight:700}
-.suggest img{width:34px;height:34px;object-fit:contain}
-.mark{background:color-mix(in srgb,var(--accent) 40%,transparent);border-radius:4px;padding:0 2px}
-
-/* Bottom nav */
-.bottom-nav{position:fixed;inset-inline:0;bottom:0;z-index:60;height:calc(var(--nav-h) + env(safe-area-inset-bottom));
-  padding-bottom:env(safe-area-inset-bottom);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:stretch}
-.bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:700}
-.bottom-nav a .bi{font-size:21px}
-.bottom-nav a.active{color:var(--primary)}
-@media(min-width:961px){.bottom-nav{display:none}body{padding-bottom:0}}
-
-/* Skeleton */
-.sk{position:relative;overflow:hidden;background:var(--surface-2);border-radius:var(--radius)}
-.sk:after{content:"";position:absolute;inset:0;transform:translateX(-100%);
-  background:linear-gradient(90deg,transparent,rgba(148,163,184,.18),transparent);animation:shim 1.3s infinite}
-[dir="rtl"] .sk:after{animation:shim-rtl 1.3s infinite}
-@keyframes shim{100%{transform:translateX(100%)}}
-@keyframes shim-rtl{100%{transform:translateX(-200%)}}
-.sk-card{height:150px}
-.sk-line{height:12px;border-radius:6px;margin:8px 0}
-
-/* Footer */
-.app-footer{background:var(--surface);border-top:1px solid var(--border);margin-top:30px;padding:26px 0}
-.app-footer .cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:20px}
-.app-footer h4{margin:0 0 10px;font-size:14px}
-.app-footer a{display:block;color:var(--muted);font-size:13.5px;padding:3px 0}
-.app-footer .social{display:flex;gap:10px;margin-top:8px}
-.app-footer .social a{width:38px;height:38px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;font-size:18px}
-.copy{text-align:center;color:var(--muted);font-size:12.5px;margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
-
-/* Misc */
-.empty{text-align:center;padding:40px 16px;color:var(--muted)}
-.empty .bi{font-size:44px;display:block;margin-bottom:10px;opacity:.5}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:12px;font-weight:800;font-size:14px;
-  background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
-.btn.ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
-.load-more{display:block;margin:20px auto;padding:12px 26px}
-.toast{position:fixed;inset-inline:0;bottom:calc(var(--nav-h) + 14px);margin:auto;width:max-content;max-width:90%;
-  background:var(--text);color:var(--bg);padding:11px 18px;border-radius:12px;font-weight:700;font-size:13.5px;z-index:90;
-  opacity:0;transform:translateY(12px);transition:.25s;pointer-events:none}
-.toast.show{opacity:1;transform:none}
-.player-modal{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:14px}
-.player-modal.open{display:flex}
-.player-modal .box{width:100%;max-width:900px;background:#000;border-radius:14px;overflow:hidden;position:relative}
-.player-modal video,.player-modal iframe{width:100%;aspect-ratio:16/9;display:block;border:0;background:#000}
-.player-modal .close{position:absolute;top:8px;inset-inline-end:8px;z-index:2;background:rgba(0,0,0,.6);color:#fff;width:38px;height:38px;border-radius:50%}
-.ptr{position:fixed;top:var(--header-h);inset-inline:0;display:grid;place-items:center;height:0;overflow:hidden;color:var(--primary);transition:height .2s;z-index:40}
-.ptr .bi{font-size:24px}
-.ad-slot{margin:16px 0;min-height:1px;text-align:center;overflow:hidden}
+/* Shell-only helpers layered on top of the real app.css */
+.q-loading{position:fixed;inset-block-start:0;inset-inline:0;height:3px;z-index:300;overflow:hidden;background:transparent}
+.q-loading::before{content:"";position:absolute;inset:0;width:40%;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:qbar 1s linear infinite}
+@keyframes qbar{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+.q-skel{padding:20px 0}
+.q-skel .q-row{height:120px;border-radius:18px;margin:12px 0;background:var(--surface-2);position:relative;overflow:hidden}
+.q-skel .q-row::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(148,163,184,.16),transparent);animation:qsh 1.2s infinite}
+@keyframes qsh{100%{transform:translateX(100%)}}
+#main.q-fade{opacity:.35;transition:opacity .12s}
+.q-err{text-align:center;padding:60px 16px;color:var(--text-3)}
+.q-err svg{width:56px;height:56px;opacity:.5;margin-bottom:12px}
 ]]>*/</style>
 
 </head>
 
 <body>
+<a class='skip-link' href='#main'>القائمة</a>
 
-<!-- ============ Header ============ -->
-<header class='app-header'>
-  <div class='bar'>
-    <a class='brand' href='/' id='brandLink'>
-      <span class='logo'><i class='bi bi-lightning-charge-fill'></i></span>
-      <span>قمهد<small>Qamhad Live</small></span>
+<div class='q-loading' id='qLoading' style='display:none'></div>
+
+<!-- ===================== Header (native shell) ===================== -->
+<header class='site-header glass'>
+  <div class='container header-inner'>
+    <a aria-label='قمهد لايف' class='brand' href='/'>
+      <img alt='قمهد لايف' class='brand-logo light-only' height='36' src='https://api.qamhad.com/assets/logo.svg' width='150'/>
+      <img alt='قمهد لايف' class='brand-logo dark-only' height='36' src='https://api.qamhad.com/assets/logo-dark.svg' width='150'/>
     </a>
-    <nav class='header-nav' id='headerNav'></nav>
+    <nav aria-label='main' class='main-nav'>
+      <a class='nav-link' href='/matches'>المباريات</a>
+      <a class='nav-link nav-live' href='/live'><span class='live-dot'></span>مباشر</a>
+      <a class='nav-link' href='/news'>الأخبار</a>
+      <a class='nav-link' href='/videos'>الفيديوهات</a>
+      <a class='nav-link' href='/standings'>الترتيب</a>
+      <a class='nav-link' href='/top-scorers'>الهدافون</a>
+      <a class='nav-link' href='/leagues'>البطولات</a>
+    </nav>
     <div class='header-actions'>
-      <button aria-label='بحث' class='icon-btn' id='searchBtn'><i class='bi bi-search'></i></button>
-      <button aria-label='الوضع الليلي' class='icon-btn' id='themeBtn'><i class='bi bi-moon-stars'></i></button>
+      <a aria-label='بحث' class='icon-btn' href='/search'>
+        <svg fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>
+      </a>
+      <a aria-label='المفضلة' class='icon-btn' href='/favorites'>
+        <svg fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><path d='m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z'/></svg>
+      </a>
+      <button aria-label='الوضع الليلي' class='icon-btn' id='theme-toggle' type='button'>
+        <svg class='ic-moon' fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><path d='M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'/></svg>
+        <svg class='ic-sun' fill='none' height='20' stroke='currentColor' stroke-width='2' viewBox='0 0 24 24' width='20'><circle cx='12' cy='12' r='4'/><path d='M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg>
+      </button>
     </div>
   </div>
 </header>
 
-<!-- ============ Sticky live bar ============ -->
-<div class='livebar' id='liveBar'></div>
-
-<!-- pull to refresh indicator -->
-<div class='ptr' id='ptr'><i class='bi bi-arrow-clockwise'></i></div>
-
-<!-- ============ Main app ============ -->
-<main>
-  <div class='container' id='app'></div>
+<!-- ===================== Page content (composed from render.php) ===================== -->
+<main class='page' id='main'>
+  <div class='q-skel container'><div class='q-row'></div><div class='q-row'></div><div class='q-row'></div></div>
 </main>
 
-<!-- ============ Footer ============ -->
-<footer class='app-footer'>
+<!-- ===================== Footer (native shell) ===================== -->
+<footer class='site-footer'>
   <div class='container'>
-    <div class='cols' id='footerCols'></div>
-    <div class='copy' id='footerCopy'>© Qamhad Live</div>
+    <div class='footer-grid'>
+      <div class='footer-brand'>
+        <img alt='قمهد لايف' height='40' src='https://api.qamhad.com/assets/logo.svg' width='160'/>
+        <p class='muted'>نتائج مباشرة، مركز مباريات متكامل وأخبار كرة القدم لحظة بلحظة.</p>
+      </div>
+      <div>
+        <h4>الأقسام</h4>
+        <a href='/matches'>المباريات</a>
+        <a href='/live'>مباشر</a>
+        <a href='/standings'>الترتيب</a>
+        <a href='/top-scorers'>الهدافون</a>
+      </div>
+      <div>
+        <h4>المزيد</h4>
+        <a href='/news'>الأخبار</a>
+        <a href='/videos'>الفيديوهات</a>
+        <a href='/leagues'>البطولات</a>
+      </div>
+      <div>
+        <h4>الموقع</h4>
+        <a href='/about'>من نحن</a>
+        <a href='/contact'>اتصل بنا</a>
+        <a href='/privacy'>سياسة الخصوصية</a>
+      </div>
+    </div>
+    <div class='footer-bottom'>
+      <span>© <span id='qYear'>2026</span> قمهد لايف — جميع الحقوق محفوظة</span>
+    </div>
   </div>
 </footer>
 
-<!-- ============ Bottom navigation (mobile) ============ -->
-<nav class='bottom-nav' id='bottomNav'></nav>
+<!-- ===================== Bottom navigation (mobile) ===================== -->
+<nav aria-label='mobile' class='bottom-nav glass'>
+  <a class='bn-item' href='/matches'>
+    <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><circle cx='12' cy='12' r='9'/><path d='M12 3v18M3.5 9h17M3.5 15h17' opacity='.4'/><circle cx='12' cy='12' r='3.2'/></svg>
+    <span>المباريات</span>
+  </a>
+  <a class='bn-item' href='/news'>
+    <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><rect height='16' rx='3' width='18' x='3' y='4'/><path d='M7 9h10M7 13h6'/></svg>
+    <span>الأخبار</span>
+  </a>
+  <a class='bn-item' href='/videos'>
+    <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><rect height='14' rx='4' width='20' x='2' y='5'/><path d='m10 9 5 3-5 3z' fill='currentColor' stroke='none'/></svg>
+    <span>الفيديوهات</span>
+  </a>
+  <a class='bn-item' href='/standings'>
+    <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><path d='M5 20V10M12 20V4M19 20v-7'/></svg>
+    <span>الترتيب</span>
+  </a>
+  <a class='bn-item' href='/leagues'>
+    <svg fill='none' height='22' stroke='currentColor' stroke-width='1.8' viewBox='0 0 24 24' width='22'><circle cx='5' cy='6' r='1.6'/><circle cx='5' cy='12' r='1.6'/><circle cx='5' cy='18' r='1.6'/><path d='M10 6h9M10 12h9M10 18h9'/></svg>
+    <span>المزيد</span>
+  </a>
+</nav>
 
-<!-- ============ Search panel ============ -->
-<div class='search-panel' id='searchPanel'>
-  <div class='search-top'>
-    <button class='icon-btn' id='searchClose'><i class='bi bi-arrow-right'></i></button>
-    <input autocomplete='off' id='searchInput' placeholder='ابحث عن فريق أو لاعب...' type='search'/>
+<div aria-live='polite' class='toast' id='toast' role='status'></div>
+
+<!-- Video / live-stream player modal -->
+<div class='q-modal' id='qModal' style='display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.86);align-items:center;justify-content:center;padding:14px'>
+  <div style='width:100%;max-width:920px;position:relative'>
+    <button aria-label='إغلاق' id='qModalClose' style='position:absolute;inset-block-start:-6px;inset-inline-end:-6px;z-index:2;width:40px;height:40px;border-radius:50%;background:#000;color:#fff' type='button'>✕</button>
+    <div id='qModalMount' style='background:#000;border-radius:14px;overflow:hidden'></div>
   </div>
-  <div class='search-body' id='searchResults'></div>
 </div>
 
-<!-- ============ Video / stream player modal ============ -->
-<div class='player-modal' id='playerModal'>
-  <div class='box'>
-    <button class='close' id='playerClose'><i class='bi bi-x-lg'></i></button>
-    <div id='playerMount'></div>
-  </div>
-</div>
-
-<div class='toast' id='toast'></div>
-
-<!-- Hidden Blogger section (required). The SPA ignores Blogger's post system. -->
+<!-- Required hidden Blogger section. The theme ignores Blogger's post system. -->
 <div style='display:none'>
   <b:section class='hidden-sec' id='hidden' showaddelement='no'>
     <b:widget id='Blog1' locked='true' title='Qamhad' type='Blog' version='2'>
-      <b:includable id='main'><b:comment>SPA renders client-side.</b:comment></b:includable>
+      <b:includable id='main'/>
     </b:widget>
   </b:section>
 </div>
@@ -328,722 +177,222 @@ table.tbl tr:hover td{background:color-mix(in srgb,var(--primary) 6%,transparent
 (function(){
 'use strict';
 
-/* ========================================================================
- *  Qamhad Live — Blogger SPA. Talks ONLY to the API server.
- * ====================================================================== */
-var API = (document.querySelector('meta[name="qamhad:api"]')||{}).content || 'https://api.qamhad.com';
-API = API.replace(/\/+$/,'');
-var LANG = (document.documentElement.lang||'ar').indexOf('en')===0 ? 'en' : 'ar';
-var RTL = LANG === 'ar';
+var API = ((document.querySelector('meta[name="qamhad:api"]')||{}).content || 'https://api.qamhad.com').replace(/\/+$/,'');
+var LANG = 'ar';
+var main = document.getElementById('main');
+var bar  = document.getElementById('qLoading');
 
-var PH = {
-  team:'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23e2e8f0"/><path d="M32 14l14 6v10c0 9-6 15-14 18-8-3-14-9-14-18V20z" fill="%2394a3b8"/></svg>',
-  player:'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23e2e8f0"/><circle cx="32" cy="24" r="11" fill="%2394a3b8"/><path d="M12 56c2-12 10-18 20-18s18 6 20 18z" fill="%2394a3b8"/></svg>',
-  news:'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><rect width="160" height="90" fill="%23e2e8f0"/><path d="M40 55l18-20 16 16 12-12 34 36H40z" fill="%2394a3b8"/><circle cx="52" cy="30" r="8" fill="%23cbd5e1"/></svg>'
+/* ---------------- helpers ---------------- */
+function $(s,r){return (r||document).querySelector(s);}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function toast(m){var t=$('#toast');if(!t)return;t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2600);}
+document.getElementById('qYear').textContent=new Date().getFullYear();
+
+/* ---------------- theme ---------------- */
+(function initTheme(){
+  var saved=localStorage.getItem('q_theme');
+  var dark = saved ? saved==='dark' : (window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);
+  document.documentElement.classList.toggle('dark',!!dark);
+})();
+$('#theme-toggle').addEventListener('click',function(){
+  var d=document.documentElement.classList.toggle('dark');
+  localStorage.setItem('q_theme',d?'dark':'light');
+  var tc=$('meta[name="theme-color"]');if(tc)tc.content=d?'#080E1A':'#16C784';
+});
+
+/* ---------------- favourites (localStorage) ---------------- */
+window.QF={
+  key:'q_favs',
+  all:function(){try{return JSON.parse(localStorage.getItem(this.key)||'{}');}catch(e){return {};}},
+  toggle:function(btn){
+    var favs=this.all();
+    var type=btn.getAttribute('data-fav')||'item', id=btn.getAttribute('data-id');
+    var k=type+':'+id;
+    if(favs[k]){delete favs[k];btn.classList.remove('is-active');}
+    else{favs[k]={type:type,id:id,title:btn.getAttribute('data-title')||'',url:btn.getAttribute('data-url')||''};btn.classList.add('is-active');}
+    localStorage.setItem(this.key,JSON.stringify(favs));
+  },
+  mark:function(root){var favs=this.all();$$('.fav-btn',root).forEach(function(b){var k=(b.getAttribute('data-fav')||'item')+':'+b.getAttribute('data-id');if(favs[k])b.classList.add('is-active');});}
 };
 
-/* ---------- tiny DOM helpers ---------- */
-function el(html){var d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function $(s,r){return (r||document).querySelector(s);}
-function q(name,d){var m=new RegExp('[?&]'+name+'=([^&]*)').exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):(d||'');}
-function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function toast(msg){var t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2600);}
-
-/* ---------- API fetch ---------- */
-var _cache={};
-function api(path,opts){
-  var url=API+'/'+path.replace(/^\//,'');
-  url+=(url.indexOf('?')===-1?'?':'&')+'lang='+LANG;
-  return fetch(url,{headers:{'Accept':'application/json'},credentials:'omit'}).then(function(r){return r.json();});
-}
-function apiCached(path,ttl){
-  var k=path,now=Date.now();
-  if(_cache[k] && now-_cache[k].t < (ttl||30000)) return Promise.resolve(_cache[k].v);
-  return api(path).then(function(v){_cache[k]={t:now,v:v};return v;});
-}
-
-/* ---------- media URL builder (mirrors server media_url) ---------- */
-function media(kind,size,file,fb){
-  fb=fb||PH[kind]||PH.team;
-  if(!file) return fb;
-  if(/(^|\/)[a-z0-9_]*default\.(png|jpe?g|gif|webp)$/i.test(file)) return fb;
-  if(/^https?:\/\//i.test(file)){
-    try{var u=new URL(file);if(u.host.indexOf('imgs.')===0) return API+'/media'+u.pathname;}catch(e){}
-    return file;
-  }
-  file=String(file).replace(/^\/+/,'');
-  if(!/^[A-Za-z0-9._-]+$/.test(file)) return fb;
-  return API+'/media/'+kind+'/'+size+'/'+file;
-}
-function teamImg(t,s){var f=t&&(t.image||t.logo);return media('teams',s||'64',f,PH.team);}
-function leagueImg(l,s){var f=l&&l.image;return media('championship',s||'128',f,PH.team);}
-function playerImg(p,s){var f=p&&p.image;return media('player',s||'64',f,PH.player);}
-function newsImg(n,s){var f=n&&n.image;return media('news',s||'640',f,PH.news);}
-function tname(t){if(!t)return '—';if(typeof t==='string')return t;return t.title||t.full_title||t.name||t.short_title||t.team_name||'—';}
-function pname(p){if(!p)return '';if(typeof p==='string')return p;return p.name||p.full_name||p.title||'';}
-
-/* ---------- match state (mirrors server) ---------- */
-function matchState(m){
-  var st=+(m.status||0), live=+(m.live||0);
-  if(st===4) return {key:'finished',label:LANG==='en'?'Ended':'انتهت'};
-  if(live===1 || [1,2,3,5,6,7,8,13].indexOf(st)>=0){
-    var lbl=liveLabel(m,st);
-    return {key:'live',label:lbl};
-  }
-  return {key:'upcoming',label:fmtTime(m.match_time)};
-}
-function liveLabel(m,st){
-  if(st===2) return LANG==='en'?'HT':"استراحة";
-  if([7,8,13].indexOf(st)>=0) return LANG==='en'?'PENS':'ركلات';
-  var base={1:0,3:45,5:90,6:105}[st]||0, cap={1:45,3:90,5:105,6:120}[st]||45;
-  var start=(+m.ht_time>1e9)?+m.ht_time:0, minute;
-  if(start>0) minute=base+Math.floor(Math.max(0,Date.now()/1000-start)/60)+1;
-  else if(+m.minutes>0 && +m.minutes<=130) minute=+m.minutes;
-  else minute=base+1;
+/* ---------------- live clock + countdown ticking ---------------- */
+function liveLabel(status,start){
+  status=+status;start=+start;
+  if(status===2) return 'استراحة';
+  if([7,8,13].indexOf(status)>=0) return 'ركلات';
+  var base={1:0,3:45,5:90,6:105}[status]||0, cap={1:45,3:90,5:105,6:120}[status]||45, minute;
+  if(start>1e9) minute=base+Math.floor(Math.max(0,Date.now()/1000-start)/60)+1; else minute=base+1;
   return minute>cap?(cap+'+'+(minute-cap)+"'"):(minute+"'");
 }
-function fmtTime(t){t=(t||'').trim();if(!t)return '';var d=new Date('2000-01-01T'+ (t.length<=5?t+':00':t));if(isNaN(d))return t;
-  var h=d.getHours(),m=String(d.getMinutes()).padStart(2,'0'),ap=h>=12?(LANG==='en'?'PM':'م'):(LANG==='en'?'AM':'ص');h=h%12||12;return String(h).padStart(2,'0')+':'+m+' '+ap;}
-function fmtDate(v){if(!v)return '';var d=new Date((''+v).length<=10?v+'T00:00:00':v);if(isNaN(d))return '';
-  return d.toLocaleDateString(LANG==='en'?'en-GB':'ar-EG',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
-
-/* ---------- skeletons ---------- */
-function skCards(n){var h='';for(var i=0;i<(n||6);i++)h+='<div class="sk sk-card"></div>';return '<div class="grid cards">'+h+'</div>';}
-function skList(n){var h='';for(var i=0;i<(n||6);i++)h+='<div class="sk sk-card" style="height:110px"></div>';return '<div class="grid news">'+h+'</div>';}
-function loading(){return '<div class="section-head"><div class="sk sk-line" style="width:160px;height:22px"></div></div>'+skCards(6);}
-
-/* ==================== COMPONENTS ==================== */
-function matchCard(m){
-  var s=matchState(m), lg=m.championship||{}, home=m.home_team_info||m.home_team||{}, away=m.away_team_info||m.away_team||{};
-  var id=m.match_id, started=s.key!=='upcoming';
-  var badge = s.key==='live'?'<span class="badge live"><span class="dot"></span>'+esc(s.label)+'</span>'
-    : s.key==='finished'?'<span class="badge fin">'+esc(s.label)+'</span>'
-    : '<span class="badge up"><i class="bi bi-clock"></i> '+esc(s.label)+'</span>';
-  var mid = started
-    ? '<div class="score">'+(+m.home_scores||0)+' <span class="vs">-</span> '+(+m.away_scores||0)+'</div>'
-    : '<div class="vs" style="font-size:20px">'+ (LANG==='en'?'VS':'ضد') +'</div>';
-  var watch = m.watchable||s.key==='live' ? '<a class="watch" href="?view=match&amp;id='+id+'"><i class="bi bi-play-circle"></i> '+(LANG==='en'?'Match center':'مركز المباراة')+'</a>' : '';
-  return '<a class="match" href="?view=match&amp;id='+id+'">'
-    +'<div class="lg"><img loading="lazy" src="'+leagueImg(lg,'64')+'" alt=""/> '+esc(lg.title||'')+' <span style="margin-inline-start:auto">'+badge+'</span></div>'
-    +'<div class="row">'
-    +'<div class="team"><img loading="lazy" src="'+teamImg(home)+'" alt="'+esc(tname(home))+'"/>'+esc(tname(home))+'</div>'
-    +'<div class="mid">'+mid+'</div>'
-    +'<div class="team"><img loading="lazy" src="'+teamImg(away)+'" alt="'+esc(tname(away))+'"/>'+esc(tname(away))+'</div>'
-    +'</div>'+watch+'</a>';
-}
-function newsCard(n){
-  return '<a class="news-card" href="?view=news&amp;id='+n.id+'">'
-    +'<img class="thumb" loading="lazy" src="'+newsImg(n)+'" alt="'+esc(n.title)+'"/>'
-    +'<div class="body"><h3>'+esc(n.title)+'</h3>'
-    +'<div class="meta"><i class="bi bi-clock"></i> '+esc(fmtDate(n.created_at||n.date||''))+'</div></div></a>';
-}
-function leagueCard(l){
-  return '<a class="league-card" href="?view=league&amp;id='+(l.url_id||l.id)+'">'
-    +'<img loading="lazy" src="'+leagueImg(l)+'" alt="'+esc(l.title||l.ar||'')+'"/>'
-    +'<span>'+esc(l.title||l.ar||l.en||'')+'</span></a>';
-}
-function videoCard(v){
-  var yt=v.youtube_id;
-  return '<div class="video-card" data-yt="'+esc(yt||'')+'" data-url="'+esc(v.video_url||'')+'">'
-    +'<div class="thumb"><img loading="lazy" src="'+esc(v.thumbnail||PH.news)+'" alt="'+esc(v.title)+'"/><span class="play"><i class="bi bi-play-circle-fill"></i></span></div>'
-    +'<div class="body"><h3>'+esc(v.title)+'</h3></div></div>';
-}
-function empty(msg,icon){return '<div class="empty"><i class="bi bi-'+(icon||'inbox')+'"></i>'+esc(msg)+'</div>';}
-function head(title,icon,moreHref,moreTxt){
-  return '<div class="section-head"><i class="bi bi-'+icon+'"></i><h2>'+esc(title)+'</h2>'
-    +(moreHref?'<a class="more" href="'+moreHref+'">'+esc(moreTxt||(LANG==='en'?'All':'الكل'))+' <i class="bi bi-chevron-'+(RTL?'left':'right')+'"></i></a>':'')+'</div>';
-}
-
-/* ==================== PAGES ==================== */
-var app=$('#app'), SET={};
-
-function setMeta(title,desc){
-  document.title=title;
-  var m=$('meta[name="description"]');if(m&&desc)m.content=desc;
-  var c=$('link[rel="canonical"]');if(!c){c=el('<link rel="canonical"/>');document.head.appendChild(c);}
-  c.href=location.href;
-}
-function jsonld(obj){
-  var old=$('#ld-dyn');if(old)old.remove();
-  var s=document.createElement('script');s.type='application/ld+json';s.id='ld-dyn';s.textContent=JSON.stringify(obj);document.head.appendChild(s);
-}
-
-var Pages={};
-
-Pages.home=function(){
-  app.innerHTML='<div class="hero"><h1>'+esc(SET.site?SET.site['name_'+LANG]:'قمهد لايف')+'</h1><p>'+esc(SET.site?SET.site['slogan_'+LANG]:'')+'</p></div>'+loading();
-  setMeta((SET.site?SET.site['name_'+LANG]:'Qamhad Live'),(SET.site?SET.site['slogan_'+LANG]:''));
-  var today=ymd(new Date());
-  Promise.all([apiCached('matches.php?date='+today,60000),apiCached('news.php?page=1',300000),apiCached('league.php',3600000)])
-  .then(function(r){
-    var matches=(r[0].data)||[], news=r[1].data||{}, leagues=(r[2].data)||[];
-    var live=matches.filter(function(m){return matchState(m).key==='live';});
-    var html='<div class="hero"><h1>'+esc(SET.site['name_'+LANG])+'</h1><p>'+esc(SET.site['slogan_'+LANG])+'</p></div>';
-    html+=adSlot('header');
-    if(live.length){html+=head(LANG==='en'?'Live now':'مباشر الآن','broadcast','?view=live');html+='<div class="grid cards">'+live.slice(0,6).map(matchCard).join('')+'</div>';}
-    html+=head(LANG==='en'?"Today's matches":'مباريات اليوم','calendar-event','?view=matches');
-    html+= matches.length?'<div class="grid cards">'+matches.slice(0,8).map(matchCard).join('')+'</div>':empty(LANG==='en'?'No matches today':'لا توجد مباريات اليوم','calendar-x');
-    html+=adSlot('infeed');
-    if(leagues.length){html+=head(LANG==='en'?'Leagues':'البطولات','trophy','?view=leagues');html+='<div class="grid leagues">'+leagues.slice(0,12).map(leagueCard).join('')+'</div>';}
-    var items=news.items||[];
-    if(news.featured)items=[news.featured].concat(items);
-    if(items.length){html+=head(LANG==='en'?'Latest news':'آخر الأخبار','newspaper','?view=news');html+='<div class="grid news">'+items.slice(0,6).map(newsCard).join('')+'</div>';}
-    app.innerHTML=html;
-    jsonld({"@context":"https://schema.org","@type":"WebSite","name":SET.site['name_'+LANG],"url":SET.site.blog_url,"potentialAction":{"@type":"SearchAction","target":SET.site.blog_url+"/?view=search&q={q}","query-input":"required name=q"}});
-  }).catch(function(){app.innerHTML=empty(LANG==='en'?'Failed to load':'تعذّر التحميل','wifi-off');});
-};
-
-Pages.live=function(){
-  app.innerHTML=head(LANG==='en'?'Live matches':'المباريات المباشرة','broadcast')+skCards(6);
-  setMeta((LANG==='en'?'Live matches':'مباريات مباشرة')+' — '+SET.site['name_'+LANG]);
-  api('live.php').then(function(r){
-    var m=r.data||[];
-    app.innerHTML=head(LANG==='en'?'Live matches':'المباريات المباشرة','broadcast')
-      +(m.length?'<div class="grid cards">'+m.map(matchCard).join('')+'</div>':empty(LANG==='en'?'No live matches right now':'لا توجد مباريات مباشرة حالياً','broadcast'));
+function tickClocks(root){
+  $$('[data-status][data-lt]',root).forEach(function(el){
+    var s=el.getAttribute('data-ls'), t=el.getAttribute('data-lt');
+    if(s!=null&&t!=null) el.textContent=liveLabel(s,t);
   });
-};
-
-Pages.matches=function(){
-  var day=q('day')||'today';
-  var dates={yesterday:-1,today:0,tomorrow:1};
-  var tabs=[['yesterday',LANG==='en'?'Yesterday':'أمس'],['today',LANG==='en'?'Today':'اليوم'],['tomorrow',LANG==='en'?'Tomorrow':'غداً']];
-  var d=new Date();d.setDate(d.getDate()+(dates[day]||0));
-  var html=head(LANG==='en'?'Matches':'المباريات','calendar-event');
-  html+='<div class="tabs">'+tabs.map(function(t){return '<a class="tab '+(t[0]===day?'active':'')+'" href="?view=matches&amp;day='+t[0]+'">'+t[1]+'</a>';}).join('')+'</div><div id="mlist">'+skCards(6)+'</div>';
-  app.innerHTML=html;
-  setMeta((LANG==='en'?'Matches':'المباريات')+' — '+SET.site['name_'+LANG]);
-  api('matches.php?date='+ymd(d)).then(function(r){
-    var m=r.data||[];
-    $('#mlist').innerHTML= m.length?'<div class="grid cards">'+m.map(matchCard).join('')+'</div>':empty(LANG==='en'?'No matches':'لا توجد مباريات','calendar-x');
+}
+function tickCountdowns(root){
+  $$('[data-countdown]',root).forEach(function(el){
+    var ts=+el.getAttribute('data-countdown'), diff=ts-Math.floor(Date.now()/1000);
+    if(diff<0){var p=el.closest('.mh-center');return;}
+    var d=Math.floor(diff/86400),h=Math.floor(diff%86400/3600),m=Math.floor(diff%3600/60),s=diff%60,g=el.querySelector.bind(el);
+    function set(sel,v){var n=g('[data-cd="'+sel+'"]');if(n)n.textContent=String(v).padStart(2,'0');}
+    set('d',d);set('h',h);set('m',m);set('s',s);
   });
-};
-
-Pages.match=function(){
-  var id=q('id');if(!id)return go('home');
-  app.innerHTML=loading();
-  api('match.php?id='+id).then(function(r){
-    var d=r.data;if(!d||!d.info)return void(app.innerHTML=empty(LANG==='en'?'Match not found':'لم يتم العثور على المباراة','calendar-x'));
-    var m=d.info,s=d.state||matchState(m),home=m.home_team_info||m.home_team||{},away=m.away_team_info||m.away_team||{},lg=m.championship||{};
-    var started=s.key!=='upcoming';
-    setMeta(tname(home)+' '+(LANG==='en'?'vs':'ضد')+' '+tname(away)+' — '+SET.site['name_'+LANG],(lg.title||''));
-    var html='<div class="card pad" style="margin-top:6px">'
-      +'<div class="lg" style="justify-content:center;margin-bottom:14px"><img src="'+leagueImg(lg,'64')+'" style="width:20px;height:20px"/> '+esc(lg.title||'')+'</div>'
-      +'<div class="row" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">'
-      +'<div class="team" style="display:flex;flex-direction:column;align-items:center;gap:8px"><a href="?view=team&amp;id='+((home.row_id)||(home.id)||'')+'"><img src="'+teamImg(home,'128')+'" style="width:72px;height:72px"/></a><b>'+esc(tname(home))+'</b></div>'
-      +'<div style="text-align:center"><div class="score" style="font-size:34px;font-weight:800">'+(started?((+m.home_scores||0)+' - '+(+m.away_scores||0)):(LANG==='en'?'VS':'ضد'))+'</div>'
-      +'<div style="margin-top:6px">'+(s.key==='live'?'<span class="badge live"><span class="dot"></span>'+esc(s.label)+'</span>':'<span class="badge '+(s.key==='finished'?'fin':'up')+'">'+esc(s.label||fmtTime(m.match_time))+'</span>')+'</div></div>'
-      +'<div class="team" style="display:flex;flex-direction:column;align-items:center;gap:8px"><a href="?view=team&amp;id='+((away.row_id)||(away.id)||'')+'"><img src="'+teamImg(away,'128')+'" style="width:72px;height:72px"/></a><b>'+esc(tname(away))+'</b></div>'
-      +'</div></div>';
-    // channels
-    if(d.channels&&d.channels.length){
-      html+=head(LANG==='en'?'Watch':'المشاهدة','play-btn');
-      html+='<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">'
-        +d.channels.map(function(c,i){return '<button class="btn ghost play-ch" data-idx="'+i+'"><i class="bi bi-play-circle"></i> '+esc(c.name)+'</button>';}).join('')+'</div>';
-      window._chans=d.channels;
-    }
-    // events
-    var evs=d.events||[];
-    if(evs.length){
-      html+=head(LANG==='en'?'Events':'الأحداث','clock-history');
-      html+='<div class="card pad">'+evs.map(eventRow).join('')+'</div>';
-    }
-    // stats
-    if(d.stats&&(d.stats.length||Object.keys(d.stats).length)){
-      html+=head(LANG==='en'?'Statistics':'الإحصائيات','bar-chart');
-      html+='<div class="card pad">'+statBars(d.stats)+'</div>';
-    }
-    // lineups
-    var lu=d.lineup&&d.lineup.lineup;
-    if(lu&&Object.keys(lu).length){
-      html+=head(LANG==='en'?'Lineups':'التشكيلة','people');
-      html+='<div class="card pad">'+lineups(lu)+'</div>';
-    }
-    html+=commentsBlock('/match/'+id);
-    app.innerHTML=html;
-    jsonld({"@context":"https://schema.org","@type":"SportsEvent","name":tname(home)+' vs '+tname(away),"sport":"Soccer","homeTeam":{"@type":"SportsTeam","name":tname(home)},"awayTeam":{"@type":"SportsTeam","name":tname(away)},"startDate":(m.match_date||'')+ (m.match_time?('T'+m.match_time):'')});
-    bindComments('/match/'+id);
-    if(s.key==='live') schedulePoll(function(){if(current.view==='match'&&current.id===id)Pages.match();},60000);
-  });
-};
-function eventRow(ev){
-  var icons={goal:'bi-dribbble',yellow:'bi-square-fill',red:'bi-square-fill',sub:'bi-arrow-left-right',penalty:'bi-dribbble'};
-  var t=(ev.event||ev.type||'').toLowerCase();
-  var ic=t.indexOf('goal')>=0?'bi-dribbble':t.indexOf('yellow')>=0?'bi-square-fill':t.indexOf('red')>=0?'bi-square-fill':t.indexOf('sub')>=0?'bi-arrow-left-right':'bi-circle';
-  var col=t.indexOf('yellow')>=0?'#f59e0b':t.indexOf('red')>=0?'#ef4444':'var(--primary)';
-  var min=(ev.time_minute||ev.minute||'')+(ev.time_plus?('+'+ev.time_plus):'');
-  var who=pname(ev.player_name||ev.player);
-  return '<div class="event"><span class="min">'+esc(min)+"'</span><i class=\"bi "+ic+'" style="color:'+col+'"></i><span>'+esc(who||ev.event||'')+'</span></div>';
 }
-function statBars(stats){
-  var arr=Array.isArray(stats)?stats:Object.keys(stats).map(function(k){return stats[k];});
-  return arr.map(function(s){
-    var h=+(s.home||s.home_value||s.first||0),a=+(s.away||s.away_value||s.second||0),tot=h+a||1;
-    var lab=s.name||s.title||s.type||'';
-    return '<div class="bar-row"><div style="text-align:end;font-weight:800">'+esc(h)+'</div><div class="lab">'+esc(lab)+'</div><div style="font-weight:800">'+esc(a)+'</div></div>'
-      +'<div class="bar"><i style="width:'+Math.round(h/tot*100)+'%"></i></div>';
-  }).join('');
-}
-function lineups(lu){
-  return Object.keys(lu).map(function(tid){
-    var side=lu[tid],list=(side.lineup||[]);
-    return '<div style="margin-bottom:12px"><b>'+esc(side.formation||'')+'</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:8px">'
-      +list.map(function(p){var pl=p.player||{};return '<div style="display:flex;gap:6px;align-items:center;font-size:12.5px"><span class="pos">'+(p.shirt_number||p.number||'')+'</span>'+esc(pname(pl))+'</div>';}).join('')+'</div></div>';
-  }).join('');
-}
+var clockTimer=setInterval(function(){tickClocks(main);tickCountdowns(main);},1000);
 
-Pages.leagues=function(){
-  app.innerHTML=head(LANG==='en'?'Leagues':'البطولات','trophy')+'<div class="grid leagues">'+skCards(12)+'</div>';
-  setMeta((LANG==='en'?'Leagues':'البطولات')+' — '+SET.site['name_'+LANG]);
-  api('league.php').then(function(r){
-    var l=r.data||[];
-    app.innerHTML=head(LANG==='en'?'Leagues':'البطولات','trophy')+(l.length?'<div class="grid leagues">'+l.map(leagueCard).join('')+'</div>':empty('—'));
-  });
-};
-
-Pages.league=function(){
-  var id=q('id');if(!id)return go('leagues');
-  app.innerHTML=loading();
-  api('league.php?id='+id).then(function(r){
-    var d=r.data||{},lg=d.league||{};
-    setMeta((lg.title||'League')+' — '+SET.site['name_'+LANG]);
-    var html=head(lg.title||(LANG==='en'?'League':'البطولة'),'trophy');
-    html+= d.standings&&d.standings.length? standingsTable(d.standings) : '';
-    if(d.scorers&&d.scorers.length){html+=head(LANG==='en'?'Top scorers':'الهدافون','star');html+=scorersTable(d.scorers);}
-    if(d.news&&d.news.length){html+=head(LANG==='en'?'News':'الأخبار','newspaper');html+='<div class="grid news">'+d.news.map(newsCard).join('')+'</div>';}
-    app.innerHTML=html||empty('—');
-  });
-};
-
-Pages.standings=function(){
-  var id=q('id')|| (SET.featured_leagues&&SET.featured_leagues[1]&&SET.featured_leagues[1].id) || 900326;
-  app.innerHTML='<div id="stab"></div>'+loading();
-  var tabs=(SET.featured_leagues||[]).slice(0,8);
-  var th='<div class="tabs">'+tabs.map(function(l){return '<a class="tab '+(''+l.id===''+id?'active':'')+'" href="?view=standings&amp;id='+l.id+'">'+esc(l[LANG]||l.ar)+'</a>';}).join('')+'</div>';
-  setMeta((LANG==='en'?'Standings':'الترتيب')+' — '+SET.site['name_'+LANG]);
-  api('standings.php?league='+id).then(function(r){
-    var d=r.data||{};
-    app.innerHTML=head(LANG==='en'?'Standings':'ترتيب الدوري','list-ol')+th+(d.standings&&d.standings.length?standingsTable(d.standings):empty(LANG==='en'?'No table':'لا يوجد ترتيب'));
-  });
-};
-function standingsTable(rows){
-  var h='<div class="table-wrap"><table class="tbl"><thead><tr>'
-    +'<th>#</th><th class="team-cell" style="text-align:start">'+(LANG==='en'?'Team':'الفريق')+'</th><th>'+(LANG==='en'?'P':'لعب')+'</th><th>'+(LANG==='en'?'W':'ف')+'</th><th>'+(LANG==='en'?'D':'ت')+'</th><th>'+(LANG==='en'?'L':'خ')+'</th><th>'+(LANG==='en'?'GD':'الفرق')+'</th><th>'+(LANG==='en'?'Pts':'نقاط')+'</th></tr></thead><tbody>';
-  rows.forEach(function(r,i){
-    var t=r.team_name||{title:r.team_title,image:r.team_image};
-    h+='<tr><td><span class="pos">'+(r.ranking||r.rank||i+1)+'</span></td>'
-      +'<td class="team-cell"><a href="?view=team&amp;id='+(r.team_id||'')+'"><span><img src="'+teamImg(t)+'"/>'+esc(tname(t))+'</span></a></td>'
-      +'<td>'+(r.play||r.played||0)+'</td><td>'+(r.win||0)+'</td><td>'+(r.draw||0)+'</td><td>'+(r.lose||r.loss||0)+'</td>'
-      +'<td>'+((+r.goal_for||0)-(+r.goal_against||0))+'</td><td><b style="color:var(--primary)">'+(r.point||r.points||0)+'</b></td></tr>';
-  });
-  return h+'</tbody></table></div>';
-}
-function scorersTable(list){
-  var h='<div class="table-wrap"><table class="tbl"><thead><tr><th>#</th><th class="team-cell" style="text-align:start">'+(LANG==='en'?'Player':'اللاعب')+'</th><th>'+(LANG==='en'?'Goals':'أهداف')+'</th></tr></thead><tbody>';
-  list.forEach(function(s,i){
-    var p=s.player_info||s.player||{};
-    h+='<tr><td><span class="pos">'+(i+1)+'</span></td><td class="team-cell"><a href="?view=player&amp;id='+((p.row_id)||(p.id)||'')+'"><span><img src="'+playerImg(p)+'"/>'+esc(pname(p))+'</span></a></td><td><b style="color:var(--primary)">'+(s.goals||s.goal||s.count||0)+'</b></td></tr>';
-  });
-  return h+'</tbody></table></div>';
-}
-
-Pages.scorers=function(){
-  var id=q('id')||(SET.featured_leagues&&SET.featured_leagues[1]&&SET.featured_leagues[1].id)||900326;
-  var tabs=(SET.featured_leagues||[]).slice(0,8);
-  var th='<div class="tabs">'+tabs.map(function(l){return '<a class="tab '+(''+l.id===''+id?'active':'')+'" href="?view=scorers&amp;id='+l.id+'">'+esc(l[LANG]||l.ar)+'</a>';}).join('')+'</div>';
-  app.innerHTML=head(LANG==='en'?'Top scorers':'الهدافون','star')+th+skCards(3);
-  setMeta((LANG==='en'?'Top scorers':'الهدافون')+' — '+SET.site['name_'+LANG]);
-  api('topscorers.php?league='+id).then(function(r){
-    var l=r.data||[];
-    app.innerHTML=head(LANG==='en'?'Top scorers':'الهدافون','star')+th+(l.length?scorersTable(l):empty('—'));
-  });
-};
-
-Pages.team=function(){
-  var id=q('id');if(!id)return go('home');
-  app.innerHTML=loading();
-  api('team.php?id='+id).then(function(r){
-    var d=r.data||{},t=d.team||{};
-    setMeta(tname(t)+' — '+SET.site['name_'+LANG]);
-    var html='<div class="entity-head"><img src="'+teamImg(t,'128')+'"/><div><h1>'+esc(tname(t))+'</h1><div class="sub">'+esc((d.league&&d.league.title)||'')+'</div></div></div>';
-    if(d.fixtures&&d.fixtures.length){html+=head(LANG==='en'?'Fixtures':'المباريات القادمة','calendar-event');html+='<div class="grid cards">'+d.fixtures.slice(0,8).map(matchCard).join('')+'</div>';}
-    if(d.results&&d.results.length){html+=head(LANG==='en'?'Results':'النتائج','check2-circle');html+='<div class="grid cards">'+d.results.slice(0,8).map(matchCard).join('')+'</div>';}
-    if(d.squad&&(d.squad.G||d.squad.length||Object.keys(d.squad).length)){html+=head(LANG==='en'?'Squad':'التشكيلة','people');html+=squadBlock(d.squad);}
-    if(d.news&&d.news.length){html+=head(LANG==='en'?'News':'الأخبار','newspaper');html+='<div class="grid news">'+d.news.map(newsCard).join('')+'</div>';}
-    app.innerHTML=html;
-    jsonld({"@context":"https://schema.org","@type":"SportsTeam","name":tname(t),"sport":"Soccer"});
-  });
-};
-function squadBlock(sq){
-  var groups=['G','D','M','F'],labels={G:LANG==='en'?'Goalkeepers':'حراس',D:LANG==='en'?'Defenders':'دفاع',M:LANG==='en'?'Midfield':'وسط',F:LANG==='en'?'Attack':'هجوم'};
-  if(Array.isArray(sq)){return '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">'+sq.map(playerMini).join('')+'</div>';}
-  var h='';groups.forEach(function(g){var list=sq[g]||[];if(!list.length)return;
-    h+='<div class="section-head" style="margin:14px 0 8px"><h2 style="font-size:15px">'+labels[g]+'</h2></div>';
-    h+='<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">'+list.map(playerMini).join('')+'</div>';
-  });
-  return h;
-}
-function playerMini(p){
-  var pl=p.player||p;
-  return '<a class="card pad" style="text-align:center" href="?view=player&amp;id='+((pl.row_id)||(pl.id)||'')+'"><img src="'+playerImg(pl)+'" style="width:56px;height:56px;margin:0 auto 6px;border-radius:10px"/><div style="font-weight:700;font-size:12.5px">'+esc(pname(pl))+'</div></a>';
-}
-
-Pages.player=function(){
-  var id=q('id');if(!id)return go('home');
-  app.innerHTML=loading();
-  api('player.php?id='+id).then(function(r){
-    var p=r.data||{};var info=p.info||p;
-    if(!info||(!info.name&&!p.name))return void(app.innerHTML=empty(LANG==='en'?'Player not found':'لم يتم العثور على اللاعب','person-x'));
-    var nm=pname(info)||pname(p);
-    setMeta(nm+' — '+SET.site['name_'+LANG]);
-    var html='<div class="entity-head"><img src="'+playerImg(info,'128')+'"/><div><h1>'+esc(nm)+'</h1><div class="sub">'+esc((info.position||info.player_position||''))+' · '+esc((info.team_name||(info.team&&info.team.title)||''))+'</div></div></div>';
-    var vitals=[['البلد','country_title','Country'],['العمر','age','Age'],['الطول','height','Height'],['القيمة','market_value','Value'],['القدم','foot','Foot'],['الرقم','shirt_number','No.']];
-    var vh=vitals.map(function(v){var val=info[v[1]];return val?'<div class="stat-box"><b style="font-size:15px">'+esc(val)+'</b><span>'+(LANG==='en'?v[2]:v[0])+'</span></div>':'';}).join('');
-    if(vh)html+='<div class="stat-grid">'+vh+'</div>';
-    var stats=p.statistics||p.stats||[];
-    if(stats&&stats.length){html+=head(LANG==='en'?'Statistics':'الإحصائيات','bar-chart');
-      html+='<div class="table-wrap"><table class="tbl"><thead><tr><th class="team-cell" style="text-align:start">'+(LANG==='en'?'Competition':'البطولة')+'</th><th>'+(LANG==='en'?'Apps':'مباريات')+'</th><th>'+(LANG==='en'?'Goals':'أهداف')+'</th><th>'+(LANG==='en'?'Assists':'صناعة')+'</th></tr></thead><tbody>'
-        +stats.map(function(s){return '<tr><td class="team-cell">'+esc(s.championship||s.league||s.competition||'')+'</td><td>'+(s.matches||s.apps||s.played||0)+'</td><td>'+(s.goals||0)+'</td><td>'+(s.assists||s.assist||0)+'</td></tr>';}).join('')+'</tbody></table></div>';
-    }
-    app.innerHTML=html;
-    jsonld({"@context":"https://schema.org","@type":"Person","name":nm,"jobTitle":"Footballer"});
-  });
-};
-
-Pages.news=function(){
-  app.innerHTML=head(LANG==='en'?'News':'الأخبار','newspaper')+'<div id="nlist">'+skList(6)+'</div>';
-  setMeta((LANG==='en'?'News':'الأخبار')+' — '+SET.site['name_'+LANG]);
-  var page=1,busy=false,done=false;
-  function load(){
-    if(busy||done)return;busy=true;
-    api('news.php?page='+page).then(function(r){
-      var d=r.data||{},items=d.items||[];
-      if(page===1&&d.featured)items=[d.featured].concat(items);
-      var grid=$('#nlist');
-      if(page===1)grid.innerHTML='<div class="grid news" id="ngrid"></div>';
-      var g=$('#ngrid');
-      items.forEach(function(n){g.appendChild(el(newsCard(n)));});
-      if(!items.length||(d.last_page&&page>=d.last_page))done=true;
-      page++;busy=false;
-      if(done)g.insertAdjacentHTML('afterend','');
-    }).catch(function(){busy=false;});
-  }
-  load();
-  attachInfinite(load);
-};
-
-Pages.news_item=function(){
-  var id=q('id');if(!id)return go('news');
-  app.innerHTML=loading();
-  api('news-details.php?id='+id).then(function(r){
-    var n=r.data;if(!n||!n.title)return void(app.innerHTML=empty(LANG==='en'?'Article not found':'الخبر غير متوفر','file-earmark-x'));
-    setMeta(n.title+' — '+SET.site['name_'+LANG],(n.news_desc||'').slice(0,160));
-    var body=n.full_news||n.news_desc||'';
-    var html='<article class="card" style="margin-top:6px"><img class="thumb" style="width:100%;aspect-ratio:16/9;object-fit:cover" src="'+newsImg(n,'1200')+'"/>'
-      +'<div class="pad"><h1 style="font-size:22px;margin:6px 0 8px">'+esc(n.title)+'</h1>'
-      +'<div class="meta" style="color:var(--muted);font-size:12.5px;margin-bottom:12px"><i class="bi bi-clock"></i> '+esc(fmtDate(n.created_at))+'</div>'
-      +'<div class="article-body" style="font-size:15.5px;line-height:1.9">'+sanitize(body)+'</div></div></article>';
-    html+=adSlot('article');
-    html+=commentsBlock('/news/'+id);
-    app.innerHTML=html;
-    bindComments('/news/'+id);
-    jsonld({"@context":"https://schema.org","@type":"NewsArticle","headline":n.title,"image":[newsImg(n,'1200')],"datePublished":n.created_at||'',"author":{"@type":"Organization","name":SET.site['name_'+LANG]},"publisher":{"@type":"Organization","name":SET.site['name_'+LANG]}});
-  });
-};
-function sanitize(html){
-  var d=document.createElement('div');d.innerHTML=html||'';
-  d.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(function(n){n.remove();});
-  d.querySelectorAll('*').forEach(function(n){for(var i=n.attributes.length-1;i>=0;i--){var a=n.attributes[i].name;if(/^on/i.test(a)||a==='srcset')n.removeAttribute(a);}});
-  return d.innerHTML;
-}
-
-Pages.videos=function(){
-  var champ=q('champ')||'all';
-  app.innerHTML=head(LANG==='en'?'Videos':'الفيديوهات','play-btn')+'<div id="vtabs"></div><div id="vlist">'+skCards(6)+'</div>';
-  setMeta((LANG==='en'?'Videos':'الفيديوهات')+' — '+SET.site['name_'+LANG]);
-  var skip=0,busy=false,done=false,first=true;
-  function load(){
-    if(busy||done)return;busy=true;
-    api('videos.php?champ='+champ+'&skip='+skip).then(function(r){
-      var d=r.data||{},vids=d.videos||[];
-      if(first&&d.categories){$('#vtabs').innerHTML='<div class="tabs">'+d.categories.slice(0,14).map(function(c){return '<a class="tab '+((''+c.id)===(''+champ)?'active':'')+'" href="?view=videos&amp;champ='+c.id+'">'+esc(c.title)+'</a>';}).join('')+'</div>';}
-      if(first)$('#vlist').innerHTML='<div class="grid videos" id="vgrid"></div>';
-      var g=$('#vgrid');vids.forEach(function(v){g.appendChild(el(videoCard(v)));});
-      first=false;
-      if(!d.has_more)done=true;else skip=d.next_skip;
-      busy=false;
-    }).catch(function(){busy=false;});
-  }
-  load();attachInfinite(load);
-};
-
-Pages.channels=function(){
-  app.innerHTML=head(LANG==='en'?'TV Channels':'القنوات','tv')+skCards(6);
-  setMeta((LANG==='en'?'TV Channels':'القنوات')+' — '+SET.site['name_'+LANG]);
-  api('channels.php').then(function(r){
-    var ch=r.data||[];
-    app.innerHTML=head(LANG==='en'?'TV Channels':'القنوات','tv')
-      +(ch.length?'<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">'+ch.map(function(c){return '<button class="card pad play-tv" data-slug="'+esc(c.slug)+'" style="text-align:center;font-weight:700"><i class="bi bi-tv" style="font-size:30px;color:var(--primary);display:block;margin-bottom:8px"></i>'+esc(c.name)+'</button>';}).join('')+'</div>':empty(LANG==='en'?'No channels':'لا توجد قنوات'));
-  });
-};
-
-Pages.search=function(){history.replaceState({},'','?view=home');current.view='home';openSearch();Pages.home();};
-
-Pages.about=function(){staticPage('about',LANG==='en'?'About':'من نحن','info-circle',
-  LANG==='en'?'Qamhad Live delivers real-time football scores, a full match center, standings, statistics, news and highlights — fast, clean and ad-light.':'قمهد لايف يقدّم نتائج كرة القدم المباشرة ومركز مباريات متكامل والترتيب والإحصائيات والأخبار والفيديوهات بسرعة وبتصميم أنيق.');};
-Pages.contact=function(){staticPage('contact',LANG==='en'?'Contact':'اتصل بنا','envelope',
-  (LANG==='en'?'Email us at ':'راسلنا على ')+ (SET.site.email||'info@qamhad.com'));};
-Pages.privacy=function(){staticPage('privacy',LANG==='en'?'Privacy Policy':'سياسة الخصوصية','shield-check',
-  LANG==='en'?'We respect your privacy. This site shows public football data through our own API and uses minimal analytics. No personal data is sold.':'نحترم خصوصيتك. يعرض الموقع بيانات كرة قدم عامة عبر واجهتنا البرمجية ويستخدم تحليلات محدودة، ولا نبيع أي بيانات شخصية.');};
-function staticPage(key,title,icon,body){
-  setMeta(title+' — '+SET.site['name_'+LANG]);
-  app.innerHTML=head(title,icon)+'<div class="card pad" style="font-size:15.5px;line-height:1.9">'+esc(body)+'</div>';
-}
-
-Pages.notfound=function(){
-  setMeta('404 — '+SET.site['name_'+LANG]);
-  app.innerHTML='<div class="empty" style="padding:70px 16px"><i class="bi bi-compass"></i><h2>404</h2><p>'+(LANG==='en'?'Page not found':'الصفحة غير موجودة')+'</p><a class="btn" href="/">'+(LANG==='en'?'Home':'الرئيسية')+'</a></div>';
-};
-
-/* ==================== Comments ==================== */
-function commentsBlock(path){
-  return head(LANG==='en'?'Comments':'التعليقات','chat-dots')
-    +'<div class="card pad"><div id="cList">'+skList(2)+'</div>'
-    +'<div style="display:grid;gap:8px;margin-top:12px">'
-    +'<input id="cName" placeholder="'+(LANG==='en'?'Your name':'اسمك')+'" style="padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)"/>'
-    +'<textarea id="cBody" rows="3" placeholder="'+(LANG==='en'?'Write a comment...':'اكتب تعليقاً...')+'" style="padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text)"></textarea>'
-    +'<button class="btn" id="cSend" style="justify-content:center"><i class="bi bi-send"></i> '+(LANG==='en'?'Send':'إرسال')+'</button></div></div>';
-}
-function bindComments(path){
-  function render(list){
-    var box=$('#cList');if(!box)return;
-    box.innerHTML=list.length?list.map(function(c){return '<div style="padding:10px 0;border-bottom:1px solid var(--border)"><b>'+esc(c.name)+'</b> <span style="color:var(--muted);font-size:11.5px">'+esc(fmtDate(c.at))+'</span><div>'+esc(c.body)+'</div></div>';}).join(''):empty(LANG==='en'?'Be the first to comment':'كن أول من يعلّق','chat');
-  }
-  api('comments.php?path='+encodeURIComponent(path)).then(function(r){render((r.data&&r.data.comments)||[]);});
-  var btn=$('#cSend');if(btn)btn.onclick=function(){
-    var name=$('#cName').value.trim(),body=$('#cBody').value.trim();
-    if(body.length<2)return toast(LANG==='en'?'Comment too short':'التعليق قصير جداً');
-    fetch(API+'/comments.php?lang='+LANG,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,name:name,body:body})})
-      .then(function(r){return r.json();}).then(function(r){
-        if(r.ok){$('#cBody').value='';toast(LANG==='en'?'Comment added':'تم إضافة التعليق');api('comments.php?path='+encodeURIComponent(path)).then(function(r){render((r.data&&r.data.comments)||[]);});}
-        else toast(r.error||'Error');
-      }).catch(function(){toast('Error');});
-  };
-}
-
-/* ==================== Ads ==================== */
-function adSlot(kind){
-  var cfg=SET.ads||{};if(!cfg.adsense_client)return '';
-  var slot=cfg['slot_'+(kind==='infeed'?'infeed':kind==='article'?'article':'header')]||'';
-  if(!slot)return '';
-  return '<div class="ad-slot"><ins class="adsbygoogle" style="display:block" data-ad-client="'+esc(cfg.adsense_client)+'" data-ad-slot="'+esc(slot)+'" data-ad-format="auto" data-full-width-responsive="true"></ins></div>';
-}
-function pushAds(){try{document.querySelectorAll('.adsbygoogle:not([data-done])').forEach(function(ins){ins.setAttribute('data-done','1');(window.adsbygoogle=window.adsbygoogle||[]).push({});});}catch(e){}}
-
-/* ==================== Player (video + HLS) ==================== */
-function openPlayer(mount){var m=$('#playerModal');$('#playerMount').innerHTML=mount;m.classList.add('open');}
-function closePlayer(){var m=$('#playerModal');m.classList.remove('open');$('#playerMount').innerHTML='';}
-function playYouTube(id){openPlayer('<iframe allow="autoplay;encrypted-media;fullscreen" allowfullscreen="" src="https://www.youtube.com/embed/'+esc(id)+'?autoplay=1"></iframe>');}
-function playStream(src){
-  openPlayer('<video id="hlsV" controls autoplay playsinline></video>');
-  var v=$('#hlsV');
-  if(!src||!src.url){return;}
-  if(src.type==='m3u8'||/\.m3u8/.test(src.url)){
-    if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=src.url;}
-    else{loadScript('https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js',function(){
-      if(window.Hls&&Hls.isSupported()){var h=new Hls();h.loadSource(src.url);h.attachMedia(v);}else v.src=src.url;
-    });}
-  }else{v.src=src.url;}
-}
-function loadScript(u,cb){var s=document.createElement('script');s.src=u;s.onload=cb;s.onerror=cb;document.head.appendChild(s);}
-
-document.addEventListener('click',function(e){
-  var pc=e.target.closest('.play-ch');
-  if(pc&&window._chans){var c=window._chans[+pc.dataset.idx];if(c)playStream(c);return;}
-  var vc=e.target.closest('.video-card');
-  if(vc){var yt=vc.dataset.yt;if(yt)playYouTube(yt);else if(vc.dataset.url)window.open(vc.dataset.url,'_blank');return;}
-  var tv=e.target.closest('.play-tv');
-  if(tv){var slug=tv.dataset.slug;toast(LANG==='en'?'Loading channel...':'جارٍ تحميل القناة...');
-    api('channel.php?slug='+encodeURIComponent(slug)).then(function(r){var s=r.data&&r.data.sources&&r.data.sources[0];if(s)playStream(s);else toast(LANG==='en'?'Channel unavailable':'القناة غير متوفرة');});return;}
-});
-
-/* ==================== Search ==================== */
-function openSearch(){$('#searchPanel').classList.add('open');setTimeout(function(){$('#searchInput').focus();},250);renderHistory();}
-function closeSearch(){$('#searchPanel').classList.remove('open');}
-function history(){try{return JSON.parse(localStorage.getItem('q_hist')||'[]');}catch(e){return [];}}
-function pushHistory(term){var h=history().filter(function(t){return t!==term;});h.unshift(term);h=h.slice(0,8);localStorage.setItem('q_hist',JSON.stringify(h));}
-function renderHistory(){
-  var h=history();
-  $('#searchResults').innerHTML=h.length?('<div style="color:var(--muted);font-weight:700;margin-bottom:8px">'+(LANG==='en'?'Recent':'عمليات بحث سابقة')+'</div>'+h.map(function(t){return '<div class="suggest hist" data-term="'+esc(t)+'"><i class="bi bi-clock-history"></i> '+esc(t)+'</div>';}).join('')):'';
-}
-var _sT;
-function doSearch(term){
-  if(term.length<2){renderHistory();return;}
-  clearTimeout(_sT);_sT=setTimeout(function(){
-    $('#searchResults').innerHTML=skList(4);
-    api('search.php?q='+encodeURIComponent(term)).then(function(r){
-      var d=r.data||{},players=d.players||[],teams=d.teams||[];
-      var re=new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
-      function hl(s){return esc(s).replace(re,'<span class="mark">$1</span>');}
-      var html='';
-      teams.forEach(function(t){var tt=t.name||t;html+='<a class="suggest" href="?view=team&id='+((tt.row_id)||(t.row_id)||(t.id)||'')+'"><img src="'+teamImg(tt)+'"/><span>'+hl(tname(tt))+'</span><i class="bi bi-shield" style="margin-inline-start:auto;color:var(--muted)"></i></a>';});
-      players.forEach(function(p){var pp=p.name||p;html+='<a class="suggest" href="?view=player&id='+((pp.row_id)||(p.row_id)||(p.id)||'')+'"><img src="'+playerImg(pp)+'"/><span>'+hl(pname(pp))+'</span><i class="bi bi-person" style="margin-inline-start:auto;color:var(--muted)"></i></a>';});
-      $('#searchResults').innerHTML=html||empty(LANG==='en'?'No results':'لا نتائج','search');
+/* ---------------- per-fragment enhancers ---------------- */
+function enhance(root){
+  // tabs
+  $$('.tabs',root).forEach(function(tabs){
+    tabs.addEventListener('click',function(e){
+      var btn=e.target.closest('.tab');if(!btn)return;
+      var name=btn.getAttribute('data-tab');
+      $$('.tab',tabs).forEach(function(t){t.classList.toggle('active',t===btn);});
+      $$('.tab-panel',root).forEach(function(p){p.classList.toggle('active',p.getAttribute('data-panel')===name);});
     });
-  },250);
+  });
+  // events filter segments
+  $$('[data-events-filter]',root).forEach(function(seg){
+    seg.addEventListener('click',function(){
+      var val=seg.getAttribute('data-events-filter');
+      $$('[data-events-filter]',root).forEach(function(s){s.classList.toggle('active',s===seg);});
+      $$('[data-events-view]',root).forEach(function(v){v.hidden=v.getAttribute('data-events-view')!==val;});
+    });
+  });
+  // show-more reveals
+  $$('[data-show-more]',root).forEach(function(btn){
+    btn.addEventListener('click',function(){
+      $$(btn.getAttribute('data-show-more'),root).forEach(function(el){el.hidden=false;});
+      var wrap=btn.closest('.show-more-wrap');(wrap||btn).remove();
+    });
+  });
+  QF.mark(root);
+  tickClocks(root);tickCountdowns(root);
+  // count-up + rings (static apply)
+  $$('.rc-fg[data-target]',root).forEach(function(fg){requestAnimationFrame(function(){fg.style.strokeDashoffset=fg.getAttribute('data-target');});});
+  $$('img[loading]',root).forEach(function(img){img.loading='lazy';});
 }
 
-/* ==================== Infinite scroll + pull to refresh ==================== */
-var _infinite=null;
-function attachInfinite(cb){_infinite=cb;}
-window.addEventListener('scroll',function(){
-  if(!_infinite)return;
-  if(window.innerHeight+window.scrollY >= document.body.offsetHeight-600)_infinite();
-},{passive:true});
-
-/* pull to refresh (touch) */
-(function(){var sy=0,pull=0,active=false;
-  window.addEventListener('touchstart',function(e){if(window.scrollY<=0){sy=e.touches[0].clientY;active=true;}},{passive:true});
-  window.addEventListener('touchmove',function(e){if(!active)return;pull=e.touches[0].clientY-sy;if(pull>0&&pull<140){$('#ptr').style.height=Math.min(pull,70)+'px';}},{passive:true});
-  window.addEventListener('touchend',function(){if(active&&pull>70){_cache={};route();}$('#ptr').style.height='0';active=false;pull=0;},{passive:true});
-})();
-
-/* live poll */
-var _pollT=null;
-function schedulePoll(fn,ms){clearTimeout(_pollT);_pollT=setTimeout(fn,ms);}
-
-/* ==================== Live bar ==================== */
-function refreshLiveBar(){
-  api('live.php').then(function(r){
-    var m=r.data||[],bar=$('#liveBar');
-    if(!m.length){bar.innerHTML='';return;}
-    bar.innerHTML=m.slice(0,20).map(function(x){var h=x.home_team_info||x.home_team||{},a=x.away_team_info||x.away_team||{};
-      return '<a class="live-chip" href="?view=match&id='+x.match_id+'"><span class="dot"></span>'+esc(tname(h))+' '+(+x.home_scores||0)+'-'+(+x.away_scores||0)+' '+esc(tname(a))+'</a>';}).join('');
-  }).catch(function(){});
+/* ---------------- media / stream player ---------------- */
+function openModal(html){$('#qModalMount').innerHTML=html;$('#qModal').style.display='flex';}
+function closeModal(){$('#qModal').style.display='none';$('#qModalMount').innerHTML='';}
+$('#qModalClose').addEventListener('click',closeModal);
+$('#qModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+function playYouTube(id){openModal('<iframe allow="autoplay;encrypted-media;fullscreen" allowfullscreen="" style="width:100%;aspect-ratio:16/9;border:0;display:block" src="https://www.youtube.com/embed/'+id+'?autoplay=1"></iframe>');}
+function playStream(src,type){
+  openModal('<video id="qV" controls autoplay playsinline style="width:100%;aspect-ratio:16/9;background:#000;display:block"></video>');
+  var v=$('#qV');
+  if((type==='m3u8'||/\.m3u8/.test(src))&&!v.canPlayType('application/vnd.apple.mpegurl')){
+    var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';
+    s.onload=function(){if(window.Hls&&Hls.isSupported()){var h=new Hls();h.loadSource(src);h.attachMedia(v);}else v.src=src;};
+    s.onerror=function(){v.src=src;};document.head.appendChild(s);
+  }else{v.src=src;}
 }
 
-/* ==================== Router ==================== */
-var current={};
-var routes={home:Pages.home,live:Pages.live,matches:Pages.matches,match:Pages.match,leagues:Pages.leagues,league:Pages.league,
-  standings:Pages.standings,scorers:Pages.scorers,team:Pages.team,player:Pages.player,news:Pages.news,videos:Pages.videos,
-  channels:Pages.channels,search:Pages.search,about:Pages.about,contact:Pages.contact,privacy:Pages.privacy};
-
-function route(){
-  _infinite=null;clearTimeout(_pollT);
-  var view=q('view')||'home', id=q('id');
-  current={view:view,id:id};
-  window.scrollTo(0,0);
-  var fn;
-  if(view==='news'&&id)fn=Pages.news_item;
-  else fn=routes[view]||Pages.notfound;
-  try{fn();}catch(e){app.innerHTML=empty(LANG==='en'?'Something went wrong':'حدث خطأ ما','exclamation-triangle');}
-  setActiveNav(view);
-  setTimeout(pushAds,300);
-  if(SET.analytics&&SET.analytics.ga4&&window.gtag)gtag('event','page_view',{page_location:location.href,page_title:document.title});
+/* ---------------- SEO head sync ---------------- */
+function setHead(title,desc,jsonld){
+  if(title)document.title=title;
+  var md=$('meta[name="description"]');if(md&&desc!=null)md.content=desc;
+  var c=$('link[rel="canonical"]');if(!c){c=document.createElement('link');c.rel='canonical';document.head.appendChild(c);}
+  c.href=location.href;
+  $$('script[data-ld]').forEach(function(s){s.remove();});
+  (jsonld||[]).forEach(function(blk){var s=document.createElement('script');s.type='application/ld+json';s.setAttribute('data-ld','1');s.textContent=blk;document.head.appendChild(s);});
 }
-function go(view,replace){var u='?view='+view;if(replace)location.replace(u);else location.href=u;}
 
-/* intercept internal links for SPA nav */
-document.addEventListener('click',function(e){
-  var a=e.target.closest('a');if(!a)return;
-  var href=a.getAttribute('href');if(!href)return;
-  if(a.target==='_blank'||/^https?:\/\//.test(href)||href.indexOf('mailto:')===0)return;
-  if(href==='/'||href.indexOf('?view=')===0){
-    e.preventDefault();
-    if(href==='/')history.pushState({},'',location.pathname);
-    else history.pushState({},'',href);
-    route();
-  }
-});
-window.addEventListener('popstate',route);
+/* ---------------- router ---------------- */
+var APP_RE=/^\/(matches|today|tomorrow|yesterday|live|match|watch|leagues?|teams?|players?|news|videos?|video|standings|top-scorers|scorers|search|favorites|about|privacy|terms|contact)(\/|$)/;
+function isAppPath(p){return p==='/'||APP_RE.test(p);}
 
-function setActiveNav(view){
-  document.querySelectorAll('#headerNav a,#bottomNav a').forEach(function(a){
-    a.classList.toggle('active',a.dataset.view===view||(view==='home'&&a.dataset.view==='home'));
+function renderPath(push){
+  var pathname=decodeURIComponent(location.pathname)||'/';
+  var search=location.search.replace(/^\?/,'').replace(/(^|&)m=1(&|$)/,'$1').replace(/&$/,'');
+  var url=API+'/render.php?path='+encodeURIComponent(pathname)+'&lang='+LANG+(search?'&'+search:'');
+  bar.style.display='block';main.classList.add('q-fade');
+  fetch(url,{headers:{'Accept':'application/json'},credentials:'omit'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.redirect&&d.redirect!==pathname){history.replaceState({},'',d.redirect);return renderPath(false);}
+      bar.style.display='none';main.classList.remove('q-fade');
+      if(!d||d.html==null||d.html===''){return show404();}
+      main.innerHTML=d.html;
+      setHead(d.title,d.description,d.jsonld);
+      enhance(main);
+      setActiveNav(pathname);
+      window.scrollTo(0,0);
+      trackGA();
+    })
+    .catch(function(){bar.style.display='none';main.classList.remove('q-fade');showError();});
+}
+function show404(){
+  main.innerHTML='<div class="q-err"><svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 9h.01M8.5 15a4 4 0 0 1 7 0"/></svg><h2>الصفحة غير موجودة</h2><p><a class="btn btn-primary" href="/">العودة للرئيسية</a></p></div>';
+}
+function showError(){
+  main.innerHTML='<div class="q-err"><svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><h2>تعذّر الاتصال بالخادم</h2><p>يرجى المحاولة بعد قليل.</p></div>';
+}
+function setActiveNav(pathname){
+  var seg='/'+ (pathname.split('/')[1]||'');
+  $$('.main-nav a,.bottom-nav a').forEach(function(a){
+    var href=a.getAttribute('href');
+    a.classList.toggle('active', href===seg || (seg==='/'&&href==='/matches') || (seg==='/'&&href==='/'));
   });
 }
+function trackGA(){if(window.gtag)gtag('event','page_view',{page_location:location.href,page_title:document.title});}
 
-/* ==================== Chrome (nav/footer) ==================== */
-function buildChrome(){
-  var menu=SET.menu||[];
-  $('#headerNav').innerHTML=menu.map(function(m){return '<a data-view="'+m.id+'" href="?view='+m.id+'">'+esc(m[LANG])+'</a>';}).join('');
-  var bn=[['home','house'],['live','broadcast'],['matches','calendar-event'],['news','newspaper'],['videos','play-btn']];
-  $('#bottomNav').innerHTML=bn.map(function(b){var it=menu.filter(function(x){return x.id===b[0];})[0]||{};return '<a data-view="'+b[0]+'" href="?view='+b[0]+'"><i class="bi bi-'+b[1]+'"></i>'+esc(it[LANG]||b[0])+'</a>';}).join('');
-  var soc=SET.social||{},socH='';
-  [['facebook','facebook'],['twitter','twitter-x'],['youtube','youtube'],['telegram','telegram'],['instagram','instagram']].forEach(function(s){if(soc[s[0]])socH+='<a href="'+esc(soc[s[0]])+'" target="_blank" rel="noopener" aria-label="'+s[0]+'"><i class="bi bi-'+s[1]+'"></i></a>';});
-  $('#footerCols').innerHTML=
-    '<div><h4>'+esc(SET.site['name_'+LANG])+'</h4><p style="color:var(--muted);font-size:13px">'+esc(SET.site['slogan_'+LANG])+'</p><div class="social">'+socH+'</div></div>'
-    +'<div><h4>'+(LANG==='en'?'Sections':'الأقسام')+'</h4>'+menu.slice(0,6).map(function(m){return '<a href="?view='+m.id+'">'+esc(m[LANG])+'</a>';}).join('')+'</div>'
-    +'<div><h4>'+(LANG==='en'?'Site':'الموقع')+'</h4><a href="?view=about">'+(LANG==='en'?'About':'من نحن')+'</a><a href="?view=contact">'+(LANG==='en'?'Contact':'اتصل بنا')+'</a><a href="?view=privacy">'+(LANG==='en'?'Privacy':'الخصوصية')+'</a></div>';
-  $('#footerCopy').innerHTML='© '+new Date().getFullYear()+' '+esc(SET.site['name_'+LANG])+' · '+(LANG==='en'?'All rights reserved':'جميع الحقوق محفوظة');
-}
+/* ---------------- click + form interception ---------------- */
+document.addEventListener('click',function(e){
+  // media players (event-delegated on injected content)
+  var vc=e.target.closest('[data-video-card]');
+  if(vc){var href=vc.getAttribute('href')||'';var ytm=href.match(/\/video\/([A-Za-z0-9_-]+)/);
+    if(ytm){e.preventDefault();playYouTube(ytm[1]);return;}}
+  var a=e.target.closest('a');
+  if(!a)return;
+  var raw=a.getAttribute('href');
+  if(!raw)return;
+  if(a.target==='_blank'||a.hasAttribute('download')||/^(https?:)?\/\//.test(raw)||raw.indexOf('mailto:')===0||raw.indexOf('tel:')===0||raw.charAt(0)==='#')return;
+  // resolve to a same-origin pathname
+  var u;try{u=new URL(raw,location.origin);}catch(err){return;}
+  if(u.origin!==location.origin)return;
+  var p=u.pathname;
+  if(p.indexOf('/media')===0||p.indexOf('/assets')===0||p.indexOf('/api')===0||p.indexOf('/render')===0||p.indexOf('/stream')===0)return;
+  if(!isAppPath(p))return;
+  e.preventDefault();
+  if(u.href!==location.href)history.pushState({},'',u.href);
+  renderPath(true);
+},false);
 
-/* ==================== Theme ==================== */
-function applyTheme(){
-  var saved=localStorage.getItem('q_theme');
-  var mode=saved||(SET.theme&&SET.theme.dark_mode)||'auto';
-  var dark = mode==='dark' || (mode==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
-  var b=$('#themeBtn i');if(b)b.className='bi bi-'+(dark?'sun':'moon-stars');
-  var tc=$('meta[name="theme-color"]');if(tc)tc.content=dark?'#0b1220':'#0d9488';
-}
-$('#themeBtn').onclick=function(){var cur=document.documentElement.getAttribute('data-theme');localStorage.setItem('q_theme',cur==='dark'?'light':'dark');applyTheme();};
+document.addEventListener('submit',function(e){
+  var f=e.target;if(f.tagName!=='FORM')return;
+  var action=f.getAttribute('action')||'';
+  // search form → SPA nav
+  if(/search/.test(action)||f.querySelector('input[name="q"],input[type="search"]')){
+    var q=(f.querySelector('input[name="q"],input[type="search"]')||{}).value||'';
+    e.preventDefault();history.pushState({},'','/search?q='+encodeURIComponent(q));renderPath(true);return;
+  }
+  // newsletter/push → post to API host
+  if(/newsletter/.test(action)){
+    e.preventDefault();
+    var email=(f.querySelector('input[type="email"]')||{}).value||'';
+    fetch(API+'/proxy.php?endpoint=settings',{}).catch(function(){});
+    toast('شكراً لاشتراكك');f.reset();return;
+  }
+},false);
 
-/* ==================== Analytics / verification injection ==================== */
-function injectAnalytics(){
-  var a=SET.analytics||{};
+window.addEventListener('popstate',function(){renderPath(false);});
+
+/* ---------------- boot ---------------- */
+// If Blogger served this as its homepage but the address bar shows an app path
+// (404-with-theme), we still route by pathname. Kick off the first render.
+renderPath(false);
+
+/* Analytics (optional): if a GA4 id is configured on the API, load it. */
+fetch(API+'/settings.php?lang='+LANG,{headers:{'Accept':'application/json'}}).then(function(r){return r.json();}).then(function(r){
+  var a=(r&&r.data&&r.data.analytics)||{};
   if(a.ga4){var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id='+a.ga4;document.head.appendChild(s);
     window.dataLayer=window.dataLayer||[];window.gtag=function(){dataLayer.push(arguments);};gtag('js',new Date());gtag('config',a.ga4);}
-  if(a.gtm){var g=document.createElement('script');g.async=true;g.src='https://www.googletagmanager.com/gtm.js?id='+a.gtm;document.head.appendChild(g);}
-  var ads=SET.ads||{};
-  if(ads.adsense_client){var ad=document.createElement('script');ad.async=true;ad.crossOrigin='anonymous';
-    ad.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+ads.adsense_client;document.head.appendChild(ad);
-    if(ads.auto_ads){var ai=document.createElement('script');ai.textContent='(adsbygoogle=window.adsbygoogle||[]).push({google_ad_client:"'+ads.adsense_client+'",enable_page_level_ads:true});';document.head.appendChild(ai);}}
-  var v=SET.verification||{};
-  [['google','google-site-verification'],['bing','msvalidate.01'],['yandex','yandex-verification'],['facebook','facebook-domain-verification']].forEach(function(x){
-    if(v[x[0]]){var m=document.createElement('meta');m.name=x[1];m.content=v[x[0]];document.head.appendChild(m);}});
-}
-
-/* ==================== PWA ==================== */
-function initPWA(){
-  var mani={name:SET.site['name_'+LANG],short_name:'Qamhad',start_url:'/',display:'standalone',background_color:'#0b1220',theme_color:'#0d9488',dir:'rtl',lang:LANG,
-    icons:[{src:API+'/assets/icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]};
-  var blob=new Blob([JSON.stringify(mani)],{type:'application/manifest+json'});
-  var link=document.createElement('link');link.rel='manifest';link.href=URL.createObjectURL(blob);document.head.appendChild(link);
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
-  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window._pwa=e;});
-}
-
-/* ==================== bind static UI ==================== */
-$('#searchBtn').onclick=openSearch;
-$('#searchClose').onclick=closeSearch;
-$('#playerClose').onclick=closePlayer;
-$('#playerModal').addEventListener('click',function(e){if(e.target===this)closePlayer();});
-$('#searchInput').addEventListener('input',function(){doSearch(this.value.trim());});
-$('#searchInput').addEventListener('keydown',function(e){if(e.key==='Enter'){var t=this.value.trim();if(t.length>=2)pushHistory(t);}});
-$('#searchResults').addEventListener('click',function(e){
-  var h=e.target.closest('.hist');if(h){$('#searchInput').value=h.dataset.term;doSearch(h.dataset.term);return;}
-  var a=e.target.closest('a.suggest');if(a){closeSearch();}
-});
-
-/* ==================== boot ==================== */
-applyTheme();
-if(window.matchMedia)window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(){if(!localStorage.getItem('q_theme'))applyTheme();});
-
-api('settings.php').then(function(r){
-  SET=r.data||{};
-  if(!SET.site)SET.site={name_ar:'قمهد لايف',name_en:'Qamhad Live',slogan_ar:'',slogan_en:'',blog_url:location.origin,email:'info@qamhad.com'};
-  // apply theme colors
-  if(SET.theme){var rt=document.documentElement.style;rt.setProperty('--primary',SET.theme.primary);rt.setProperty('--primary-dark',SET.theme.secondary);rt.setProperty('--accent',SET.theme.accent);}
-  buildChrome();applyTheme();injectAnalytics();initPWA();
-  route();refreshLiveBar();setInterval(refreshLiveBar,60000);
-}).catch(function(){
-  SET={site:{name_ar:'قمهد لايف',name_en:'Qamhad Live',slogan_ar:'',slogan_en:'',blog_url:location.origin,email:'info@qamhad.com'},menu:[
-    {id:'home',ar:'الرئيسية',en:'Home'},{id:'live',ar:'مباشر',en:'Live'},{id:'matches',ar:'المباريات',en:'Matches'},
-    {id:'leagues',ar:'البطولات',en:'Leagues'},{id:'news',ar:'الأخبار',en:'News'},{id:'videos',ar:'فيديو',en:'Videos'},{id:'channels',ar:'القنوات',en:'TV'}
-  ],featured_leagues:[]};
-  buildChrome();route();toast(LANG==='en'?'API offline — check api.qamhad.com':'تعذّر الاتصال بالخادم');
-});
+  var ad=(r&&r.data&&r.data.ads)||{};
+  if(ad.adsense_client){var x=document.createElement('script');x.async=true;x.crossOrigin='anonymous';x.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+ad.adsense_client;document.head.appendChild(x);}
+}).catch(function(){});
 
 })();
 //]]></script>

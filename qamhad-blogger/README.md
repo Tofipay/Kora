@@ -7,17 +7,24 @@ scorers, teams, players, news, videos and TV channels) that talks to **one backe
 https://api.qamhad.com/
 ```
 
-The Blogger template is a single‑page app (RTL, dark mode, Material‑3 / glassmorphism,
-skeleton loading, infinite scroll, PWA). It **never** calls any external provider directly —
-every request goes through your own PHP proxy on `api.qamhad.com`, which hides the upstream
-data sources, caches everything on disk, and adds CORS, GZIP/Brotli, ETag, rate‑limiting and
-security hardening.
+This is a **1:1 conversion** of the original PHP site — not a re‑skin. The Blogger theme is a
+native XML **shell** (header, nav, footer, router). Each page's body is the project's *own*
+markup — the exact same views, cards, tables, timelines, formations and `app.css` — rendered
+by the API server (`render.php`) and composed into the shell with instant, History‑API
+navigation. Clicks open pages normally (no long‑press, no preview); media loads from
+`api.qamhad.com`; the upstream data sources stay hidden server‑side.
 
 ```
-Browser (Blogger)  ──►  https://api.qamhad.com/*.php  ──►  upstream data (hidden, server‑side)
-        ▲                         │
-        └────────  JSON  ◄────────┘   (disk cache + stale fallback)
+Browser (Blogger shell)                api.qamhad.com
+  click /match/real-madrid-123  ──►  render.php  ──►  original views + app.css
+        ▲                                │                     │
+        └──── <main> fragment + SEO ◄────┘   ◄── upstream data (hidden, cached)
+  (History API — instant, no reload)
 ```
+
+The theme loads the real design system once from `https://api.qamhad.com/assets/app.css`,
+so colours, spacing, typography and every component are identical to the PHP site. JSON data
+endpoints (`/matches.php`, `/live.php`, …) remain available for any custom widgets.
 
 ---
 
@@ -35,10 +42,11 @@ qamhad-blogger/
    ├─ statistics.php standings.php topscorers.php league.php team.php player.php
    ├─ news.php news-details.php search.php videos.php channels.php channel.php
    ├─ comments.php settings.php media.php stream.php
+   ├─ render.php         ← renders the real pages as <main> fragments (the theme)
    ├─ sitemap.php robots.php health.php status.php
    ├─ .htaccess
-   ├─ assets/            (brand placeholder images)
-   ├─ engine/            (the proven upstream engine — NOT web‑accessible)
+   ├─ assets/            (app.css — the REAL design system — + logos, placeholders)
+   ├─ engine/            (the original app: Core + Controllers + Views + config)
    └─ storage/           (writable: cache + settings + rate‑limit state)
 ```
 
@@ -224,6 +232,7 @@ server {
 
 | Endpoint | Params | Returns |
 |---|---|---|
+| `render.php` | `path`, `lang` | **the theme's engine** — a page's `<main>` fragment + SEO (title, description, JSON‑LD) as JSON |
 | `settings.php` | `lang` | front‑end config (brand, menu, ads, analytics) |
 | `matches.php` | `date=YYYY-MM-DD`, `lang` | matches for a day |
 | `live.php` | `lang` | matches in play now |

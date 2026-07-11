@@ -27,6 +27,25 @@ if (preg_match('#^media/(.+)$#i', $path, $m)) {
     exit;
 }
 
+/* Static theme assets (app.css, logos, placeholders). On Apache/nginx the
+ * web server serves these directly; this makes them work on any host too. */
+if (preg_match('#^assets/([A-Za-z0-9._\-]+)$#', $path, $m)) {
+    $file = __DIR__ . '/assets/' . $m[1];
+    if (is_file($file)) {
+        $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        $types = ['css' => 'text/css', 'js' => 'application/javascript', 'svg' => 'image/svg+xml',
+                  'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg',
+                  'webp' => 'image/webp', 'ico' => 'image/x-icon', 'json' => 'application/json'];
+        header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream') . '; charset=utf-8');
+        header('Access-Control-Allow-Origin: *');
+        header('Cache-Control: public, max-age=604800');
+        readfile($file);
+        exit;
+    }
+    http_response_code(404);
+    exit;
+}
+
 /* Root → API index. */
 if ($path === '' || $path === 'index.php') {
     require_once __DIR__ . '/config.php';

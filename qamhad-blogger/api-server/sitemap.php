@@ -23,12 +23,10 @@ $base = blog_url();
 $type = (string)($_GET['type'] ?? 'index');
 
 function loc(string $s): string { return htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8'); }
-function deep(string $base, string $view, $id = null, array $extra = []): string
+/** Clean SEO path on the blog domain (matches the theme's pathname routing). */
+function deep(string $base, string $path): string
 {
-    $q = ['view' => $view];
-    if ($id !== null) $q['id'] = $id;
-    $q += $extra;
-    return $base . '/?' . http_build_query($q);
+    return $base . '/' . ltrim($path, '/');
 }
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -52,7 +50,7 @@ if ($type === 'news') {
         if ($id <= 0) continue;
         $title = (string)($n['title'] ?? '');
         $date  = date('c', strtotime((string)($n['created_at'] ?? 'now')) ?: time());
-        echo "  <url><loc>" . loc(deep($base, 'news', $id)) . "</loc>\n"
+        echo "  <url><loc>" . loc(deep($base, news_url($n))) . "</loc>\n"
            . "    <news:news><news:publication><news:name>" . loc(SITE_NAME_AR)
            . "</news:name><news:language>ar</news:language></news:publication>"
            . "<news:publication_date>{$date}</news:publication_date>"
@@ -69,7 +67,7 @@ if ($type === 'video') {
     foreach (array_slice($vids, 0, 80) as $v) {
         $yt = (string)($v['youtube_id'] ?? '');
         if ($yt === '') continue;
-        echo "  <url><loc>" . loc(deep($base, 'video', $yt)) . "</loc>\n"
+        echo "  <url><loc>" . loc(deep($base, '/video/' . $yt)) . "</loc>\n"
            . "    <video:video><video:thumbnail_loc>" . loc((string)($v['thumbnail'] ?? '')) . "</video:thumbnail_loc>"
            . "<video:title>" . loc((string)($v['title'] ?? '')) . "</video:title>"
            . "<video:description>" . loc(mb_substr((string)($v['title'] ?? ''), 0, 200)) . "</video:description>"
@@ -87,7 +85,7 @@ if ($type === 'image') {
         $id  = (int)($n['id'] ?? 0);
         $img = api_media('news', '640', $n['image'] ?? null);
         if ($id <= 0 || $img === '') continue;
-        echo "  <url><loc>" . loc(deep($base, 'news', $id)) . "</loc>\n"
+        echo "  <url><loc>" . loc(deep($base, news_url($n))) . "</loc>\n"
            . "    <image:image><image:loc>" . loc($img) . "</image:loc>"
            . "<image:caption>" . loc((string)($n['title'] ?? '')) . "</image:caption></image:image></url>\n";
     }
@@ -98,10 +96,10 @@ if ($type === 'image') {
 /* type=main (default) */
 echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 $urls = [$base . '/'];
-foreach (['live', 'matches', 'leagues', 'standings', 'scorers', 'news', 'videos', 'channels', 'about', 'contact', 'privacy'] as $v) {
+foreach (['live', 'matches', 'leagues', 'standings', 'top-scorers', 'news', 'videos', 'about', 'contact', 'privacy'] as $v) {
     $urls[] = deep($base, $v);
 }
-foreach (FAVORITE_LEAGUES as $l) $urls[] = deep($base, 'league', $l['url_id']);
+foreach (FAVORITE_LEAGUES as $l) $urls[] = $base . league_url(['url_id' => $l['url_id'], 'title' => $l['ar']]);
 foreach ($urls as $u) {
     echo "  <url><loc>" . loc($u) . "</loc><changefreq>hourly</changefreq><priority>0.8</priority></url>\n";
 }
