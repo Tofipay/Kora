@@ -243,6 +243,22 @@ var clockTimer=setInterval(function(){tickClocks(main);tickCountdowns(main);},10
 
 /* ---------------- per-fragment enhancers ---------------- */
 function enhance(root){
+  // REVEAL FIX: the original app.css hides every `.reveal` section
+  // (opacity:0) until app.js adds `.in` via IntersectionObserver. The shell
+  // must do the same or all content stays invisible. Reveal immediately so
+  // content is always shown, then observe only for the fade-in animation.
+  var reveals=$$('.reveal',root);
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(ents){ents.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});},{rootMargin:'0px 0px -5% 0px'});
+    reveals.forEach(function(el){io.observe(el);});
+    // Safety net: anything still hidden after 400ms (e.g. below the fold on a
+    // short viewport, or IO not firing) is force-revealed so nothing is lost.
+    setTimeout(function(){reveals.forEach(function(el){el.classList.add('in');});},400);
+  } else {
+    reveals.forEach(function(el){el.classList.add('in');});
+  }
+  // Stat-count rings & counters (were animated by app.js on intersect).
+  $$('[data-count]',root).forEach(function(el){var v=el.getAttribute('data-count');if(v!=null)el.textContent=v;});
   // tabs
   $$('.tabs',root).forEach(function(tabs){
     tabs.addEventListener('click',function(e){
@@ -314,13 +330,14 @@ function renderPath(push){
     .then(function(d){
       if(d&&d.redirect&&d.redirect!==pathname){history.replaceState({},'',d.redirect);return renderPath(false);}
       bar.style.display='none';main.classList.remove('q-fade');
-      if(!d||d.html==null||d.html===''){return show404();}
+      if(!d||d.html==null||d.html===''){console.warn('[Qamhad] empty fragment for',pathname,d&&d.status);return show404();}
       main.innerHTML=d.html;
       setHead(d.title,d.description,d.jsonld);
       enhance(main);
       setActiveNav(pathname);
       window.scrollTo(0,0);
       trackGA();
+      try{console.log('[Qamhad] rendered',pathname,'| html',d.html.length,'bytes | reveal:',main.querySelectorAll('.reveal').length,'| cards:',main.querySelectorAll('.match-card,.standings tr,.scorer-row,.news-card,.league-block').length);}catch(e){}
     })
     .catch(function(){bar.style.display='none';main.classList.remove('q-fade');showError();});
 }

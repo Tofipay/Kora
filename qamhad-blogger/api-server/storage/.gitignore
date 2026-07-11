@@ -1,0 +1,10 @@
+# Runtime-generated files (never commit)
+cache/api/*
+cache/media/*
+state/*
+settings/comments/*
+settings/analytics.json
+settings/newsletter.json
+settings/push_tokens.json
+!.gitkeep
+!**/.gitkeep
