@@ -23,16 +23,22 @@ define('API_HOST_URL', rtrim(getenv('QAMHAD_API_URL') ?: 'https://api.qamhad.com
 
 /* ---------------------------------------------------------------------------
  *  CORS — who may call this API from a browser.
- *  The Blogger template lives on your blog domain; list every host that must
- *  reach the API. "*.blogspot.com" style wildcards are supported.
- *  Set QAMHAD_ALLOWED_ORIGINS="https://a.com,https://b.com" to override.
+ *  This serves PUBLIC, read-only sports data with NO cookies/credentials, so it
+ *  is safe (and simplest) to allow ANY blog domain by default — the theme works
+ *  the moment it is installed on qamhad.com, *.blogspot.com, gamhed.online, or
+ *  any custom domain. "*.example.com" wildcards are supported.
+ *  To LOCK the API to specific domains, either replace '*' below with your list
+ *  or set QAMHAD_ALLOWED_ORIGINS="https://a.com,https://b.com".
  * ------------------------------------------------------------------------- */
 const API_ALLOWED_ORIGINS = [
+    '*',                        // allow any origin (public data) — remove to restrict
     'https://www.qamhad.com',
     'https://qamhad.com',
-    'https://qamhad.blogspot.com',
+    'https://www.gamhed.online',
+    'https://gamhed.online',
     '*.blogspot.com',
     '*.qamhad.com',
+    '*.gamhed.online',
 ];
 
 /* ---------------------------------------------------------------------------
