@@ -118,16 +118,28 @@ final class ApiJson
         $token = trim((string)($raw['token'] ?? ''));
         if ($token === '' || strlen($token) > 4096) View::json(['ok' => false], 422);
 
-        // Validate requested topics against the known list; empty → 'all'.
-        $valid = array_column(notify_topics(), 'slug');
-        $topics = array_values(array_intersect(
-            is_array($raw['topics'] ?? null) ? array_map('strval', $raw['topics']) : [],
-            $valid
-        ));
-        if (!$topics) $topics = ['all'];
-
         $tokens = Settings::get('push_tokens', []);
         if (!is_array($tokens)) $tokens = [];
+
+        // Full opt-out: {disable:true} removes the token → no more pushes.
+        if (!empty($raw['disable'])) {
+            $tokens = array_values(array_filter($tokens, static fn($row): bool =>
+                !is_array($row) || ($row['token'] ?? '') !== $token
+            ));
+            Settings::set('push_tokens', $tokens);
+            View::json(['ok' => true, 'disabled' => true]);
+        }
+
+        // Topic slugs are pattern-validated ("lg_{url_id}" / "all") rather
+        // than checked against today's league list — competitions rotate
+        // with the fixtures window, and an off-season league subscription
+        // must survive until it plays again. Empty → 'all'.
+        $requested = is_array($raw['topics'] ?? null) ? array_map('strval', $raw['topics']) : [];
+        $topics = array_values(array_unique(array_filter(
+            array_slice($requested, 0, 300),
+            static fn(string $s): bool => $s === 'all' || preg_match('/^lg_\d{1,10}$/', $s) === 1
+        )));
+        if (!$topics) $topics = ['all'];
 
         // Update in place if the token already exists (re-saving new topics),
         // otherwise append.

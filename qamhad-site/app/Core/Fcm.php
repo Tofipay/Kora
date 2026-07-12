@@ -211,12 +211,15 @@ final class Fcm
     }
 
     /**
-     * Broadcast to every stored push subscriber. Prunes tokens FCM reports as
-     * unregistered so the subscriber list self-heals without losing live ones.
+     * Broadcast to stored push subscribers. When $topic is given (a per-league
+     * slug like "lg_339"), only tokens subscribed to that topic — or to 'all',
+     * or saved before per-league topics existed (legacy slugs) — receive it;
+     * admin broadcasts pass no topic and reach everyone. Prunes tokens FCM
+     * reports as unregistered so the subscriber list self-heals.
      *
      * @return array{ok:bool,summary:string,sent:int,failed:int,pruned:int}
      */
-    public static function broadcast(string $title, string $body, ?string $url = null): array
+    public static function broadcast(string $title, string $body, ?string $url = null, ?string $topic = null): array
     {
         $fail = fn(string $m): array => ['ok' => false, 'summary' => $m, 'sent' => 0, 'failed' => 0, 'pruned' => 0];
 
@@ -239,6 +242,7 @@ final class Fcm
         foreach ($tokens as $row) {
             $tk = is_array($row) ? (string)($row['token'] ?? '') : (string)$row;
             if ($tk === '') continue;
+            if ($topic !== null && !self::wantsTopic($row, $topic)) continue;
             $r = self::sendToToken($tk, $message, (string)$at['token'], $projectId);
             if ($r['ok']) {
                 $sent++;
@@ -259,6 +263,25 @@ final class Fcm
 
         $summary = "Sent {$sent}, failed {$failed}" . ($prune ? ', pruned ' . count($prune) . ' stale token(s)' : '');
         return ['ok' => $sent > 0, 'summary' => $summary, 'sent' => $sent, 'failed' => $failed, 'pruned' => count($prune)];
+    }
+
+    /**
+     * Does this stored token row want pushes for the given per-league topic?
+     * Rules: 'all' → yes; the exact topic → yes; a row whose topics predate
+     * the per-league system (no "lg_" slug at all) → yes (legacy opt-in was
+     * effectively "everything"); otherwise the visitor toggled the league OFF.
+     */
+    private static function wantsTopic($row, string $topic): bool
+    {
+        if (!is_array($row)) return true;                        // bare legacy token
+        $topics = $row['topics'] ?? null;
+        if (!is_array($topics) || !$topics) return true;         // no preference stored
+        if (in_array('all', $topics, true)) return true;
+        if (in_array($topic, $topics, true)) return true;
+        foreach ($topics as $t) {
+            if (is_string($t) && str_starts_with($t, 'lg_')) return false; // chose leagues, not this one
+        }
+        return true;                                             // legacy slugs only
     }
 
     /**

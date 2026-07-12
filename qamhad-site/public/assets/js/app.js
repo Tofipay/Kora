@@ -450,12 +450,37 @@
     });
   }
 
-  /* ---------------- Push notifications (topic bottom sheet) ---------------- */
+  /* ---------------- Push notifications (two-step bottom sheet) -------------
+   * Step 1 (enable): permission + FCM token → subscribed to ALL championships.
+   * Step 2 (manage): shown only once enabled — every championship from the
+   * matches API with its own switch; turning one off stops its alerts, and
+   * turning everything off disables push entirely. */
   const notifyBtn = $('#notify-btn');
   const sheet = $('#notify-sheet');
   const ar = () => document.documentElement.lang === 'ar';
   if (notifyBtn) {
     const configured = ('Notification' in window) && Q.fcm && Q.fcm.apiKey;
+    const stepEnable = sheet && $('[data-push-step="enable"]', sheet);
+    const stepManage = sheet && $('[data-push-step="manage"]', sheet);
+    const allBoxes = () => $$('#notify-sheet .sheet-body input[type=checkbox]');
+    const pushOn = () => {
+      try { return localStorage.getItem('q_push_on') === '1' && Notification.permission === 'granted'; }
+      catch (e) { return false; }
+    };
+    // Show the step matching the current state and restore saved switches.
+    const syncStep = () => {
+      if (!stepEnable || !stepManage) return;
+      const on = pushOn();
+      stepEnable.hidden = on;
+      stepManage.hidden = !on;
+      if (!on) return;
+      let saved = [];
+      try { saved = JSON.parse(localStorage.getItem('q_topics') || '[]'); } catch (e) {}
+      const all = !saved.length || saved.includes('all');
+      allBoxes().forEach(c => { c.checked = all || saved.includes(c.value); });
+      const master = $('[data-topics-all]', sheet);
+      if (master) master.checked = all;
+    };
     const openSheet = () => {
       if (!sheet) return;
       sheet.hidden = false;
@@ -474,47 +499,81 @@
         QToast(ar() ? 'الإشعارات غير مهيأة بعد' : 'Notifications not configured yet');
         return;
       }
-      // restore previously chosen topics
-      let saved = [];
-      try { saved = JSON.parse(localStorage.getItem('q_topics') || '[]'); } catch (e) {}
-      if (saved.length) $$('#notify-sheet input[type=checkbox]').forEach(c => { c.checked = saved.includes(c.value); });
+      syncStep();
       openSheet();
     });
     if (sheet) {
       $$('[data-sheet-close]', sheet).forEach(el => el.addEventListener('click', closeSheet));
-      // "select all" master toggle
+      // "all competitions" master toggle
       const master = $('[data-topics-all]', sheet);
       if (master) master.addEventListener('change', () => {
-        $$('#notify-sheet .topic-row input[type=checkbox]').forEach(c => { c.checked = master.checked; });
+        allBoxes().forEach(c => { c.checked = master.checked; });
       });
-      const saveBtn = $('[data-topics-save]', sheet);
-      if (saveBtn) saveBtn.addEventListener('click', async () => {
-        const topics = $$('#notify-sheet .topic-row input:checked').map(c => c.value);
-        if (!topics.length) { QToast(ar() ? 'اختر بطولة واحدة على الأقل' : 'Pick at least one'); return; }
-        saveBtn.disabled = true;
-        saveBtn.classList.add('is-loading');
+      const getFcmToken = async () => {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+        const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
+        const app = initializeApp(Q.fcm);
+        const messaging = getMessaging(app);
+        const reg = await navigator.serviceWorker.ready;
+        return getToken(messaging, { vapidKey: Q.fcm.vapidKey, serviceWorkerRegistration: reg });
+      };
+      const subscribe = (body) => fetch('/api/push-subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const busy = (btn, on) => { btn.disabled = on; btn.classList.toggle('is-loading', on); };
+
+      // Step 1: enable — subscribe to everything, then reveal the manage list.
+      const enableBtn = $('[data-push-enable]', sheet);
+      if (enableBtn) enableBtn.addEventListener('click', async () => {
+        busy(enableBtn, true);
         try {
           const perm = await Notification.requestPermission();
           if (perm !== 'granted') { QToast(ar() ? 'تم رفض الإذن' : 'Permission denied'); return; }
-          const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-          const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
-          const app = initializeApp(Q.fcm);
-          const messaging = getMessaging(app);
-          const reg = await navigator.serviceWorker.ready;
-          const token = await getToken(messaging, { vapidKey: Q.fcm.vapidKey, serviceWorkerRegistration: reg });
-          if (token) {
-            await fetch('/api/push-subscribe', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token, topics })
-            });
-            localStorage.setItem('q_topics', JSON.stringify(topics));
-            QToast(ar() ? 'تم تفعيل الإشعارات ✓' : 'Notifications enabled ✓');
-            closeSheet();
-          }
+          const token = await getFcmToken();
+          if (!token) throw new Error('no-token');
+          await subscribe({ token, topics: ['all'] });
+          localStorage.setItem('q_push_on', '1');
+          localStorage.setItem('q_push_token', token);
+          localStorage.setItem('q_topics', JSON.stringify(['all']));
+          QToast(ar() ? 'تم تفعيل الإشعارات لجميع البطولات ✓' : 'Alerts enabled for all competitions ✓');
+          syncStep();
         } catch (err) {
           QToast(ar() ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
         } finally {
-          saveBtn.disabled = false; saveBtn.classList.remove('is-loading');
+          busy(enableBtn, false);
+        }
+      });
+
+      // Step 2: save preferences — none checked means full opt-out.
+      const saveBtn = $('[data-topics-save]', sheet);
+      if (saveBtn) saveBtn.addEventListener('click', async () => {
+        const boxes = allBoxes();
+        const picked = boxes.filter(c => c.checked).map(c => c.value);
+        busy(saveBtn, true);
+        try {
+          const token = localStorage.getItem('q_push_token') || await getFcmToken();
+          if (!token) throw new Error('no-token');
+          if (!picked.length) {
+            await subscribe({ token, disable: true });
+            localStorage.removeItem('q_push_on');
+            localStorage.setItem('q_topics', '[]');
+            QToast(ar() ? 'تم إيقاف جميع الإشعارات' : 'All alerts turned off');
+            syncStep();
+            return;
+          }
+          // Everything on → store 'all' so championships added later are included.
+          const topics = picked.length === boxes.length ? ['all'] : picked;
+          await subscribe({ token, topics });
+          localStorage.setItem('q_push_on', '1');
+          localStorage.setItem('q_push_token', token);
+          localStorage.setItem('q_topics', JSON.stringify(topics));
+          QToast(ar() ? 'تم حفظ تفضيلاتك ✓' : 'Preferences saved ✓');
+          closeSheet();
+        } catch (err) {
+          QToast(ar() ? 'تعذر حفظ التفضيلات' : 'Could not save preferences');
+        } finally {
+          busy(saveBtn, false);
         }
       });
     }

@@ -70,22 +70,27 @@ final class Notifier
             $url = absolute_url(match_url($m));
             $vs  = "{$home} × {$away}";
 
+            // The match's championship → per-league topic ("lg_{url_id}"),
+            // so each push only reaches visitors subscribed to that league.
+            $champId = (int)($m['championship']['url_id'] ?? 0);
+            $topic   = $champId > 0 ? 'lg_' . $champId : null;
+
             // Any score/status change → the match page content changed.
             if ($p['s'] !== $status || $p['h'] !== $hs || $p['a'] !== $as) {
                 $changedUrls[] = $url;
             }
 
             if (!empty($events['match_start']) && $p['s'] === 0 && in_array($status, [1, 2, 3], true)) {
-                $queue[] = ["⚽ بدأت المباراة", $vs, $url];
+                $queue[] = ["⚽ بدأت المباراة", $vs, $url, $topic];
             }
             if (!empty($events['goal']) && ($hs > $p['h'] || $as > $p['a'])) {
-                $queue[] = ["⚽ هدف! {$hs} - {$as}", $vs, $url];
+                $queue[] = ["⚽ هدف! {$hs} - {$as}", $vs, $url, $topic];
             }
             if (!empty($events['half_time']) && $p['s'] === 1 && $status === 2) {
-                $queue[] = ["نهاية الشوط الأول {$hs} - {$as}", $vs, $url];
+                $queue[] = ["نهاية الشوط الأول {$hs} - {$as}", $vs, $url, $topic];
             }
             if (!empty($events['full_time']) && $p['s'] !== 4 && $status === 4) {
-                $queue[] = ["انتهت المباراة {$hs} - {$as}", $vs, $url];
+                $queue[] = ["انتهت المباراة {$hs} - {$as}", $vs, $url, $topic];
             }
         }
 
@@ -100,8 +105,8 @@ final class Notifier
         }
 
         $sent = 0;
-        foreach (array_slice($queue, 0, 12) as [$title, $body, $url]) {
-            $r = Fcm::broadcast($title, $body, $url);
+        foreach (array_slice($queue, 0, 12) as [$title, $body, $url, $topic]) {
+            $r = Fcm::broadcast($title, $body, $url, $topic);
             $sent += (int)($r['sent'] ?? 0);
         }
 

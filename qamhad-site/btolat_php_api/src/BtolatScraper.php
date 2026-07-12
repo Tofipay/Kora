@@ -303,7 +303,29 @@ final class BtolatScraper
             $provider = 'direct';
         }
 
-        $categoryNode = $this->firstNode($xpath, "//a[starts-with(@href, '/league/') and not(contains(@href, '/news/')) and not(contains(@href, '/videos/'))][1]");
+        // التصنيف: أول رابط /league/ في الصفحة قد يكون عنصر قائمة تنقّل
+        // (فيظهر تصنيف خاطئ مثل «دوري أبطال أوروبا» لكل الفيديوهات) —
+        // لذلك نفضّل أولًا رابطًا يحمل class تصنيف كما في بطاقات القوائم،
+        // ثم أي رابط /league/ خارج عناصر التنقل، وأخيرًا السلوك القديم.
+        $categoryNode = $this->firstNode(
+            $xpath,
+            "//a[(contains(concat(' ', normalize-space(@class), ' '), ' category ')"
+            . " or contains(concat(' ', normalize-space(@class), ' '), ' categoryTag '))"
+            . " and contains(@href, '/league/')]"
+        );
+        if (!$categoryNode instanceof DOMElement) {
+            $categoryNode = $this->firstNode(
+                $xpath,
+                "//a[starts-with(@href, '/league/') and not(contains(@href, '/news/')) and not(contains(@href, '/videos/'))"
+                . " and not(ancestor::nav) and not(ancestor::header) and not(ancestor::footer)"
+                . " and not(ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' menu ')"
+                . " or contains(concat(' ', normalize-space(@class), ' '), ' nav ')"
+                . " or contains(concat(' ', normalize-space(@class), ' '), ' navbar ')"
+                . " or contains(concat(' ', normalize-space(@class), ' '), ' header ')])][1]"
+            );
+        }
+        // لا يوجد رابط تصنيف خارج عناصر التنقل → نُرجع null بدل تصنيف خاطئ
+        // (التصنيف الصحيح يأتي حينها من بطاقة القائمة المخزنة في الموقع).
         $category = $categoryNode instanceof DOMElement ? $this->categoryFromAnchor($categoryNode) : null;
 
         return [

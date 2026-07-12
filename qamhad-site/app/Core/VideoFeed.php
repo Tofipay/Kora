@@ -223,23 +223,65 @@ final class VideoFeed
     }
 
     /**
-     * Locate a video's LIST CARD in the recent cached batches. The card's
-     * category is always the video's own championship (the detail page's
-     * first /league/ link can be a nav menu item — the "wrong category"
-     * bug), and it carries the publish date too.
+     * Locate a video's LIST CARD — its category is always the video's own
+     * championship (the detail page's first /league/ link can be a nav menu
+     * item — the "wrong category" bug), and it carries the publish date too.
      *
-     * @return array|null normalized card or null when not in recent batches
+     * Resolution order:
+     *   1. the per-id card store — every card rendered ANYWHERE on the site
+     *      (championship tabs, search, related, sitemap walks) is written
+     *      through to disk, so a video opened from ANY section resolves to
+     *      its own correct championship;
+     *   2. a scan of the freshest "all" batches (also fills the store).
+     *
+     * @return array|null normalized card or null when unknown
      */
-    public static function cardOf(int $id, int $scanBatches = 4): ?array
+    public static function cardOf(int $id, int $scanBatches = 6): ?array
     {
+        $stored = self::storedCard($id);
+        if ($stored !== null) return $stored;
+
         for ($p = 1; $p <= $scanBatches; $p++) {
             $batch = self::batch('all', $p);
+            $hit = null;
             foreach ($batch['videos'] as $raw) {
-                if ((int)($raw['id'] ?? 0) === $id) return self::normalize($raw);
+                $n = self::normalize($raw); // normalize() write-throughs the store
+                if ($n['id'] === $id) $hit = $n;
             }
+            if ($hit !== null) return $hit;
             if (empty($batch['has_more'])) break;
         }
         return null;
+    }
+
+    /** Directory of the per-id card store (inside the Btolat cache dir). */
+    private static function cardDir(): string
+    {
+        return STORAGE_DIR . '/cache/btolat';
+    }
+
+    /** Read a remembered card from the store (id → card JSON file). */
+    private static function storedCard(int $id): ?array
+    {
+        $f = self::cardDir() . '/card-' . $id . '.json';
+        if (!is_file($f)) return null;
+        $j = json_decode((string)@file_get_contents($f), true);
+        return is_array($j) && !empty($j['title']) ? $j : null;
+    }
+
+    /**
+     * Write a normalized card through to the per-id store. Card data is
+     * immutable (title/category/date never change after publication), so a
+     * card is written once and read forever — one stat() per render after.
+     */
+    private static function rememberCard(array $n): void
+    {
+        if ($n['id'] < 1 || $n['champ_title'] === '' || $n['title'] === '') return;
+        $dir = self::cardDir();
+        $f = $dir . '/card-' . $n['id'] . '.json';
+        if (is_file($f)) return;
+        if (!is_dir($dir)) @mkdir($dir, 0775, true);
+        @file_put_contents($f, json_encode($n, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
 
     /**
@@ -393,7 +435,7 @@ final class VideoFeed
         // Never show a provider placeholder image — brand fallback instead.
         if (preg_match('#(^|/)[a-z0-9_]*default\.#i', $thumb)) $thumb = '';
 
-        return [
+        $n = [
             'id'          => (int)($item['id'] ?? 0),
             'title'       => trim((string)($item['title'] ?? '')),
             'video_url'   => (string)($item['page_url'] ?? ''),
@@ -403,6 +445,11 @@ final class VideoFeed
             'champ_title' => trim((string)($item['category']['name'] ?? '')),
             'created_at'  => (string)($item['published_at'] ?? $item['published_date'] ?? ''),
         ];
+        // Every card that passes through the site (any tab, search, related,
+        // sitemap) is remembered so the play page can resolve the video's
+        // OWN championship later — see cardOf().
+        self::rememberCard($n);
+        return $n;
     }
 
     /** Append a line to the video feed log (best-effort, capped). */
