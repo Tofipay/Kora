@@ -1,0 +1,14 @@
+# Reclaims /api/* for the application router (server installs whose document
+# root is the SITE ROOT, not public/).
+#
+# Symptom this file cures: every /api/... URL answers
+#   {"ok":false,"error":"unknown_endpoint","endpoint":"api"}
+# That response does not exist anywhere in this codebase — it comes from a
+# LEFTOVER api/ directory of an older deployment whose own .htaccess hijacks
+# the /api prefix (a deeper .htaccess always wins in Apache/LiteSpeed).
+# Extracting this archive overwrites that stray file with this one, which
+# hands every request straight back to the front controller.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^ /public/index.php [L]
+</IfModule>

@@ -50,6 +50,8 @@ $router->get('/videos/page/{n:\d+}', fn($a) => Videos::index((int)$a['n']));
 /* Numeric id → Btolat in-site player. Must be registered BEFORE the legacy
    YouTube-id pattern so digits never fall through to it. */
 $router->get('/video/{id:\d+}', fn($a) => Videos::play((int)$a['id']));
+/* Standalone player document — the video sitemap's <video:player_loc>. */
+$router->get('/video/{id:\d+}/embed', fn($a) => Videos::embed((int)$a['id']));
 /* Legacy 11-char YouTube ids (match-page videos tab). The router uses "}" as
    the placeholder terminator, so no {11} quantifier — length-checked in watch(). */
 $router->get('/video/{ytId:[A-Za-z0-9_\-]+}', fn($a) => Videos::watch($a['ytId']));
@@ -80,6 +82,20 @@ $router->get('/sitemap-video.xml', [Sitemap::class, 'videos']);
 $router->get('/media/{path:.+}', fn($a) => Media::serve($a['path']));
 
 /* ---------- Internal JSON API (live refresh, PWA) ---------- */
+// Diagnostic: proves WHICH application answered /api/* on this host and
+// echoes the raw request — if this URL returns anything without
+// "app":"qamhad-router", something outside this codebase (old api/ folder,
+// panel context, CDN worker) is intercepting the /api prefix.
+$router->any('/api/ping', function (): void {
+    \Qamhad\Core\View::json([
+        'ok'     => true,
+        'app'    => 'qamhad-router',
+        'build'  => build_token(),
+        'method' => (string)($_SERVER['REQUEST_METHOD'] ?? ''),
+        'uri'    => (string)($_SERVER['REQUEST_URI'] ?? ''),
+        'host'   => (string)($_SERVER['HTTP_HOST'] ?? ''),
+    ]);
+});
 $router->get('/api/live-scores', [ApiJson::class, 'liveScores']);
 $router->get('/api/videos', [ApiJson::class, 'videos']);
 $router->get('/api/match/{id:\d+}', fn($a) => ApiJson::match((int)$a['id']));
@@ -87,6 +103,11 @@ $router->post('/api/newsletter', [ApiJson::class, 'newsletter']);
 // any(): POST (JSON body), GET (query fallback — survives host-canonical
 // 301s that flip POST→GET on some hosting setups) and OPTIONS (preflight).
 $router->any('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);
+// Alias: same handler forced into opt-out mode.
+$router->any('/api/push-unsubscribe', function (): void {
+    $_GET['disable'] = '1';
+    ApiJson::pushSubscribe();
+});
 
 /* ---------- URL-triggered cron (shared hosting: wget/curl) ---------- */
 $router->get('/cron/notify', [ApiJson::class, 'cronNotify']);

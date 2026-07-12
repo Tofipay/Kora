@@ -388,7 +388,7 @@ final class Sitemap
         // Whole-body disk cache (same pattern as sitemap-match): a cold
         // build fans out to up to 12 upstream LoadMore calls; serving the
         // last rendered body for 15 minutes caps the worst case.
-        $bodyKey = 'sitemap-video-body-v2';
+        $bodyKey = 'sitemap-video-body-v3';
         $cached = \Qamhad\Core\Cache::get($bodyKey, 900);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -407,6 +407,10 @@ final class Sitemap
             if ($id < 1 || isset($seen[$id])) continue;
             $seen[$id] = true;
             $loc   = absolute_url(path('video/' . $id));
+            // player_loc MUST be a real player URL, DIFFERENT from <loc>
+            // (Google Search Console: "<video:player_loc> has the same value
+            // as <loc>") — the /embed document is a standalone player.
+            $player = absolute_url(path('video/' . $id . '/embed'));
             $title = htmlspecialchars((string)$v['title'], ENT_XML1);
             $thumb = htmlspecialchars((string)($v['thumbnail'] ?: SITE_URL . '/assets/brand/og-default.png'), ENT_XML1);
             $ts    = to_ts((string)($v['created_at'] ?? ''));
@@ -415,7 +419,7 @@ final class Sitemap
                 . '<video:thumbnail_loc>' . $thumb . '</video:thumbnail_loc>'
                 . '<video:title>' . $title . '</video:title>'
                 . '<video:description>' . $title . '</video:description>'
-                . '<video:player_loc>' . htmlspecialchars($loc, ENT_XML1) . '</video:player_loc>'
+                . '<video:player_loc allow_embed="yes">' . htmlspecialchars($player, ENT_XML1) . '</video:player_loc>'
                 . ($ts ? '<video:publication_date>' . date('c', $ts) . '</video:publication_date>' : '')
                 . '<video:family_friendly>yes</video:family_friendly>'
                 . '<video:live>no</video:live>'

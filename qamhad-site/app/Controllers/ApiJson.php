@@ -144,7 +144,8 @@ final class ApiJson
         if (!is_array($tokens)) $tokens = [];
 
         // Full opt-out: {disable:true} removes the token → no more pushes.
-        if (!empty($raw['disable'])) {
+        // ($_GET check: the /api/push-unsubscribe alias forces this mode.)
+        if (!empty($raw['disable']) || !empty($_GET['disable'])) {
             $tokens = array_values(array_filter($tokens, static fn($row): bool =>
                 !is_array($row) || ($row['token'] ?? '') !== $token
             ));

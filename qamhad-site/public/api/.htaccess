@@ -3,3 +3,17 @@ Options -Indexes
 <Files "_boot.php">
   Require all denied
 </Files>
+
+# The *.php files in this directory are legacy first-party JSON proxies and
+# are served directly. EVERY other /api/* path (live-scores, push-subscribe,
+# push-unsubscribe, ping, ...) belongs to the application router.
+#
+# These rules also neutralize any stray api/.htaccess that hijacked the /api
+# prefix on older deployments (symptom: {"error":"unknown_endpoint"}) —
+# extracting the archive overwrites it.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule \.php$ - [L]
+  RewriteRule ^ /index.php [L]
+</IfModule>

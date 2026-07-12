@@ -159,6 +159,61 @@ final class Videos
     }
 
     /**
+     * GET /video/{id}/embed — standalone, iframe-embeddable player document
+     * (no site chrome). This is the <video:player_loc> target of the video
+     * sitemap: Google requires it to be an actual PLAYER URL, different from
+     * the video's HTML landing page (<loc>).
+     */
+    public static function embed(int $id): void
+    {
+        if ($id < 1) View::notFound();
+        $v = VideoFeed::find($id);
+        if ($v === null) View::notFound();
+
+        header('Cache-Control: public, max-age=21600');
+        header('Content-Type: text/html; charset=utf-8');
+
+        $title  = e($v['title']);
+        $poster = $v['thumbnail'] !== '' ? e($v['thumbnail']) : '';
+
+        if (!empty($v['media_url']) && empty($v['is_hls'])) {
+            $inner = '<video controls playsinline preload="metadata"'
+                . ($poster ? ' poster="' . $poster . '"' : '')
+                . ' src="' . e($v['media_url']) . '"></video>';
+        } elseif (!empty($v['media_url'])) {
+            $inner = '<video controls playsinline preload="metadata"'
+                . ($poster ? ' poster="' . $poster . '"' : '')
+                . ' data-src="' . e($v['media_url']) . '"></video>'
+                . '<script src="/assets/vendor/hls.min.js"></script>'
+                . '<script>var v=document.querySelector("video"),s=v.dataset.src;'
+                . 'if(v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;}'
+                . 'else if(window.Hls&&Hls.isSupported()){var h=new Hls();h.loadSource(s);h.attachMedia(v);}</script>';
+        } elseif (!empty($v['youtube_id'])) {
+            $inner = '<iframe src="https://www.youtube-nocookie.com/embed/' . e($v['youtube_id'])
+                . '?rel=0&amp;playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+        } elseif (!empty($v['tweet_id'])) {
+            $inner = '<iframe src="https://platform.twitter.com/embed/Tweet.html?id=' . e($v['tweet_id'])
+                . '&amp;theme=dark" allowfullscreen></iframe>';
+        } elseif (!empty($v['embed_iframe'])) {
+            $inner = '<iframe src="' . e($v['embed_iframe']) . '" referrerpolicy="no-referrer"'
+                . ' allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
+        } else {
+            $inner = ($poster ? '<img src="' . $poster . '" alt="' . $title . '">' : '')
+                . '<p>' . $title . '</p>';
+        }
+
+        echo '<!doctype html><html lang="' . e(\Qamhad\Core\Lang::current()) . '"><head>'
+            . '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            . '<meta name="robots" content="noindex">'
+            . '<title>' . $title . '</title>'
+            . '<style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,sans-serif}'
+            . 'video,iframe,img{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:contain}'
+            . 'p{position:absolute;bottom:12px;inset-inline:12px;text-align:center;font-size:14px}</style>'
+            . '</head><body>' . $inner . '</body></html>';
+        exit;
+    }
+
+    /**
      * GET /video/{ytId} (11-char YouTube id) — legacy in-site YouTube player.
      * Still used by the match-page videos tab (match API video_links).
      */
