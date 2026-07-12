@@ -10,7 +10,9 @@ use Qamhad\Core\View;
  *                         on block it AUTO-falls back to the X embed when one
  *                         exists, else shows the blocked note + platform button
  *   3. tweet_id         → X post embedded IN-SITE (platform.twitter.com)
- *   4. nothing exposed  → poster + note (no source-site link, ever)
+ *   4. embed_iframe     → generic external player (vortexvision & friends,
+ *                         from the source's ld+json embedURL) in an iframe
+ *   5. nothing exposed  → poster + note (no source-site link, ever)
  *
  * Platform buttons (YouTube / X) are always offered when known — the user
  * chooses between in-site playback and the platform.
@@ -79,8 +81,15 @@ $xEmbed = $tweetId !== ''
       <iframe class="vp-iframe vp-x-frame" src="<?= e($xEmbed) ?>" title="X"
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
     </div>
+    <?php elseif (!empty($v['embed_iframe'])): ?>
+    <!-- 4) Generic external player (ld+json embedURL) — in-site iframe -->
+    <div class="vp-stage">
+      <iframe class="vp-iframe" src="<?= e((string)$v['embed_iframe']) ?>" title="<?= e($title) ?>"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen
+              referrerpolicy="no-referrer" loading="eager" frameborder="0"></iframe>
+    </div>
     <?php else: ?>
-    <!-- 4) No public player exposed: poster + honest note (never a source link) -->
+    <!-- 5) No public player exposed: poster + honest note (never a source link) -->
     <div class="vp-stage">
       <div class="vp-poster" aria-hidden="true">
         <?php if ($poster !== ''): ?>

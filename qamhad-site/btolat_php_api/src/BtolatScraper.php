@@ -249,20 +249,6 @@ final class BtolatScraper
         }
         $mediaUrl ??= $this->metaContent($xpath, 'property', 'og:video');
 
-        // Extract from ld+json
-        $ldJsonNode = $this->firstNode($xpath, "//script[@type='application/ld+json']");
-        if ($ldJsonNode instanceof DOMElement) {
-            $ldJson = json_decode($ldJsonNode->textContent, true);
-            if (is_array($ldJson) && ($ldJson['@type'] ?? null) === 'VideoObject') {
-                if (isset($ldJson['embedURL'])) {
-                    $embedUrl = $ldJson['embedURL'];
-                    $provider = 'ld_json'; // Or determine based on embedURL content
-                }
-                // Prioritize mediaUrl from ld+json if available and not already set
-                $mediaUrl ??= $ldJson['contentUrl'] ?? null;
-            }
-        }
-
         $provider = null;
         $embedUrl = null;
         $externalUrl = null;
@@ -278,6 +264,39 @@ final class BtolatScraper
             $provider = 'x';
             $externalUrl = preg_replace('/\?.*$/', '', $xStatus->getAttribute('href'));
             $embedUrl = $externalUrl;
+        }
+
+        // 1. البحث عن وسم script الذي يحتوي على بيانات ld+json
+        // (يعمل كمصدر مكمّل بعد فحوصات DOM أعلاه حتى لا تُمحى نتائجه —
+        // النسخة السابقة كانت تصفّر المتغيرات بعده فتضيع روابط مثل
+        // https://nvtboo.vortexvisionworks.com/embed/…)
+        $ldJsonNode = $this->firstNode($xpath, "//script[@type='application/ld+json']");
+        if ($ldJsonNode instanceof DOMElement) {
+            // 2. تحويل النص إلى مصفوفة PHP
+            $ldJson = json_decode($ldJsonNode->textContent, true);
+
+            // 3. التأكد من أن البيانات تخص كائن فيديو (VideoObject)
+            if (is_array($ldJson) && ($ldJson['@type'] ?? null) === 'VideoObject') {
+
+                // 4. استخراج رابط التضمين (embedURL) مباشرة مهما كان نوعه
+                if ($provider === null && isset($ldJson['embedURL']) && is_string($ldJson['embedURL'])) {
+                    $embedUrl = $ldJson['embedURL'];
+
+                    // 5. تحديد نوع المزود (يوتيوب، إكس، أو مشغل خارجي)
+                    if (str_contains($embedUrl, 'youtube.com') || str_contains($embedUrl, 'youtu.be')) {
+                        $provider = 'youtube';
+                    } elseif (str_contains($embedUrl, 'twitter.com') || str_contains($embedUrl, 'x.com')) {
+                        $provider = 'x';
+                        $externalUrl = preg_replace('/\?.*$/', '', $embedUrl);
+                    } else {
+                        // هنا يتم التقاط روابط مثل vortexvision وغيرها
+                        $provider = 'external_embed';
+                    }
+                }
+
+                // Prioritize mediaUrl from ld+json if available and not already set
+                $mediaUrl ??= $ldJson['contentUrl'] ?? null;
+            }
         }
 
         if ($mediaUrl !== null && $provider === null) {

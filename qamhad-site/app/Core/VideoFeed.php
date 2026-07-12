@@ -188,6 +188,16 @@ final class VideoFeed
         // Direct stream: mp4 vs HLS (m3u8 plays through the site's hls.js).
         $isHls = $media !== '' && preg_match('/\.m3u8(\?|$)/i', $media) === 1;
 
+        // Generic external embed player (e.g. vortexvisionworks and friends,
+        // reported by the scraper's ld+json pass as 'external_embed'):
+        // anything with an https embed URL that is neither YouTube nor X
+        // renders in-site inside a plain iframe.
+        $externalEmbed = null;
+        if ($ytId === null && $tweetId === null && $embed !== ''
+            && preg_match('#^https://#i', $embed) === 1) {
+            $externalEmbed = $embed;
+        }
+
         return [
             'id'           => $id,
             'title'        => trim((string)$d['title']),
@@ -201,6 +211,7 @@ final class VideoFeed
             'youtube_id'   => $ytId,
             'tweet_id'     => $tweetId,
             'x_url'        => $xUrl,
+            'embed_iframe' => $externalEmbed,
         ];
     }
 
