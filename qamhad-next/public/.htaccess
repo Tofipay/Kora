@@ -1,0 +1,63 @@
+# =============================================================================
+#  Qamhad Live — static Next.js front-end + kept PHP backend (one docroot)
+# =============================================================================
+#  Upload the built `out/` contents to public_html, and place the existing PHP
+#  backend alongside it (see DEPLOYMENT.md). Order matters:
+#    1. real files/folders (Next static pages, assets, /api/*.php) served as-is;
+#    2. virtual PHP routes (api/videos, stream, media, watch, yacine, match,
+#       server-search, sitemaps) → the UNCHANGED PHP front controller;
+#    3. dynamic detail deep-links (/news/x, /video/x, …) → their client shell;
+#    4. clean-URL fallback to folder index.html.
+#  Live streaming and live data keep running through the PHP layer untouched.
+# =============================================================================
+
+Options -MultiViews +FollowSymLinks
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # ---- 1) Real files / folders served exactly as requested ----
+  #   → Next static HTML, _next assets, /assets/*, and the real /api/*.php files.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # ---- 2) Virtual PHP routes → the existing PHP front controller ----
+  #   These need the server: external API secrets, the HMAC stream proxy,
+  #   Yacine decryption, the live match-center (with its dynamic SEO), the
+  #   media proxy, dynamic sitemaps and the multi-entity server search.
+  RewriteRule ^api/            index.php [L]
+  RewriteRule ^stream/?$       index.php [L]
+  RewriteRule ^media/          index.php [L]
+  RewriteRule ^watch/          index.php [L]
+  RewriteRule ^yacine/         index.php [L]
+  RewriteRule ^match/          index.php [L]
+  RewriteRule ^search/?$       index.php [L]
+  RewriteRule ^(teams|players)/?$ index.php [L]
+  RewriteRule ^sitemap.*\.xml$ index.php [L]
+
+  # ---- 3) Dynamic detail deep-links → their client shell ----
+  #   The trailing id/slug is read from the URL client-side; the shell fetches
+  #   from /api. (Prefer routing these to PHP instead — see DEPLOYMENT.md — if
+  #   you want full server-rendered per-item SEO.)
+  RewriteRule ^news/.+$    news/article/index.html   [L]
+  RewriteRule ^video/.+$   video/watch/index.html    [L]
+  RewriteRule ^league/.+$  league/league/index.html  [L]
+  RewriteRule ^team/.+$    team/team/index.html      [L]
+  RewriteRule ^player/.+$  player/player/index.html  [L]
+
+  # ---- 4) Clean-URL fallback: reach the folder's index.html ----
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  RewriteRule ^(.+?)/?$ $1/index.html [L]
+</IfModule>
+
+# ---- Caching ----
+<IfModule mod_headers.c>
+  <FilesMatch "\.(?:js|css|woff2?|png|jpg|jpeg|svg|webp|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
