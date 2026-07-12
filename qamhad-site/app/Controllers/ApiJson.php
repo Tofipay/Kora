@@ -127,6 +127,7 @@ final class ApiJson
                 !is_array($row) || ($row['token'] ?? '') !== $token
             ));
             Settings::set('push_tokens', $tokens);
+            \Qamhad\Core\Fcm::log('subscribe', 'opt-out …' . substr($token, -8) . ' (total ' . count($tokens) . ')');
             View::json(['ok' => true, 'disabled' => true]);
         }
 
@@ -157,7 +158,15 @@ final class ApiJson
             $tokens[] = ['token' => $token, 'at' => date('c'), 'topics' => $topics];
             if (count($tokens) > 20000) $tokens = array_slice($tokens, -20000);
         }
-        Settings::set('push_tokens', $tokens);
+        // Settings::set reports the actual DISK write — surface storage
+        // problems to the client instead of a silent success with an empty
+        // subscriber list ("admin sees no subscribers").
+        $persisted = Settings::set('push_tokens', $tokens);
+        \Qamhad\Core\Fcm::log('subscribe', ($persisted ? 'ok' : 'WRITE FAILED')
+            . ' …' . substr($token, -8) . ' topics=' . implode(',', $topics)
+            . ' (total ' . count($tokens) . ')');
+        if (!$persisted) View::json(['ok' => false, 'error' => 'storage_write_failed'], 500);
+
         View::json(['ok' => true, 'topics' => $topics]);
     }
 

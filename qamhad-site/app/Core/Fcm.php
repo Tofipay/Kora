@@ -337,8 +337,8 @@ final class Fcm
         return [$code, (string)$res];
     }
 
-    /** Append a timestamped failure reason to storage/settings/fcm.log. */
-    private static function log(string $kind, string $msg): void
+    /** Append a timestamped event to storage/settings/fcm.log (shown in admin). */
+    public static function log(string $kind, string $msg): void
     {
         @file_put_contents(
             self::logPath(),

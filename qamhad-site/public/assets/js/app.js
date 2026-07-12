@@ -458,15 +458,40 @@
   const notifyBtn = $('#notify-btn');
   const sheet = $('#notify-sheet');
   const ar = () => document.documentElement.lang === 'ar';
+  const configured = ('Notification' in window) && Q.fcm && Q.fcm.apiKey;
+  const pushOn = () => {
+    try { return localStorage.getItem('q_push_on') === '1' && Notification.permission === 'granted'; }
+    catch (e) { return false; }
+  };
+  const getFcmToken = async () => {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
+    const app = initializeApp(Q.fcm);
+    const messaging = getMessaging(app);
+    const reg = await navigator.serviceWorker.ready;
+    return getToken(messaging, { vapidKey: Q.fcm.vapidKey, serviceWorkerRegistration: reg });
+  };
+  // Registers the token server-side. The server's answer is VERIFIED — a
+  // 4xx/5xx or a non-ok body throws, so the UI can never claim success while
+  // the subscriber list stays empty (the "admin sees no subscribers" bug).
+  const subscribe = async (body) => {
+    const res = await fetch('/api/push-subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    let j = null;
+    try { j = await res.json(); } catch (e) {}
+    if (!res.ok || !j || j.ok !== true) throw new Error('HTTP ' + res.status);
+    return j;
+  };
+  const markSynced = (token) => {
+    localStorage.setItem('q_push_token', token);
+    localStorage.setItem('q_push_sync', String(Date.now()));
+  };
   if (notifyBtn) {
-    const configured = ('Notification' in window) && Q.fcm && Q.fcm.apiKey;
     const stepEnable = sheet && $('[data-push-step="enable"]', sheet);
     const stepManage = sheet && $('[data-push-step="manage"]', sheet);
     const allBoxes = () => $$('#notify-sheet .sheet-body input[type=checkbox]');
-    const pushOn = () => {
-      try { return localStorage.getItem('q_push_on') === '1' && Notification.permission === 'granted'; }
-      catch (e) { return false; }
-    };
     // Show the step matching the current state and restore saved switches.
     const syncStep = () => {
       if (!stepEnable || !stepManage) return;
@@ -509,19 +534,9 @@
       if (master) master.addEventListener('change', () => {
         allBoxes().forEach(c => { c.checked = master.checked; });
       });
-      const getFcmToken = async () => {
-        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-        const { getMessaging, getToken } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
-        const app = initializeApp(Q.fcm);
-        const messaging = getMessaging(app);
-        const reg = await navigator.serviceWorker.ready;
-        return getToken(messaging, { vapidKey: Q.fcm.vapidKey, serviceWorkerRegistration: reg });
-      };
-      const subscribe = (body) => fetch('/api/push-subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
       const busy = (btn, on) => { btn.disabled = on; btn.classList.toggle('is-loading', on); };
+      const failMsg = (err) => (ar() ? 'تعذر الحفظ — ' : 'Could not save — ')
+        + String(err && err.message ? err.message : 'network').slice(0, 60);
 
       // Step 1: enable — subscribe to everything, then reveal the manage list.
       const enableBtn = $('[data-push-enable]', sheet);
@@ -534,12 +549,12 @@
           if (!token) throw new Error('no-token');
           await subscribe({ token, topics: ['all'] });
           localStorage.setItem('q_push_on', '1');
-          localStorage.setItem('q_push_token', token);
           localStorage.setItem('q_topics', JSON.stringify(['all']));
+          markSynced(token);
           QToast(ar() ? 'تم تفعيل الإشعارات لجميع البطولات ✓' : 'Alerts enabled for all competitions ✓');
           syncStep();
         } catch (err) {
-          QToast(ar() ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
+          QToast(failMsg(err));
         } finally {
           busy(enableBtn, false);
         }
@@ -552,7 +567,9 @@
         const picked = boxes.filter(c => c.checked).map(c => c.value);
         busy(saveBtn, true);
         try {
-          const token = localStorage.getItem('q_push_token') || await getFcmToken();
+          // Always mint a fresh token — a stale stored one would register a
+          // dead device on the server.
+          const token = await getFcmToken();
           if (!token) throw new Error('no-token');
           if (!picked.length) {
             await subscribe({ token, disable: true });
@@ -566,16 +583,37 @@
           const topics = picked.length === boxes.length ? ['all'] : picked;
           await subscribe({ token, topics });
           localStorage.setItem('q_push_on', '1');
-          localStorage.setItem('q_push_token', token);
           localStorage.setItem('q_topics', JSON.stringify(topics));
+          markSynced(token);
           QToast(ar() ? 'تم حفظ تفضيلاتك ✓' : 'Preferences saved ✓');
           closeSheet();
         } catch (err) {
-          QToast(ar() ? 'تعذر حفظ التفضيلات' : 'Could not save preferences');
+          QToast(failMsg(err));
         } finally {
           busy(saveBtn, false);
         }
       });
+    }
+  }
+
+  /* Self-healing re-sync — runs on EVERY page (not just the home CTA): when
+   * this device has notifications on, re-register its token + topics with the
+   * server once a day. Covers FCM token rotation, a reset/pruned server list,
+   * and any subscribe POST that failed silently in older versions. */
+  if (configured && pushOn()) {
+    const last = +(localStorage.getItem('q_push_sync') || 0);
+    if (Date.now() - last > 864e5) {
+      setTimeout(async () => {
+        try {
+          const token = await getFcmToken();
+          if (!token) return;
+          let topics = [];
+          try { topics = JSON.parse(localStorage.getItem('q_topics') || '[]'); } catch (e) {}
+          if (!topics.length || topics.indexOf('all') !== -1) topics = ['all'];
+          await subscribe({ token, topics });
+          markSynced(token);
+        } catch (e) { /* retried next visit */ }
+      }, 4000);
     }
   }
 
