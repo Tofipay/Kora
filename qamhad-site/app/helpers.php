@@ -1084,7 +1084,9 @@ function site_logo(bool $dark = false): string
     $s = Settings::get('branding', []);
     $key = $dark ? 'logo_dark' : 'logo';
     if (!empty($s[$key])) return '/assets/uploads/' . $s[$key];
-    return $dark ? '/assets/brand/logo-dark.svg' : '/assets/brand/logo.svg';
+    // English pages get the Latin wordmark; Arabic keeps the Arabic one.
+    $en = \Qamhad\Core\Lang::current() === 'en' ? '-en' : '';
+    return '/assets/brand/logo' . $en . ($dark ? '-dark' : '') . '.svg';
 }
 
 /**

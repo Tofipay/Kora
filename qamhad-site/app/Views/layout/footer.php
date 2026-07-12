@@ -35,6 +35,6 @@
     </div>
   </div>
   <div class="container footer-bottom">
-    <span>© <?= date('Y') ?> <?= e(Lang::siteName()) ?> — <?= e(t('footer.rights')) ?></span>
+    <span>© <?= date('Y') ?> <a class="rights-link" href="<?= e(SITE_URL) ?>/" title="<?= e(Lang::siteName()) ?>"><?= e(Lang::siteName()) ?></a> — <?= e(t('footer.rights')) ?></span>
   </div>
 </footer>

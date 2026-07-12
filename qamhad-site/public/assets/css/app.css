@@ -1875,3 +1875,17 @@ html.dark .videos-search-note a { color: var(--primary); }
 }
 html.dark .push-status { color: var(--primary); }
 .push-status svg { flex: none; }
+
+/* Sheet scroll fix — the two-step wrappers must pass the panel's height
+   constraint (max-height: 88dvh) down to .sheet-body, otherwise the league
+   list has no bounded height and cannot scroll. */
+#notify-sheet [data-push-step] {
+  display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto;
+}
+#notify-sheet [data-push-step] .sheet-body {
+  flex: 1 1 auto; min-height: 0; overscroll-behavior: contain;
+}
+
+/* Footer copyright backlink — same tone as the surrounding text */
+.rights-link { color: inherit; font-weight: 800; text-decoration: none; }
+.rights-link:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
