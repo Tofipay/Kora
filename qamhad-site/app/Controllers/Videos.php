@@ -30,8 +30,14 @@ final class Videos
             : '';
         $champ = $champ !== '' && VideoFeed::isCategory($champ) ? $champ : 'all';
 
+        // Server-side search (API-backed, like the News section): ?q=…
+        $q = trim((string)($_GET['q'] ?? ''));
+        if (mb_strlen($q) > 60) $q = mb_substr($q, 0, 60);
+
         $categories = VideoFeed::categories();
-        $result     = VideoFeed::page($champ, $page, VideoFeed::PER_PAGE);
+        $result = $q !== ''
+            ? VideoFeed::search($q, $page, VideoFeed::PER_PAGE)
+            : VideoFeed::page($champ, $page, VideoFeed::PER_PAGE);
 
         // Past the end of the feed → real 404 (same behaviour as News).
         if ($page > 1 && empty($result['items'])) View::notFound();
@@ -40,30 +46,65 @@ final class Videos
         foreach ($categories as $c) {
             if ((string)$c['id'] === $champ) { $activeTitle = (string)$c['title']; break; }
         }
-        Settings::trackHit('videos', $activeTitle);
+        Settings::trackHit('videos', $q !== '' ? ('بحث: ' . $q) : $activeTitle);
 
-        header('Cache-Control: public, max-age=600');
+        header('Cache-Control: public, max-age=' . ($q !== '' ? 120 : 600));
 
-        $qs = $champ !== 'all' ? '?champ=' . rawurlencode($champ) : '';
+        // Pagination links preserve the champ filter AND the search query.
+        $qsParts = [];
+        if ($champ !== 'all') $qsParts['champ'] = $champ;
+        if ($q !== '')        $qsParts['q'] = $q;
+        $qs = $qsParts ? '?' . http_build_query($qsParts) : '';
         $pagePath = fn(int $n): string => path($n <= 1 ? 'videos' : 'videos/page/' . $n) . $qs;
 
+        $titleBits = t('videos.title');
+        if ($q !== '')            $titleBits .= ' — ' . $q;
+        elseif ($champ !== 'all') $titleBits .= ' — ' . $activeTitle;
+        if ($page > 1)            $titleBits .= ' — ' . t('news.page', ['n' => $page]);
+
         $seo = (new Seo())
-            ->title(t('videos.title') . ($page > 1 ? ' — ' . t('news.page', ['n' => $page]) : '') . ' — ' . \Qamhad\Core\Lang::siteName())
-            ->description(t('videos.subtitle'))
+            ->title($titleBits . ' — ' . \Qamhad\Core\Lang::siteName())
+            ->description($champ !== 'all'
+                ? ($activeTitle . ' — ' . t('videos.subtitle'))
+                : t('videos.subtitle'))
             ->canonical(path($page > 1 ? 'videos/page/' . $page : 'videos'))
             ->breadcrumbs([
                 [t('nav.home'), path('/')],
                 [t('videos.title'), path('videos')],
             ]);
 
+        // ItemList structured data for the listed videos (SEO).
+        if (!empty($result['items'])) {
+            $els = [];
+            foreach ($result['items'] as $i => $v) {
+                $vid = (int)($v['id'] ?? 0);
+                if ($vid < 1) continue;
+                $els[] = [
+                    '@type'    => 'ListItem',
+                    'position' => $i + 1,
+                    'url'      => SITE_URL . path('video/' . $vid),
+                    'name'     => (string)$v['title'],
+                ];
+            }
+            if ($els) {
+                $seo->addJsonLd([
+                    '@context'        => 'https://schema.org',
+                    '@type'           => 'ItemList',
+                    'itemListElement' => $els,
+                ]);
+            }
+        }
+
         View::page('videos', [
             'categories'  => $categories,
             'champ'       => $champ,
             'activeTitle' => $activeTitle,
+            'q'           => $q,
             'items'       => $result['items'],
             'page'        => $page,
             'hasNext'     => $result['has_next'],
             'hasPrev'     => $result['has_prev'],
+            'total'       => $result['total'] ?? null,
             'pagePath'    => $pagePath,
         ], $seo);
     }
@@ -106,6 +147,7 @@ final class Videos
             'embedUrl'     => SITE_URL . path('video/' . $id),
         ];
         if ($video['thumbnail'] !== '') $vs['thumbnailUrl'] = $video['thumbnail'];
+        if (!empty($video['created_at']) && ($ts = to_ts($video['created_at']))) $vs['uploadDate'] = date('c', $ts);
         if (!empty($video['youtube_id'])) $vs['contentUrl'] = 'https://www.youtube.com/watch?v=' . $video['youtube_id'];
         elseif (!empty($video['media_url'])) $vs['contentUrl'] = $video['media_url'];
         $seo->addJsonLd($vs);

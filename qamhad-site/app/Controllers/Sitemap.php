@@ -34,14 +34,30 @@ final class Sitemap
     public static function index(): void
     {
         header('Content-Type: application/xml; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
+        header('Cache-Control: public, max-age=1800');
         http_cache_validate(strtotime('today') ?: time(), 'sitemap-index-' . date('Y-m-d-H'));
+
+        // Every child <loc> carries a version token (?v=…) that rolls
+        // forward forever — daily for the slow-moving sets, hourly for the
+        // fast ones (matches / news / videos). Crawlers treat each new
+        // version as a fresh URL, so the whole site — old and new — keeps
+        // getting re-fetched and re-indexed endlessly.
+        $daily  = date('Y.m.d');
+        $hourly = date('Y.m.d.H');
+        $children = [
+            'sitemap-ar.xml'     => $daily,
+            'sitemap-en.xml'     => $daily,
+            'sitemap-match.xml'  => $hourly,
+            'sitemap-news.xml'   => $hourly,
+            'sitemap-video.xml'  => $hourly,
+            'sitemap-images.xml' => $daily,
+        ];
 
         $now = date('c');
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-        foreach (['sitemap-ar.xml', 'sitemap-en.xml', 'sitemap-match.xml', 'sitemap-news.xml', 'sitemap-images.xml', 'sitemap-video.xml'] as $f) {
-            echo '  <sitemap><loc>' . htmlspecialchars(SITE_URL . '/' . $f, ENT_XML1) . '</loc>'
+        foreach ($children as $f => $ver) {
+            echo '  <sitemap><loc>' . htmlspecialchars(SITE_URL . '/' . $f . '?v=' . $ver, ENT_XML1) . '</loc>'
                 . '<lastmod>' . $now . '</lastmod></sitemap>' . "\n";
         }
         echo '</sitemapindex>';
@@ -66,13 +82,13 @@ final class Sitemap
 
             // Static pages — with hreflang alternates both ways
             $statics = ['', '/matches', '/live', '/today', '/tomorrow', '/yesterday',
-                        '/leagues', '/teams', '/players', '/news', '/standings',
+                        '/leagues', '/teams', '/players', '/news', '/videos', '/standings',
                         '/top-scorers', '/about', '/privacy', '/terms', '/contact'];
             foreach ($statics as $p) {
                 $urls[] = [
                     'loc'  => absolute_url(($pfx . $p) ?: '/'),
-                    'freq' => in_array($p, ['', '/matches', '/live', '/news'], true) ? 'hourly' : 'daily',
-                    'prio' => $p === '' ? '1.0' : (in_array($p, ['/matches', '/live', '/news'], true) ? '0.9' : '0.6'),
+                    'freq' => in_array($p, ['', '/matches', '/live', '/news', '/videos'], true) ? 'hourly' : 'daily',
+                    'prio' => $p === '' ? '1.0' : (in_array($p, ['/matches', '/live', '/news', '/videos'], true) ? '0.9' : '0.6'),
                     'lastmod' => $todayMod,
                     'alt'  => [
                         'ar' => absolute_url($p ?: '/'),
@@ -119,8 +135,8 @@ final class Sitemap
                 ];
             }
 
-            // Latest news (2 pages)
-            for ($p = 1; $p <= 2; $p++) {
+            // News archive (4 pages deep, newest first)
+            for ($p = 1; $p <= 4; $p++) {
                 foreach (Api::newsPage($p)['items'] as $n) {
                     $id = (int)($n['id'] ?? 0);
                     if (!$id) continue;
@@ -354,24 +370,34 @@ final class Sitemap
 
     /**
      * sitemap-video.xml — Google video sitemap for the highlights section.
-     * Built from the first pages of the cached Btolat feed (fast: cache-hit
-     * for regular traffic, one upstream fetch per TTL otherwise). Every
-     * player_loc points at the SITE's own /video/{id} page.
+     * Walks DEEP into the feed archive (up to 12 source batches ≈ 180
+     * videos, newest first) so old highlights keep getting crawled, not
+     * just the visible first pages. Every player_loc points at the SITE's
+     * own /video/{id} page.
      */
     public static function videos(): void
     {
         header('Content-Type: application/xml; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
-        http_cache_validate(strtotime('today') ?: time(), 'sitemap-video-' . date('Y-m-d-H'));
+        header('Cache-Control: public, max-age=1800');
 
-        // Up to 6 site pages (30 newest videos) — snappy and always fresh.
-        $items = [];
-        for ($p = 1; $p <= 6; $p++) {
-            $res = \Qamhad\Core\VideoFeed::page('all', $p);
-            foreach ($res['items'] as $v) $items[] = $v;
-            if (empty($res['has_next'])) break;
+        // Validate BEFORE building — a 15-minute bucket keeps conditional
+        // GETs from paying for the archive walk.
+        $bucket = intdiv(time(), 900);
+        http_cache_validate($bucket * 900, 'sitemap-video-' . $bucket);
+
+        // Whole-body disk cache (same pattern as sitemap-match): a cold
+        // build fans out to up to 12 upstream LoadMore calls; serving the
+        // last rendered body for 15 minutes caps the worst case.
+        $bodyKey = 'sitemap-video-body-v2';
+        $cached = \Qamhad\Core\Cache::get($bodyKey, 900);
+        if (is_string($cached) && $cached !== '') {
+            echo $cached;
+            exit;
         }
 
+        $items = \Qamhad\Core\VideoFeed::archive(12);
+
+        ob_start();
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
             . ' xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">' . "\n";
@@ -396,6 +422,10 @@ final class Sitemap
                 . '</video:video></url>' . "\n";
         }
         echo '</urlset>';
+
+        $xml = (string)ob_get_clean();
+        \Qamhad\Core\Cache::set($bodyKey, $xml);
+        echo $xml;
         exit;
     }
 }

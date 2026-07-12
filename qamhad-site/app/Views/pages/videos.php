@@ -14,15 +14,24 @@ use Qamhad\Core\View;
 </div>
 
 <div class="container">
-  <!-- Search within the shown videos (client-side, instant) -->
-  <div class="search-bar glass-soft videos-search">
+  <!-- Search — server-side (API-backed), like the News section -->
+  <form class="search-bar glass-soft videos-search" action="<?= e(path('videos')) ?>" method="get" role="search">
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-    <input type="search" id="videos-search" placeholder="<?= e(t('videos.search')) ?>" aria-label="<?= e(t('videos.search')) ?>" autocomplete="off">
-  </div>
+    <input type="search" name="q" value="<?= e($q ?? '') ?>" placeholder="<?= e(t('videos.search')) ?>" aria-label="<?= e(t('videos.search')) ?>" autocomplete="off">
+    <?php if (($champ ?? 'all') !== 'all'): ?><input type="hidden" name="champ" value="<?= e((string)$champ) ?>"><?php endif; ?>
+    <button class="btn btn-primary vs-go" type="submit"><?= e(t('nav.search')) ?></button>
+  </form>
+
+  <?php if (($q ?? '') !== ''): ?>
+  <p class="videos-search-note">
+    <?= e(t('videos.results_for', ['q' => $q])) ?><?php if (isset($total)): ?> · <?= (int)$total ?><?php endif; ?>
+    — <a href="<?= e(path('videos')) ?>"><?= e(t('videos.clear_search')) ?></a>
+  </p>
+  <?php endif; ?>
 
   <!-- Championship tabs -->
   <nav class="day-nav videos-tabs glass-soft" aria-label="<?= e(t('videos.by_champ')) ?>">
-    <?php foreach ($categories as $c): $active = (string)$c['id'] === (string)$champ; ?>
+    <?php foreach ($categories as $c): $active = (string)$c['id'] === (string)$champ && ($q ?? '') === ''; ?>
       <a class="day-tab<?= $active ? ' active' : '' ?>"
          href="<?= e(path('videos') . ($c['id'] === 'all' ? '' : '?champ=' . rawurlencode((string)$c['id']))) ?>">
         <?= e((string)$c['title']) ?>
@@ -41,9 +50,6 @@ use Qamhad\Core\View;
     <div class="videos-grid" data-videos-grid>
       <?php foreach ($items as $v): ?><?= View::partial('video-card', ['v' => $v]) ?><?php endforeach; ?>
     </div>
-
-    <!-- No-search result note (client-side filter) -->
-    <div class="empty-state glass-soft" data-videos-noresult hidden><p><?= e(t('videos.no_match')) ?></p></div>
 
     <?php
       // Numbered window: previous two pages, current, and next page when it exists.
@@ -67,5 +73,14 @@ use Qamhad\Core\View;
         <a class="btn btn-ghost" href="<?= e($pagePath($page + 1)) ?>" rel="next"><?= e(t('news.next')) ?></a>
       <?php endif; ?>
     </nav>
+  <?php endif; ?>
+
+  <?php if (($q ?? '') === '' && $page === 1): ?>
+  <!-- SEO copy — server-rendered descriptive content for the section -->
+  <section class="videos-seo card glass-soft">
+    <h2><?= e(t('videos.seo_h')) ?><?= ($champ ?? 'all') !== 'all' ? ' — ' . e($activeTitle) : '' ?></h2>
+    <p><?= e(t('videos.seo_p1')) ?></p>
+    <p><?= e(t('videos.seo_p2')) ?></p>
+  </section>
   <?php endif; ?>
 </div>

@@ -621,29 +621,6 @@
     document.head.appendChild(s);
   });
 
-  /* ---------------- Videos: instant search over the current page ----------
-   * Pagination is fully server-rendered (5 per page, prev/next + numbers,
-   * like the News section) — no infinite scroll, no "show more". */
-  const vGrid = $('[data-videos-grid]');
-  if (vGrid) {
-    const noResult = $('[data-videos-noresult]');
-    const searchInput = $('#videos-search');
-    function applyFilter() {
-      if (!searchInput) return;
-      const q = searchInput.value.trim().toLowerCase();
-      let shown = 0;
-      $$('[data-video-card]', vGrid).forEach(card => {
-        const t = (card.querySelector('.vc-title')?.textContent || '').toLowerCase();
-        const c = (card.querySelector('.vc-champ')?.textContent || '').toLowerCase();
-        const hit = !q || t.includes(q) || c.includes(q);
-        card.style.display = hit ? '' : 'none';
-        if (hit) shown++;
-      });
-      if (noResult) noResult.hidden = !(q && shown === 0);
-    }
-    if (searchInput) {
-      let deb;
-      searchInput.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(applyFilter, 150); });
-    }
-  }
+  /* Videos search & pagination are fully server-rendered (API-backed, like
+   * the News section) — no client-side filtering needed. */
 })();

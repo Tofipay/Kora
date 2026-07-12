@@ -198,11 +198,18 @@ final class VideoFeed
             $externalEmbed = $embed;
         }
 
+        // The detail page's category anchor can be a NAV link (e.g. every
+        // video showing "دوري أبطال أوروبا") — the list card's category is
+        // authoritative, and it also carries the publish date.
+        $card = self::cardOf($id);
+
         return [
             'id'           => $id,
             'title'        => trim((string)$d['title']),
-            'thumbnail'    => (string)($d['thumbnail'] ?? ''),
-            'champ_title'  => trim((string)($d['category']['name'] ?? '')),
+            'thumbnail'    => (string)($d['thumbnail'] ?? ($card['thumbnail'] ?? '')),
+            'champ_title'  => trim((string)($card['champ_title'] ?? ''))
+                              ?: trim((string)($d['category']['name'] ?? '')),
+            'created_at'   => (string)($card['created_at'] ?? ''),
             'provider'     => $d['provider'] ?? null,
             'embed_url'    => $embed !== '' ? $embed : null,
             'external_url' => $external !== '' ? $external : null,
@@ -213,6 +220,124 @@ final class VideoFeed
             'x_url'        => $xUrl,
             'embed_iframe' => $externalEmbed,
         ];
+    }
+
+    /**
+     * Locate a video's LIST CARD in the recent cached batches. The card's
+     * category is always the video's own championship (the detail page's
+     * first /league/ link can be a nav menu item — the "wrong category"
+     * bug), and it carries the publish date too.
+     *
+     * @return array|null normalized card or null when not in recent batches
+     */
+    public static function cardOf(int $id, int $scanBatches = 4): ?array
+    {
+        for ($p = 1; $p <= $scanBatches; $p++) {
+            $batch = self::batch('all', $p);
+            foreach ($batch['videos'] as $raw) {
+                if ((int)($raw['id'] ?? 0) === $id) return self::normalize($raw);
+            }
+            if (empty($batch['has_more'])) break;
+        }
+        return null;
+    }
+
+    /**
+     * Server-side search across the videos feed (like the News search):
+     * scans the freshest source batches (cached), matches the normalized
+     * query against title + championship, and paginates PER_PAGE per page.
+     *
+     * @return array{items:array<int,array>,page:int,has_next:bool,has_prev:bool,total:int}
+     */
+    public static function search(string $q, int $page = 1, int $perPage = self::PER_PAGE): array
+    {
+        $page   = max(1, $page);
+        $needle = self::normalizeText($q);
+
+        $hits = [];
+        if ($needle !== '') {
+            foreach (self::pool() as $item) {
+                $hay = self::normalizeText($item['title'] . ' ' . $item['champ_title']);
+                if (str_contains($hay, $needle)) $hits[] = $item;
+            }
+        }
+
+        $total = count($hits);
+        $items = array_slice($hits, ($page - 1) * $perPage, $perPage);
+
+        return [
+            'items'    => $items,
+            'page'     => $page,
+            'has_next' => $total > $page * $perPage,
+            'has_prev' => $page > 1,
+            'total'    => $total,
+        ];
+    }
+
+    /**
+     * Search pool: the freshest items from the active feed (Btolat batches
+     * for Arabic, YSScores pages for English), normalized and de-duplicated.
+     * Everything comes from the on-disk cache after the first build.
+     *
+     * @return array<int,array>
+     */
+    private static function pool(): array
+    {
+        $out = [];
+        $seen = [];
+        if (self::useYs()) {
+            for ($p = 0; $p < 2; $p++) {                       // 2×80 upstream items
+                $r = YsVideoFeed::videos('all', $p * 80);
+                foreach ($r['data'] as $item) {
+                    $k = (string)($item['video_url'] ?? '');
+                    if ($k === '' || isset($seen[$k])) continue;
+                    $seen[$k] = true;
+                    if (trim((string)($item['title'] ?? '')) !== '') $out[] = $item;
+                }
+                if (empty($r['has_more'])) break;
+            }
+            return $out;
+        }
+        return self::archive(6);                               // 6×15 source items
+    }
+
+    /**
+     * Deep archive walk over the "all" feed — used by the video sitemap so
+     * old highlights keep getting crawled, not just the newest handful.
+     * Walks up to $batches LoadMore cursor batches (~15 each), newest first,
+     * de-duplicated by id. Everything after the first build comes from the
+     * on-disk cache; the sitemap additionally caches its whole body.
+     *
+     * @return array<int,array>
+     */
+    public static function archive(int $batches = 12): array
+    {
+        $out = [];
+        $seen = [];
+        for ($p = 1; $p <= $batches; $p++) {
+            $batch = self::batch('all', $p);
+            foreach ($batch['videos'] as $raw) {
+                $n = self::normalize($raw);
+                if ($n['title'] === '' || $n['video_url'] === '' || isset($seen[$n['id']])) continue;
+                $seen[$n['id']] = true;
+                $out[] = $n;
+            }
+            if (empty($batch['has_more'])) break;
+        }
+        return $out;
+    }
+
+    /**
+     * Arabic-aware text normalization so «الأهلى» matches «الاهلي» etc.:
+     * strips diacritics/tatweel, unifies alef/hamza forms, taa marbuta and
+     * alef maqsura, lowercases Latin, collapses whitespace.
+     */
+    private static function normalizeText(string $s): string
+    {
+        $s = mb_strtolower(trim($s), 'UTF-8');
+        $s = (string)preg_replace('/[\x{064B}-\x{065F}\x{0670}\x{0640}]/u', '', $s); // diacritics + tatweel
+        $s = strtr($s, ['أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ٱ' => 'ا', 'ة' => 'ه', 'ى' => 'ي', 'ؤ' => 'و', 'ئ' => 'ي']);
+        return (string)preg_replace('/\s+/u', ' ', $s);
     }
 
     /**

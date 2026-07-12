@@ -1835,3 +1835,25 @@ html.dark .vp-x-frame { background: var(--surface); }
 .vp-blocked-note .btn { margin: 0; }
 .vp-static-note { pointer-events: auto; }
 .vp-static-note p { color: #fff; }
+
+/* ---------- Layout safety ---------- */
+/* EN home overflowed 25px: the Subscribe button pushed .nl-form past the
+   viewport (longer Latin label). Let the input shrink and the form wrap. */
+.nl-form input { min-width: 0; }
+.nl-form { flex-wrap: wrap; }
+/* Never allow any future stray element to open a horizontal gap. */
+body { overflow-x: clip; }
+/* [hidden] must always win — .empty-state{display:flex} was overriding the UA
+   rule and showing "no results" blocks that were meant to be hidden. */
+[hidden] { display: none !important; }
+
+/* Videos search form (server-side) + SEO copy block */
+.videos-search .vs-go { margin: 0; padding: 9px 20px; font-size: 13px; flex: none; }
+.videos-search input { min-width: 0; }
+.videos-search-note { color: var(--text-3); font-size: 13px; font-weight: 700; margin: -8px 0 14px; }
+.videos-search-note a { color: var(--primary-700); text-decoration: underline; text-underline-offset: 3px; }
+html.dark .videos-search-note a { color: var(--primary); }
+.videos-seo { margin-top: 26px; }
+.videos-seo h2 { font-size: 17px; margin-bottom: 10px; }
+.videos-seo p { color: var(--text-2); font-size: 13.5px; line-height: 1.95; margin: 0 0 10px; }
+.videos-seo p:last-child { margin-bottom: 0; }
