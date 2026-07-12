@@ -84,7 +84,9 @@ $router->get('/api/live-scores', [ApiJson::class, 'liveScores']);
 $router->get('/api/videos', [ApiJson::class, 'videos']);
 $router->get('/api/match/{id:\d+}', fn($a) => ApiJson::match((int)$a['id']));
 $router->post('/api/newsletter', [ApiJson::class, 'newsletter']);
-$router->post('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);
+// any(): POST (JSON body), GET (query fallback — survives host-canonical
+// 301s that flip POST→GET on some hosting setups) and OPTIONS (preflight).
+$router->any('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);
 
 /* ---------- URL-triggered cron (shared hosting: wget/curl) ---------- */
 $router->get('/cron/notify', [ApiJson::class, 'cronNotify']);

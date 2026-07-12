@@ -474,15 +474,33 @@
   // Registers the token server-side. The server's answer is VERIFIED — a
   // 4xx/5xx or a non-ok body throws, so the UI can never claim success while
   // the subscriber list stays empty (the "admin sees no subscribers" bug).
+  // POST uses text/plain (no CORS preflight); when infrastructure flips the
+  // POST into a GET via a canonical-host 301 (→ HTTP 404), the same call is
+  // retried as a native GET with query params, which survives any redirect.
   const subscribe = async (body) => {
-    const res = await fetch('/api/push-subscribe', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    let j = null;
-    try { j = await res.json(); } catch (e) {}
-    if (!res.ok || !j || j.ok !== true) throw new Error('HTTP ' + res.status);
-    return j;
+    const asJson = async (res) => {
+      let j = null;
+      try { j = await res.json(); } catch (e) {}
+      if (!res.ok || !j || j.ok !== true) throw new Error('HTTP ' + res.status);
+      return j;
+    };
+    let postErr = null;
+    try {
+      return await fetch('/api/push-subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify(body)
+      }).then(asJson);
+    } catch (e) { postErr = e; }
+    try {
+      const q = new URLSearchParams({
+        token: body.token || '',
+        topics: (body.topics || []).join(','),
+        disable: body.disable ? '1' : ''
+      });
+      return await fetch('/api/push-subscribe?' + q, { cache: 'no-store' }).then(asJson);
+    } catch (e) {
+      throw postErr || e;
+    }
   };
   const markSynced = (token) => {
     localStorage.setItem('q_push_token', token);

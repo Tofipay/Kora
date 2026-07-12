@@ -114,7 +114,29 @@ final class ApiJson
     /** Store FCM tokens + their subscribed topics for the notifications manager. */
     public static function pushSubscribe(): void
     {
+        // CORS + method flexibility: some hosting setups 301 every request
+        // to the canonical host, which flips a POST into a GET (→ the
+        // "تعذر الحفظ — HTTP 404" bug). The endpoint therefore answers GET
+        // with query params too, and carries ACAO so the response stays
+        // readable even when a redirect moves the call across hosts.
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        header('Cache-Control: no-store');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+
         $raw = json_decode((string)file_get_contents('php://input'), true) ?: [];
+        if ((!is_array($raw) || $raw === []) && isset($_GET['token'])) {
+            $qTopics = trim((string)($_GET['topics'] ?? ''));
+            $raw = [
+                'token'   => (string)$_GET['token'],
+                'topics'  => $qTopics !== '' ? explode(',', $qTopics) : [],
+                'disable' => !empty($_GET['disable']),
+            ];
+        }
         $token = trim((string)($raw['token'] ?? ''));
         if ($token === '' || strlen($token) > 4096) View::json(['ok' => false], 422);
 
