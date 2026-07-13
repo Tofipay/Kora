@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:windowBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:id="@+id/playerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/black">
+
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/playerView"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                app:resize_mode="fit"
+                app:show_buffering="when_playing" />
+
+            <!-- Fallback WebView for YouTube / X embeds without a direct media URL -->
+            <WebView
+                android:id="@+id/webView"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <TextView android:id="@+id/videoTitle"
+            style="@style/TextAppearance.Material3.TitleMedium"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:padding="16dp" />
+
+        <TextView style="@style/TextAppearance.Material3.TitleSmall"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp" android:text="مقاطع ذات صلة" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/relatedRecycler"
+            android:layout_width="match_parent" android:layout_height="0dp"
+            android:layout_weight="1" android:padding="8dp" />
+    </LinearLayout>
+
+    <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:indeterminateTint="@color/brand_primary" />
+</FrameLayout>

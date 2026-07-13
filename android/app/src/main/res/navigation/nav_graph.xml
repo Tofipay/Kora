@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment android:id="@+id/homeFragment"
+        android:name="com.tofixtv.app.ui.home.HomeFragment"
+        android:label="@string/app_name"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/matchesFragment"
+        android:name="com.tofixtv.app.ui.matches.MatchesFragment"
+        android:label="@string/nav_matches"
+        tools:layout="@layout/fragment_matches" />
+
+    <fragment android:id="@+id/newsFragment"
+        android:name="com.tofixtv.app.ui.news.NewsFragment"
+        android:label="@string/nav_news"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/videosFragment"
+        android:name="com.tofixtv.app.ui.videos.VideosFragment"
+        android:label="@string/nav_videos"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/favoritesFragment"
+        android:name="com.tofixtv.app.ui.favorites.FavoritesFragment"
+        android:label="@string/nav_favorites"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/leaguesFragment"
+        android:name="com.tofixtv.app.ui.leagues.LeaguesFragment"
+        android:label="@string/nav_leagues"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/standingsFragment"
+        android:name="com.tofixtv.app.ui.standings.StandingsFragment"
+        android:label="@string/nav_standings"
+        tools:layout="@layout/fragment_list">
+        <argument android:name="league" app:argType="string" android:defaultValue="0" />
+        <deepLink app:uri="tofixtv://league/{league}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/league/{league}" />
+        <deepLink app:uri="https://www.qamhad.com/league/{league}" />
+    </fragment>
+
+    <fragment android:id="@+id/scorersFragment"
+        android:name="com.tofixtv.app.ui.scorers.ScorersFragment"
+        android:label="@string/nav_scorers"
+        tools:layout="@layout/fragment_list">
+        <argument android:name="league" app:argType="string" android:defaultValue="0" />
+    </fragment>
+
+    <fragment android:id="@+id/channelsFragment"
+        android:name="com.tofixtv.app.ui.channels.ChannelsFragment"
+        android:label="@string/nav_channels"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/searchFragment"
+        android:name="com.tofixtv.app.ui.search.SearchFragment"
+        android:label="@string/nav_search"
+        tools:layout="@layout/fragment_search" />
+
+    <fragment android:id="@+id/settingsFragment"
+        android:name="com.tofixtv.app.ui.settings.SettingsFragment"
+        android:label="@string/nav_settings"
+        tools:layout="@layout/fragment_settings" />
+
+    <fragment android:id="@+id/notificationsFragment"
+        android:name="com.tofixtv.app.ui.notifications.NotificationsFragment"
+        android:label="@string/nav_notifications"
+        tools:layout="@layout/fragment_list" />
+
+    <fragment android:id="@+id/matchCenterFragment"
+        android:name="com.tofixtv.app.ui.matchcenter.MatchCenterFragment"
+        android:label="@string/nav_match_center"
+        tools:layout="@layout/fragment_match_center">
+        <argument android:name="id" app:argType="string" />
+        <deepLink app:uri="tofixtv://match/{id}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/match/{id}" />
+        <deepLink app:uri="https://www.qamhad.com/match/{id}" />
+    </fragment>
+
+    <fragment android:id="@+id/newsDetailFragment"
+        android:name="com.tofixtv.app.ui.news.NewsDetailFragment"
+        android:label="@string/nav_news"
+        tools:layout="@layout/fragment_news_detail">
+        <argument android:name="id" app:argType="string" />
+        <deepLink app:uri="tofixtv://news/{id}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/news/{id}" />
+        <deepLink app:uri="https://www.qamhad.com/news/{id}" />
+    </fragment>
+
+    <fragment android:id="@+id/videoPlayerFragment"
+        android:name="com.tofixtv.app.ui.videos.VideoPlayerFragment"
+        android:label="@string/nav_videos"
+        tools:layout="@layout/fragment_video_player">
+        <argument android:name="id" app:argType="string" />
+        <deepLink app:uri="tofixtv://video/{id}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/video/{id}" />
+    </fragment>
+
+    <fragment android:id="@+id/teamFragment"
+        android:name="com.tofixtv.app.ui.team.TeamFragment"
+        android:label="@string/col_team"
+        tools:layout="@layout/fragment_list">
+        <argument android:name="id" app:argType="string" />
+        <deepLink app:uri="tofixtv://team/{id}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/team/{id}" />
+    </fragment>
+
+    <fragment android:id="@+id/playerFragment"
+        android:name="com.tofixtv.app.ui.player.PlayerFragment"
+        android:label="@string/nav_scorers"
+        tools:layout="@layout/fragment_player">
+        <argument android:name="id" app:argType="string" />
+        <deepLink app:uri="tofixtv://player/{id}" />
+        <deepLink app:uri="https://api.tofi-xtv.com/player/{id}" />
+    </fragment>
+
+    <fragment android:id="@+id/watchFragment"
+        android:name="com.tofixtv.app.ui.watch.WatchFragment"
+        android:label="@string/watch_now"
+        tools:layout="@layout/fragment_watch">
+        <argument android:name="url" app:argType="string" />
+        <argument android:name="title" app:argType="string" android:defaultValue="" />
+    </fragment>
+</navigation>

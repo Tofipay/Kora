@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingVertical="10dp" android:paddingHorizontal="14dp" android:background="#0A16C784">
+    <ImageView android:id="@+id/logo" android:layout_width="26dp" android:layout_height="26dp"
+        android:contentDescription="@string/nav_leagues" />
+    <TextView android:id="@+id/title" android:layout_width="0dp" android:layout_weight="1"
+        android:layout_height="wrap_content" android:paddingHorizontal="10dp"
+        android:textStyle="bold" android:textColor="@color/brand_primary_dark" />
+</LinearLayout>

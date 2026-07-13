@@ -1,0 +1,41 @@
+# Qamhad Live — root .htaccess for shared hosting where the vhost
+# document root cannot be changed to public/.
+# Routes every request into public/ transparently.
+
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # ---- Canonical host + HTTPS FIRST — before routing into public/ ----
+  # Doing the 301 here guarantees the internal public/ prefix can never
+  # leak into the address bar (…qamhad.com/public/). Local dev skips all
+  # three canonical rules.
+  RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1|192\.168\..*|10\..*|.*\.(test|local))(:\d+)?$ [NC]
+  RewriteRule ^ - [S=3]
+
+  # 1) A leaked/bookmarked /public URL → same URL without the prefix.
+  RewriteCond %{THE_REQUEST} \s/public(/\S*)?\s [NC]
+  RewriteRule ^ https://www.qamhad.com%1 [L,R=301,NE]
+
+  # 2) Wrong host (qamhad.com, live.qamhad.com, …) → canonical www.
+  RewriteCond %{HTTP_HOST} !^www\.qamhad\.com$ [NC]
+  RewriteRule ^ https://www.qamhad.com%{REQUEST_URI} [L,R=301,NE]
+
+  # 3) Plain http → https. PROXY-AWARE: Cloudflare & other TLS-terminating
+  #    proxies talk plain HTTP to the origin while sending
+  #    X-Forwarded-Proto/X-Forwarded-SSL/CF-Visitor. Checking only %{HTTPS}
+  #    here loops forever (ERR_TOO_MANY_REDIRECTS).
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{SERVER_PORT} !=443
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteCond %{HTTP:X-Forwarded-SSL} !on [NC]
+  RewriteCond %{HTTP:CF-Visitor} !https [NC]
+  RewriteRule ^ https://www.qamhad.com%{REQUEST_URI} [L,R=301,NE]
+
+  # ---- Block direct access to application internals ----
+  RewriteRule ^(app|storage|database|deploy|docs)(/|$) - [F,L]
+
+  # ---- Serve everything from public/ (internal rewrite, invisible) ----
+  RewriteCond %{REQUEST_URI} !^/public/
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

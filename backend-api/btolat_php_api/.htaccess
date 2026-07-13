@@ -1,0 +1,23 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # منع الوصول المباشر إلى مجلدات الشفرة والتخزين
+    RewriteRule ^(?:src|storage|tests|fixtures)/ - [F,L,NC]
+
+    # مسارات مريحة: /videos و/categories و/video/93993 و/health
+    RewriteRule ^videos/?$ index.php?endpoint=videos [QSA,L]
+    RewriteRule ^categories/?$ index.php?endpoint=categories [QSA,L]
+    RewriteRule ^video/([0-9]+)/?$ index.php?endpoint=video&id=$1 [QSA,L]
+    RewriteRule ^health/?$ index.php?endpoint=health [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+<FilesMatch "^(?:\.env|composer\.(?:json|lock)|phpunit\.xml)$">
+    Require all denied
+</FilesMatch>

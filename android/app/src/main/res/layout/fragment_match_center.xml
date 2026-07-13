@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:windowBackground">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Score hero -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/gradient_header"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView android:id="@+id/leagueName"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:gravity="center" android:textColor="#DFFFFFFF" android:textSize="13sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp" android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <ImageView android:id="@+id/homeLogo" android:layout_width="56dp"
+                            android:layout_height="56dp" android:contentDescription="@string/col_team" />
+                        <TextView android:id="@+id/homeName" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                            android:textColor="@color/white" android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:gravity="center" android:orientation="vertical" android:paddingHorizontal="12dp">
+                        <TextView android:id="@+id/scoreText" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="-  -"
+                            android:textColor="@color/white" android:textSize="34sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/statusText" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:background="@drawable/bg_live_badge"
+                            android:paddingHorizontal="10dp" android:paddingVertical="2dp"
+                            android:textColor="@color/white" android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <ImageView android:id="@+id/awayLogo" android:layout_width="56dp"
+                            android:layout_height="56dp" android:contentDescription="@string/col_team" />
+                        <TextView android:id="@+id/awayName" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                            android:textColor="@color/white" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/watchButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp" android:text="@string/watch_now"
+                    app:icon="@drawable/ic_play" android:visibility="gone" />
+            </LinearLayout>
+
+            <TextView android:id="@+id/infoText"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:padding="16dp" android:textColor="@color/muted" android:lineSpacingExtra="4dp" />
+
+            <TextView style="@style/TextAppearance.Material3.TitleMedium"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/tab_summary" android:paddingHorizontal="16dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/eventsRecycler"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" android:padding="8dp" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:indeterminateTint="@color/brand_primary" />
+
+    <TextView android:id="@+id/errorText" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:text="@string/error_generic" android:textColor="@color/muted"
+        android:padding="24dp" android:visibility="gone" />
+</FrameLayout>

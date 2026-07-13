@@ -1,0 +1,115 @@
+package com.tofixtv.app.ui.videos
+
+import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
+import android.os.Build
+import android.os.Bundle
+import android.util.Rational
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebSettings
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.os.bundleOf
+import com.tofixtv.app.MainActivity
+import com.tofixtv.app.R
+import com.tofixtv.app.data.model.Video
+import com.tofixtv.app.data.repo.Repository
+import com.tofixtv.app.databinding.FragmentVideoPlayerBinding
+import com.tofixtv.app.ui.common.VideoAdapter
+import com.tofixtv.app.ui.news.idFromArg
+import com.tofixtv.app.util.*
+import kotlinx.coroutines.launch
+
+class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
+
+    private var _b: FragmentVideoPlayerBinding? = null
+    private val b get() = _b!!
+    private var player: ExoPlayer? = null
+    private var playingDirect = false
+
+    private val related = VideoAdapter { v ->
+        findNavController().navigate(R.id.videoPlayerFragment, bundleOf("id" to (v.id ?: 0L).toString()))
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
+        _b = FragmentVideoPlayerBinding.inflate(inflater, c, false)
+        return b.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        b.relatedRecycler.layoutManager = LinearLayoutManager(requireContext())
+        b.relatedRecycler.adapter = related
+
+        val id = idFromArg(arguments?.getString("id"))
+        b.progress.visible()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val data = try { Repository.get(requireContext()).videos("all", 1, "", AppState.lang) }
+            catch (e: Exception) { null }
+            b.progress.gone()
+            val items = data?.items.orEmpty()
+            val video = items.firstOrNull { it.id == id } ?: items.firstOrNull()
+            related.submit(items.filter { it.id != video?.id }.take(10))
+            video?.let { render(it) }
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun render(v: Video) {
+        b.videoTitle.text = v.title
+        val direct = v.mediaUrl ?: v.videoUrl?.takeIf { it.endsWith(".mp4") || it.contains(".m3u8") }
+        if (!direct.isNullOrBlank()) {
+            playingDirect = true
+            b.webView.gone(); b.playerView.visible()
+            player = ExoPlayer.Builder(requireContext()).build().also {
+                b.playerView.player = it
+                it.setMediaItem(MediaItem.fromUri(direct))
+                it.prepare(); it.playWhenReady = true
+            }
+        } else {
+            // Embed (YouTube / X) → WebView.
+            val embed = when {
+                !v.youtubeId.isNullOrBlank() -> "https://www.youtube.com/embed/${v.youtubeId}?autoplay=1"
+                !v.embedIframe.isNullOrBlank() -> v.embedIframe
+                !v.tweetId.isNullOrBlank() -> "https://platform.twitter.com/embed/Tweet.html?id=${v.tweetId}"
+                else -> null
+            }
+            b.playerView.gone(); b.webView.visible()
+            b.webView.settings.javaScriptEnabled = true
+            b.webView.settings.domStorageEnabled = true
+            b.webView.settings.mediaPlaybackRequiresUserGesture = false
+            b.webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
+            embed?.let { b.webView.loadUrl(it) }
+        }
+    }
+
+    // ---- Picture in Picture (direct playback only) ----
+    override fun shouldEnterPip() = playingDirect && player?.isPlaying == true
+
+    override fun onEnterPip() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+            requireActivity().enterPictureInPictureMode(params)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !requireActivity().isInPictureInPictureMode) {
+            player?.pause()
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        player?.release(); player = null
+        _b = null
+    }
+}

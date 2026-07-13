@@ -1,0 +1,25 @@
+{
+    "success": true,
+    "meta": {
+        "cached": false,
+        "generated_at": "2026-07-11T22:11:44+00:00"
+    },
+    "data": {
+        "id": 93112,
+        "title": "هدف تعادل صن داونز الرائع مع الجيش الملكي (1-1) نهائي دوري ابطال افريقيا",
+        "page_url": "https://www.btolat.com/video/93112",
+        "thumbnail": "https://img.btolat.com/2026/5/24/video/93112/0.jpg?v=5344",
+        "category": {
+            "name": "دوري أبطال أوروبا",
+            "url": "https://mobile.btolat.com/league/1005/champleague",
+            "type": "league",
+            "id": 1005,
+            "slug": "champleague"
+        },
+        "provider": "x",
+        "embed_url": "https://twitter.com/beINSPORTS/status/2058638478921855400",
+        "external_url": "https://twitter.com/beINSPORTS/status/2058638478921855400",
+        "media_url": null,
+        "cached": false
+    }
+}
