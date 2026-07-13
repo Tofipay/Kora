@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TofiXTV"
+rootProject.name = "QamhadLive"
 include(":app")

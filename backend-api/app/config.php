@@ -29,8 +29,11 @@ define('BRAND_BG',      '#F8FAFC');
  * so link equity always consolidates on www.
  * Override per-environment with QAMHAD_SITE_URL (e.g. http://localhost:8080
  * in dev); local hosts are auto-detected so dev keeps working untouched. */
-define('PRIMARY_DOMAIN', 'https://www.qamhad.com');
-define('LEGACY_HOSTS', ['live.qamhad.com', 'www.live.qamhad.com', 'qamhad.com']);
+// Primary API/data host used by the Android app. Serving is HOST-ADAPTIVE:
+// every request is answered on the host it arrived on (no cross-host 301), so
+// api.tofi-xtv.com returns its own JSON instead of bouncing to another domain.
+define('PRIMARY_DOMAIN', 'https://api.tofi-xtv.com');
+define('LEGACY_HOSTS', []); // no forced legacy redirects (multi-domain deploy)
 
 $__envUrl = getenv('QAMHAD_SITE_URL') ?: '';
 $__host   = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
@@ -39,13 +42,20 @@ $__isLocal = $__host !== '' && (
     || str_starts_with($__host, '192.168.') || str_starts_with($__host, '10.')
     || str_ends_with($__host, '.test') || str_ends_with($__host, '.local')
 );
+// Proxy-aware HTTPS detection (Cloudflare / TLS-terminating proxies).
+$__https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ((string)($_SERVER['SERVER_PORT'] ?? '') === '443')
+    || (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https')
+    || (stripos((string)($_SERVER['HTTP_CF_VISITOR'] ?? ''), 'https') !== false);
 if ($__envUrl !== '') {
     define('SITE_URL', rtrim($__envUrl, '/'));
 } elseif ($__isLocal) {
-    $__scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    define('SITE_URL', rtrim($__scheme . '://' . $__host, '/'));
+    define('SITE_URL', rtrim(($__https ? 'https' : 'http') . '://' . $__host, '/'));
+} elseif ($__host !== '') {
+    // Real deployment: canonicalize to the requested host itself.
+    define('SITE_URL', 'https://' . $__host);
 } else {
-    define('SITE_URL', PRIMARY_DOMAIN);
+    define('SITE_URL', PRIMARY_DOMAIN); // CLI / cron
 }
 define('PRIMARY_HOST', (string)(parse_url(SITE_URL, PHP_URL_HOST) ?: 'www.qamhad.com'));
 

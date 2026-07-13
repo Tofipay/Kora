@@ -1,4 +1,4 @@
-# Tofi XTV — تطبيق Android (Kotlin)
+# قمهد لايف — تطبيق Android (Kotlin)
 
 تطبيق أندرويد حديث لموقع كرة القدم (قمهد/توفي) — نتائج مباشرة، مركز مباريات،
 بطولات، ترتيب، هدافين، أخبار، فيديوهات، قنوات، بحث وإشعارات. مبني بالكامل
@@ -102,7 +102,7 @@ echo "sdk.dir=/path/to/Android/Sdk" > local.properties
 
 عند رفع الفرع إلى GitHub يعمل الـ workflow تلقائياً، يبني **APK موقّع** و **AAB**،
 ويرفعهما كـ **Artifacts** يمكن تنزيلهما من صفحة الـ Actions:
-`TofiXTV-release-apk` و `TofiXTV-release-aab`.
+`QamhadLive-release-apk` و `QamhadLive-release-aab`.
 يمكن أيضاً تشغيله يدوياً من تبويب **Actions → Android Release Build → Run workflow**.
 
 ---
