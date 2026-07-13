@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:windowBackground">
+    android:background="?android:colorBackground">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
@@ -14,16 +15,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="88dp"
-            android:scrollbars="vertical" />
+            android:paddingTop="6dp"
+            android:paddingBottom="96dp"
+            android:scrollbars="none" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <ProgressBar
+    <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminateTint="@color/brand_primary"
+        android:indeterminate="true"
+        app:indicatorColor="@color/brand_primary"
+        app:indicatorSize="46dp"
+        app:trackThickness="4dp"
         android:visibility="gone" />
 
     <LinearLayout
@@ -33,30 +38,41 @@
         android:layout_gravity="center"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:paddingHorizontal="36dp"
         android:visibility="gone">
 
         <ImageView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:alpha="0.4"
-            android:src="@drawable/ic_placeholder"
+            android:layout_width="132dp"
+            android:layout_height="132dp"
+            android:src="@drawable/ic_empty_state"
             android:contentDescription="@string/empty" />
 
         <TextView
             android:id="@+id/emptyText"
+            style="@style/Text.TitleMedium"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="20dp"
             android:text="@string/empty"
-            android:textColor="@color/muted" />
+            android:textColor="?attr/colorOnSurface" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/empty_hint"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/retryButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="18dp"
+            android:paddingHorizontal="28dp"
+            app:icon="@drawable/ic_refresh"
             android:text="@string/retry" />
     </LinearLayout>
 </FrameLayout>

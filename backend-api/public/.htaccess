@@ -1,6 +1,6 @@
 # ============================================================
-# Qamhad Live — Apache rewrite rules (document root = public/)
-# Clean URLs: no .php, no index.php, no query-string routing.
+# قمهد لايف — Apache rewrite rules (domain-agnostic)
+# Document root = public/ . No hard-coded host anywhere — works on ANY domain.
 # ============================================================
 
 Options -Indexes -MultiViews
@@ -10,21 +10,14 @@ DirectoryIndex index.php
   RewriteEngine On
   RewriteBase /
 
-  # ---- HTTPS + /public cleanup — HOST-PRESERVING (multi-domain safe) ----
-  # IMPORTANT: no cross-host canonical redirect. Each domain (api.tofi-xtv.com,
-  # www.qamhad.com, …) serves ITSELF, so the app talking to api.tofi-xtv.com is
-  # never bounced to another host (that bounce was returning HTML → "no data").
-  # Local dev skips the two redirect rules below.
+  # 1) HTTPS + /public cleanup — HOST-PRESERVING (safe redirects only).
+  #    Local dev skips the two redirect rules below.
   RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1|192\.168\..*|10\..*|.*\.(test|local))(:\d+)?$ [NC]
   RewriteRule ^ - [S=2]
 
-  # 1) A leaked/bookmarked /public URL → same URL on the SAME host, prefix stripped.
   RewriteCond %{THE_REQUEST} \s/public(/\S*)?\s [NC]
   RewriteRule ^ https://%{HTTP_HOST}%1 [L,R=301,NE]
 
-  # 2) Plain http → https on the SAME host. PROXY-AWARE (Cloudflare / TLS-
-  #    terminating proxies send X-Forwarded-Proto / X-Forwarded-SSL / CF-Visitor;
-  #    checking only %{HTTPS} would loop forever → ERR_TOO_MANY_REDIRECTS).
   RewriteCond %{HTTPS} !on
   RewriteCond %{SERVER_PORT} !=443
   RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
@@ -33,19 +26,18 @@ DirectoryIndex index.php
   RewriteCond %{THE_REQUEST} \s(/\S*)\s
   RewriteRule ^ https://%{HTTP_HOST}%1 [L,R=301,NE]
 
-  # ---- First-party JSON proxy: /api/*.php execute directly ----
-  RewriteCond %{REQUEST_URI} ^/api/ [NC]
-  RewriteRule \.php$ - [L]
+  # 2) API is served straight from the filesystem — index.php rules never touch it.
+  RewriteRule ^api/ - [L]
 
-  # ---- Legacy .php URLs → front controller issues the 301 ----
-  RewriteRule \.php$ index.php [L,QSA]
-
-  # ---- Static assets are served directly ----
+  # 3) Static assets are served directly.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # ---- Everything else → front controller ----
+  # 4) Legacy .php URLs → front controller.
+  RewriteRule \.php$ index.php [L,QSA]
+
+  # 5) Everything else → front controller.
   RewriteRule ^ index.php [L,QSA]
 </IfModule>
 
@@ -79,5 +71,3 @@ DirectoryIndex index.php
 </IfModule>
 
 AddDefaultCharset UTF-8
-
-

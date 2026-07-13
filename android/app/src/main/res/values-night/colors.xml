@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme-aware dividers/muted for dark mode -->
+    <color name="divider">#243040</color>
+    <color name="muted">#93A1B1</color>
+    <color name="brand_bg">#0B1220</color>
+</resources>

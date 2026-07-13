@@ -1,19 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#16C784</color>
-    <color name="brand_primary_dark">#0E9E68</color>
-    <color name="brand_accent">#22D3EE</color>
-    <color name="brand_dark">#0F172A</color>
-    <color name="brand_bg">#F8FAFC</color>
+    <!-- Brand — QAMHAD LIVE 2026 -->
+    <color name="brand_primary">#0D9488</color>
+    <color name="brand_primary_dark">#0F766E</color>
+    <color name="brand_primary_deep">#115E56</color>
+    <color name="brand_accent">#F59E0B</color>
+    <color name="brand_accent_dark">#D97706</color>
 
+    <!-- Neutrals -->
+    <color name="brand_ink">#0B1220</color>
+    <color name="brand_bg">#F4F7F8</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="live_red">#EF4444</color>
 
+    <!-- Surfaces -->
     <color name="surface_light">#FFFFFF</color>
+    <color name="surface_variant_light">#EEF3F3</color>
     <color name="surface_dark">#111827</color>
-    <color name="on_surface_light">#0F172A</color>
-    <color name="on_surface_dark">#E5E7EB</color>
-    <color name="muted">#64748B</color>
-    <color name="divider">#E2E8F0</color>
+    <color name="surface_variant_dark">#1B2534</color>
+    <color name="on_surface_light">#0B1220</color>
+    <color name="on_surface_dark">#E6EAF0</color>
+    <color name="muted">#6B7A8D</color>
+    <color name="muted_dark">#93A1B1</color>
+    <color name="divider">#E3E9EC</color>
+    <color name="divider_dark">#243040</color>
+
+    <!-- Glass / scrim -->
+    <color name="glass_light">#B3FFFFFF</color>
+    <color name="glass_dark">#33FFFFFF</color>
+    <color name="scrim">#66000000</color>
 </resources>

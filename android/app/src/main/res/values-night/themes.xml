@@ -1,13 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.TofiXTV" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand_primary</item>
-        <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSecondary">@color/brand_accent</item>
-        <item name="android:statusBarColor">@color/brand_dark</item>
+        <item name="colorPrimary">#2DD4BF</item>
+        <item name="colorPrimaryContainer">#134E48</item>
+        <item name="colorOnPrimary">#04201C</item>
+        <item name="colorOnPrimaryContainer">#CFF0EB</item>
+        <item name="colorSecondary">@color/brand_primary</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorTertiary">@color/brand_accent</item>
+        <item name="colorOnTertiary">@color/brand_ink</item>
+
         <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorSurfaceVariant">@color/surface_variant_dark</item>
         <item name="colorOnSurface">@color/on_surface_dark</item>
-        <item name="android:windowBackground">@color/brand_dark</item>
+        <item name="colorOnSurfaceVariant">@color/muted_dark</item>
+        <item name="android:colorBackground">@color/brand_ink</item>
+        <item name="colorOutlineVariant">@color/divider_dark</item>
+
+        <item name="android:statusBarColor">@color/brand_primary_deep</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+
+        <item name="fontFamily">@font/cairo</item>
+        <item name="android:fontFamily">@font/cairo</item>
+        <item name="textAppearanceHeadlineSmall">@style/Text.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/Text.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/Text.TitleMedium</item>
+        <item name="textAppearanceBodyLarge">@style/Text.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/Text.BodyMedium</item>
+        <item name="textAppearanceLabelLarge">@style/Text.LabelLarge</item>
+
+        <item name="shapeAppearanceSmallComponent">@style/Shape.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/Shape.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/Shape.Large</item>
+
+        <item name="materialCardViewStyle">@style/Card.Premium.Dark</item>
+        <item name="bottomNavigationStyle">@style/BottomNav.Premium</item>
+        <item name="materialButtonStyle">@style/Button.Premium</item>
+    </style>
+
+    <style name="Card.Premium.Dark" parent="Card.Premium">
+        <item name="strokeColor">@color/divider_dark</item>
+        <item name="rippleColor">#332DD4BF</item>
     </style>
 </resources>

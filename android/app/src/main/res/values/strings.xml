@@ -22,6 +22,7 @@
     <!-- Common -->
     <string name="loading">جارٍ التحميل…</string>
     <string name="empty">لا توجد بيانات لعرضها</string>
+    <string name="empty_hint">اسحب للأسفل للتحديث أو حاول مرة أخرى</string>
     <string name="retry">إعادة المحاولة</string>
     <string name="error_generic">تعذّر جلب البيانات. تحقق من الاتصال وحاول مجدداً.</string>
     <string name="search_hint">ابحث عن فريق أو لاعب…</string>

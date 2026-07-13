@@ -13,16 +13,19 @@
         <com.google.android.material.appbar.AppBarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fitsSystemWindows="true">
+            android:fitsSystemWindows="true"
+            android:background="@drawable/bg_glass_toolbar"
+            app:elevation="6dp">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                android:background="@drawable/gradient_header"
+                android:background="@android:color/transparent"
                 app:titleTextColor="@color/white"
+                app:titleTextAppearance="@style/Text.TitleLarge"
                 app:navigationIconTint="@color/white"
-                app:titleCentered="false" />
+                app:titleCentered="true" />
         </com.google.android.material.appbar.AppBarLayout>
 
         <androidx.fragment.app.FragmentContainerView
