@@ -49,11 +49,14 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
         val id = idFromArg(arguments?.getString("id"))
         b.progress.visible()
         viewLifecycleOwner.lifecycleScope.launch {
-            val data = try { Repository.get(requireContext()).videos("all", 1, "", AppState.lang) }
-            catch (e: Exception) { null }
+            val repo = Repository.get(requireContext())
+            // Fetch the requested video directly by id (deep links / notifications
+            // may reference an item not on page 1), then load the feed for related.
+            val byId = try { repo.videoById(id, AppState.lang) } catch (e: Exception) { null }
+            val data = try { repo.videos("all", 1, "", AppState.lang) } catch (e: Exception) { null }
             b.progress.gone()
             val items = data?.items.orEmpty()
-            val video = items.firstOrNull { it.id == id } ?: items.firstOrNull()
+            val video = byId ?: items.firstOrNull { it.id == id } ?: items.firstOrNull()
             related.submit(items.filter { it.id != video?.id }.take(10))
             video?.let { render(it) }
         }

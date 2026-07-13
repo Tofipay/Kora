@@ -104,6 +104,16 @@ class Repository private constructor(context: Context) {
             runCatching { api.videos(champ, page, query, lang).data }.getOrNull()
         }
 
+    suspend fun videoById(id: Long, lang: String): com.tofixtv.app.data.model.Video? =
+        withContext(Dispatchers.IO) {
+            runCatching { api.videoById(id, lang).data?.items?.firstOrNull() }.getOrNull()
+        }
+
+    // ---------- Push registration ----------
+    suspend fun registerPush(token: String, topics: Set<String>) = withContext(Dispatchers.IO) {
+        runCatching { api.pushSubscribe(token, topics.joinToString(",")) }
+    }
+
     // ---------- Channels ----------
     suspend fun channels(lang: String): List<Channel> = withContext(Dispatchers.IO) {
         runCatching { api.channels(lang).data }.getOrNull()

@@ -9,6 +9,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
 import androidx.navigation.ui.*
@@ -83,6 +86,14 @@ class MainActivity : AppCompatActivity() {
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token ->
                 com.tofixtv.app.fcm.FcmRegistrar.saveToken(applicationContext, token)
+                // Register the token + subscribed topics with the backend so
+                // cron/admin match notifications have a subscriber row to target.
+                lifecycleScope.launch {
+                    val topics = com.tofixtv.app.data.local.SettingsStore(applicationContext)
+                        .topics.first()
+                    com.tofixtv.app.data.repo.Repository.get(applicationContext)
+                        .registerPush(token, topics)
+                }
             }
     }
 

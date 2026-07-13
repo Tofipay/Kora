@@ -29,7 +29,9 @@ class TofiMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title
             ?: message.data["title"] ?: getString(R.string.app_name)
         val body = message.notification?.body ?: message.data["body"] ?: ""
-        val link = message.data["link"]
+        // Backend (Fcm::buildMessage) puts the deep-link destination in `url`;
+        // accept `link` too for compatibility.
+        val link = message.data["link"] ?: message.data["url"]
         showNotification(title, body, link)
     }
 

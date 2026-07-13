@@ -7,6 +7,9 @@ declare(strict_types=1);
 
 function qamhad_legacy_redirect(string $path): void
 {
+    // NEVER touch the first-party JSON API — /api/*.php must reach the router
+    // and return JSON, not be 301-stripped to a clean URL that then 404s.
+    if (str_starts_with($path, '/api/')) return;
     if (!str_contains($path, '.php') && $path !== '/index') return;
 
     $id   = (int)($_GET['id'] ?? 0);

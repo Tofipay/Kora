@@ -73,7 +73,13 @@ class NotificationsFragment : Fragment() {
         } else {
             subscribed.remove(topic.slug); FcmRegistrar.unsubscribe(topic.slug)
         }
-        viewLifecycleOwner.lifecycleScope.launch { store.setTopics(HashSet(subscribed)) }
+        viewLifecycleOwner.lifecycleScope.launch {
+            store.setTopics(HashSet(subscribed))
+            // Mirror the updated topics to the backend subscriber row.
+            FcmRegistrar.token(requireContext())?.let { token ->
+                Repository.get(requireContext()).registerPush(token, HashSet(subscribed))
+            }
+        }
     }
 
     override fun onDestroyView() { super.onDestroyView(); _b = null }

@@ -82,4 +82,19 @@ interface ApiService {
         @Query("id") id: Long,
         @Query("lang") lang: String = "ar"
     ): Envelope<Match>
+
+    /** Fetch a single video by id (for deep links / notifications). */
+    @GET("api/videos.php")
+    suspend fun videoById(
+        @Query("id") id: Long,
+        @Query("lang") lang: String = "ar"
+    ): Envelope<VideosData>
+
+    /** Register this device's FCM token + topics with the backend (GET fallback
+     *  is accepted by the endpoint and survives host-canonical 301s). */
+    @GET("api/push-subscribe")
+    suspend fun pushSubscribe(
+        @Query("token") token: String,
+        @Query("topics") topics: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
 }

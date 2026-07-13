@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 use Qamhad\Controllers\{
     Home, Matches, MatchCenter, Leagues, Teams, Players, News, Search,
-    Standings, Scorers, StaticPages, Sitemap, Media, Admin, ApiJson, Videos
+    Standings, Scorers, StaticPages, Sitemap, Media, Admin, ApiJson, Videos, AppApi
 };
 
 /* ---------- Core pages ---------- */
@@ -87,6 +87,26 @@ $router->post('/api/newsletter', [ApiJson::class, 'newsletter']);
 // any(): POST (JSON body), GET (query fallback — survives host-canonical
 // 301s that flip POST→GET on some hosting setups) and OPTIONS (preflight).
 $router->any('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);
+
+/* ---------- App JSON API — served THROUGH the router so it works on ANY host
+ * (even where /api/*.php files are not executed directly). Registered for both
+ * the clean path and the .php path the app calls. ---------- */
+foreach ([
+    'matches'    => 'matches',
+    'live'       => 'live',
+    'news'       => 'news',
+    'standings'  => 'standings',
+    'team'       => 'team',
+    'player'     => 'player',
+    'videos'     => 'videos',
+    'channels'   => 'channels',
+    'leagues'    => 'leagues',
+    'search'     => 'search',
+    'match_info' => 'matchInfo',
+] as $ep => $method) {
+    $router->get('/api/' . $ep,          fn() => AppApi::$method());
+    $router->get('/api/' . $ep . '.php', fn() => AppApi::$method());
+}
 
 /* ---------- URL-triggered cron (shared hosting: wget/curl) ---------- */
 $router->get('/cron/notify', [ApiJson::class, 'cronNotify']);
