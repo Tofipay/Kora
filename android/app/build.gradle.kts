@@ -28,8 +28,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Central API host. Override per-flavor or in local.properties if needed.
-        buildConfigField("String", "API_BASE_URL", "\"https://api.tofi-xtv.com/\"")
-        resValue("string", "app_scheme_host", "api.tofi-xtv.com")
+        buildConfigField("String", "API_BASE_URL", "\"https://tofi-xtv.com/\"")
+        resValue("string", "app_scheme_host", "tofi-xtv.com")
     }
 
     signingConfigs {

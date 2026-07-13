@@ -59,13 +59,14 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setupWithNavController(navController)
         navView.setupWithNavController(navController)
 
-        // Hide bottom nav on detail / player screens for immersion.
+        // Hide the floating bottom nav on detail / player screens for immersion.
         navController.addOnDestinationChangedListener { _, dest, _ ->
             val topLevel = dest.id in setOf(
                 R.id.homeFragment, R.id.matchesFragment, R.id.newsFragment,
                 R.id.videosFragment, R.id.favoritesFragment
             )
-            bottomNav.visibility = if (topLevel) android.view.View.VISIBLE else android.view.View.GONE
+            binding.bottomNavCard.visibility =
+                if (topLevel) android.view.View.VISIBLE else android.view.View.GONE
         }
 
         handleIntentLink(intent)

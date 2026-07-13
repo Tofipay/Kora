@@ -30,4 +30,5 @@
     <color name="glass_light">#B3FFFFFF</color>
     <color name="glass_dark">#33FFFFFF</color>
     <color name="scrim">#66000000</color>
+    <color name="nav_glass">#F2FFFFFF</color>
 </resources>

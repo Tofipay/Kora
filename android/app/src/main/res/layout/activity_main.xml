@@ -37,13 +37,28 @@
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             app:navGraph="@navigation/nav_graph" />
 
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomNav"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bottomNavCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            app:labelVisibilityMode="labeled"
-            app:menu="@menu/bottom_nav_menu" />
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginBottom="14dp"
+            app:cardCornerRadius="30dp"
+            app:cardElevation="16dp"
+            app:cardBackgroundColor="@color/nav_glass"
+            app:strokeColor="#26000000"
+            app:strokeWidth="1dp">
+
+            <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/bottomNav"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:background="@android:color/transparent"
+                app:elevation="0dp"
+                app:labelVisibilityMode="labeled"
+                app:menu="@menu/bottom_nav_menu" />
+        </com.google.android.material.card.MaterialCardView>
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <com.google.android.material.navigation.NavigationView
