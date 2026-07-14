@@ -65,8 +65,12 @@ class Repository private constructor(context: Context) {
     // ---------- News ----------
     suspend fun news(page: Int, lang: String): List<NewsItem> = withContext(Dispatchers.IO) {
         val items = runCatching { api.newsPage(page, lang).data?.items }.getOrNull()
-        if (items != null) snapshot("news_$page$lang", items)
-        else restore<List<NewsItem>>("news_$page$lang").orEmpty()
+        if (items != null) {
+            snapshot("news_$page$lang", items)
+            items
+        } else {
+            restore<List<NewsItem>>("news_$page$lang").orEmpty()
+        }
     }
 
     suspend fun newsDetail(id: Long, lang: String): NewsItem? = withContext(Dispatchers.IO) {
