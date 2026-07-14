@@ -26,7 +26,7 @@ interface ApiService {
     suspend fun newsPage(
         @Query("page") page: Int,
         @Query("lang") lang: String = "ar"
-    ): Envelope<List<NewsItem>>
+    ): Envelope<NewsData>
 
     @GET("api/news.php")
     suspend fun newsDetail(
@@ -65,6 +65,13 @@ interface ApiService {
     suspend fun channels(
         @Query("lang") lang: String = "ar"
     ): Envelope<List<Channel>>
+
+    /** Resolve a channel/stream URL (incl. Yacine decryption) to playable sources. */
+    @GET("api/resolve.php")
+    suspend fun resolve(
+        @Query("url") url: String,
+        @Query("lang") lang: String = "ar"
+    ): Envelope<ResolveData>
 
     @GET("api/leagues.php")
     suspend fun leagues(

@@ -39,16 +39,28 @@ class WatchFragment : Fragment(), MainActivity.PipAware {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val url = arguments?.getString("url").orEmpty()
+        val type = arguments?.getString("type").orEmpty().lowercase()
         if (url.isBlank()) { b.progress.gone(); b.errorText.visible(); return }
 
-        isStream = Regex("\\.(m3u8|mpd|mp4|ts|webm|mkv)(\\?|$)", RegexOption.IGNORE_CASE)
+        val streamType = type in listOf("m3u8", "mpd", "mp4", "ts", "webm", "mkv", "auto")
+        val streamExt = Regex("\\.(m3u8|mpd|mp4|ts|webm|mkv)(\\?|$)", RegexOption.IGNORE_CASE)
             .containsMatchIn(url)
+        // The first-party proxy URL (/stream?...) carries no file extension.
+        val isProxy = url.contains("/stream?") || url.contains("/api/stream.php")
+        isStream = streamType || streamExt || isProxy
 
         if (isStream) {
             b.playerView.visible(); b.progress.gone()
+            val mime = when {
+                type == "mpd" || url.contains(".mpd", true) -> androidx.media3.common.MimeTypes.APPLICATION_MPD
+                type == "m3u8" || isProxy || url.contains(".m3u8", true) -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
+                else -> null
+            }
+            val itemBuilder = MediaItem.Builder().setUri(url)
+            if (mime != null) itemBuilder.setMimeType(mime)
             player = ExoPlayer.Builder(requireContext()).build().also {
                 b.playerView.player = it
-                it.setMediaItem(MediaItem.fromUri(url))
+                it.setMediaItem(itemBuilder.build())
                 it.prepare(); it.playWhenReady = true
             }
         } else {

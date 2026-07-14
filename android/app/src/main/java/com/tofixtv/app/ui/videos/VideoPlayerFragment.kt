@@ -77,9 +77,11 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
         } else {
             // Embed (YouTube / X) → WebView.
             val embed = when {
-                !v.youtubeId.isNullOrBlank() -> "https://www.youtube.com/embed/${v.youtubeId}?autoplay=1"
+                !v.youtubeId.isNullOrBlank() -> "https://www.youtube.com/embed/${v.youtubeId}?autoplay=1&playsinline=1"
                 !v.embedIframe.isNullOrBlank() -> v.embedIframe
                 !v.tweetId.isNullOrBlank() -> "https://platform.twitter.com/embed/Tweet.html?id=${v.tweetId}"
+                // Btolat and other providers expose a mobile web player page.
+                !v.videoUrl.isNullOrBlank() -> v.videoUrl
                 else -> null
             }
             b.playerView.gone(); b.webView.visible()
@@ -87,7 +89,8 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
             b.webView.settings.domStorageEnabled = true
             b.webView.settings.mediaPlaybackRequiresUserGesture = false
             b.webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
-            embed?.let { b.webView.loadUrl(it) }
+            b.webView.webChromeClient = android.webkit.WebChromeClient()
+            if (embed != null) b.webView.loadUrl(embed) else b.progress.gone()
         }
     }
 

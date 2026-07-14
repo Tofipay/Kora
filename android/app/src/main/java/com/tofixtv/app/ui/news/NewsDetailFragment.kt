@@ -32,7 +32,7 @@ class NewsDetailFragment : Fragment() {
             if (item == null) return@launch
             b.scroll.visible()
             b.title.text = item.title
-            b.time.text = relativeTime(item.createdAt)
+            b.time.text = relativeTime(item.createdAt?.raw)
             b.image.loadImage(Media.news(item.image))
             val html = item.body ?: item.desc ?: ""
             b.body.text = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)

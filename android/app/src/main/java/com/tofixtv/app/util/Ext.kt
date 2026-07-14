@@ -51,14 +51,20 @@ fun relativeTime(iso: String?): String {
     }
 }
 
-private fun parseTs(value: String): Long {
+private fun parseTs(raw: String): Long {
+    var value = raw.trim()
+    if (value.isEmpty()) return 0L
     value.toLongOrNull()?.let { return it }
-    val patterns = listOf("yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd")
-    for (p in patterns) {
-        try {
-            val d = SimpleDateFormat(p, Locale.US).parse(value)
-            if (d != null) return d.time / 1000
-        } catch (_: Exception) {}
+    // Try ISO-8601 with offset first (videos: 2026-07-12T05:29:00+03:00).
+    for (p in listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ssZ")) {
+        try { SimpleDateFormat(p, Locale.US).parse(value)?.let { return it.time / 1000 } } catch (_: Exception) {}
+    }
+    // Normalize: drop fractional seconds and trailing timezone (news: 2026-07-14 01:43:53.000000).
+    var v = value.replace('T', ' ')
+    v = v.substringBefore('.').trim()
+    v = v.replace(Regex("\\s*[+\\-]\\d{2}:?\\d{2}$"), "").trim()
+    for (p in listOf("yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM-dd")) {
+        try { SimpleDateFormat(p, Locale.US).parse(v)?.let { return it.time / 1000 } } catch (_: Exception) {}
     }
     return 0L
 }

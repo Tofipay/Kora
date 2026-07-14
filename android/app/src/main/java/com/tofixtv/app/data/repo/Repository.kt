@@ -64,9 +64,9 @@ class Repository private constructor(context: Context) {
 
     // ---------- News ----------
     suspend fun news(page: Int, lang: String): List<NewsItem> = withContext(Dispatchers.IO) {
-        runCatching { api.newsPage(page, lang).data }.getOrNull()
-            ?.let { snapshot("news_$page$lang", it) }
-            ?: restore<List<NewsItem>>("news_$page$lang").orEmpty()
+        val items = runCatching { api.newsPage(page, lang).data?.items }.getOrNull()
+        if (items != null) snapshot("news_$page$lang", items)
+        else restore<List<NewsItem>>("news_$page$lang").orEmpty()
     }
 
     suspend fun newsDetail(id: Long, lang: String): NewsItem? = withContext(Dispatchers.IO) {
@@ -120,6 +120,12 @@ class Repository private constructor(context: Context) {
             ?.let { snapshot("channels_$lang", it) }
             ?: restore<List<Channel>>("channels_$lang").orEmpty()
     }
+
+    /** Resolve a channel URL to playable stream sources (Yacine decryption server-side). */
+    suspend fun resolveStream(url: String, lang: String): List<StreamSource> =
+        withContext(Dispatchers.IO) {
+            runCatching { api.resolve(url, lang).data?.sources }.getOrNull().orEmpty()
+        }
 
     // ---------- Search ----------
     suspend fun search(query: String, lang: String): SearchData? = withContext(Dispatchers.IO) {

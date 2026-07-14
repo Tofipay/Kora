@@ -7,6 +7,7 @@ use Qamhad\Core\Api;
 use Qamhad\Core\ChannelLib;
 use Qamhad\Core\Lang;
 use Qamhad\Core\VideoFeed;
+use Qamhad\Core\Yacine;
 
 /**
  * First-party JSON API served THROUGH the front controller (router), so the
@@ -69,14 +70,16 @@ final class AppApi
         self::emit($live, 60);
     }
 
-    /** GET /api/news[.php]?page=N | ?id=N */
+    /** GET /api/news[.php]?page=N | ?id=N
+     *  List returns { items, current_page, last_page, ... } (object); the app
+     *  reads data.items. Detail returns the article object. */
     public static function news(): void
     {
         if (isset($_GET['id']) && ctype_digit((string)$_GET['id'])) {
             self::emit(Api::newsDetail((int)$_GET['id']), 900);
         }
         $page = max(1, (int)($_GET['page'] ?? 1));
-        self::emit(array_values(Api::newsPage($page)), 900);
+        self::emit(Api::newsPage($page), 900);
     }
 
     /** GET /api/standings[.php]?league=URL_ID */
@@ -138,9 +141,10 @@ final class AppApi
             : VideoFeed::page($champ, $page, VideoFeed::PER_PAGE);
 
         self::emit([
-            'items'    => array_values($res['items'] ?? []),
-            'has_next' => (bool)($res['has_next'] ?? false),
-            'page'     => (int)($res['page'] ?? $page),
+            'items'      => array_values($res['items'] ?? []),
+            'has_next'   => (bool)($res['has_next'] ?? false),
+            'page'       => (int)($res['page'] ?? $page),
+            'categories' => array_values(VideoFeed::categories()),
         ], 600);
     }
 
@@ -171,5 +175,32 @@ final class AppApi
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) self::fail('Missing match id');
         self::emit(Api::matchInfo($id), 60);
+    }
+
+    /**
+     * GET /api/resolve[.php]?url=<channel/stream url>
+     * Server-side resolve of a channel URL into ready-to-play sources — Yacine
+     * API links are decrypted and their HLS is returned as an absolute
+     * first-party /stream proxy URL that ExoPlayer can play directly; plain
+     * m3u8/mpd links are passed through. Returns { sources:[{name,url,type}] }.
+     */
+    public static function resolve(): void
+    {
+        $url = trim((string)($_GET['url'] ?? ''));
+        if ($url === '' || !preg_match('#^https?://#i', $url)) self::fail('Missing url');
+
+        $sources = [];
+        foreach (Yacine::expandServers([['name' => 'Server', 'url' => $url]]) as $s) {
+            $u = (string)($s['url'] ?? '');
+            if ($u === '') continue;
+            // Make the first-party /stream proxy path absolute for ExoPlayer.
+            if ($u[0] === '/') $u = rtrim(SITE_URL, '/') . $u;
+            $sources[] = [
+                'name' => (string)($s['name'] ?? 'Server'),
+                'url'  => $u,
+                'type' => (string)($s['type'] ?? 'auto'),
+            ];
+        }
+        self::emit(['sources' => $sources], 30);
     }
 }

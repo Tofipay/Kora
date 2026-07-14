@@ -1,6 +1,45 @@
 package com.tofixtv.app.data.model
 
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
+import java.lang.reflect.Type
+
+/**
+ * A date that the API returns EITHER as a plain string
+ * ("2026-07-12T05:29:00+03:00") OR as an object
+ * ({"date":"2026-07-14 01:43:53.000000","timezone_type":3,"timezone":"..."}).
+ * This adapter accepts both so news/videos never fail to parse.
+ */
+@JsonAdapter(ApiDate.Adapter::class)
+data class ApiDate(val raw: String? = null) {
+    class Adapter : JsonDeserializer<ApiDate> {
+        override fun deserialize(json: JsonElement?, t: Type?, c: JsonDeserializationContext?): ApiDate {
+            if (json == null || json.isJsonNull) return ApiDate(null)
+            return when {
+                json.isJsonPrimitive -> ApiDate(json.asString)
+                json.isJsonObject -> ApiDate(json.asJsonObject.get("date")?.takeIf { !it.isJsonNull }?.asString)
+                else -> ApiDate(null)
+            }
+        }
+    }
+}
+
+/**
+ * In the day-fixtures payload `events` is an integer flag (0/1); in match_info
+ * it is a real array. This adapter yields an empty list unless it is an array,
+ * so parsing the matches list never throws (that was the "no matches" bug).
+ */
+class EventsAdapter : JsonDeserializer<List<MatchEvent>> {
+    override fun deserialize(json: JsonElement?, t: Type?, c: JsonDeserializationContext): List<MatchEvent> {
+        if (json == null || !json.isJsonArray) return emptyList()
+        return json.asJsonArray.mapNotNull {
+            runCatching { c.deserialize<MatchEvent>(it, MatchEvent::class.java) }.getOrNull()
+        }
+    }
+}
 
 /** Standard first-party API envelope: { ok, stale, lang, count, data }. */
 data class Envelope<T>(
@@ -62,7 +101,7 @@ data class Match(
     @SerializedName("home_team") val homeTeamAlt: Team? = null,
     @SerializedName("away_team_info") val awayTeamInfo: Team? = null,
     @SerializedName("away_team") val awayTeamAlt: Team? = null,
-    val events: List<MatchEvent>? = null
+    @JsonAdapter(EventsAdapter::class) val events: List<MatchEvent>? = null
 ) {
     val identifier: Long get() = matchId ?: id ?: 0L
     val homeTeam: Team get() = homeTeamInfo ?: homeTeamAlt ?: Team()
@@ -141,8 +180,15 @@ data class NewsItem(
     val image: String? = null,
     @SerializedName("news_desc") val desc: String? = null,
     @SerializedName("news_text") val body: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("created_at") val createdAt: ApiDate? = null,
     val league: League? = null
+)
+
+/** News list payload: the API wraps it as { items, has_next, page }. */
+data class NewsData(
+    val items: List<NewsItem>? = null,
+    @SerializedName("has_next") val hasNext: Boolean = false,
+    val page: Int = 1
 )
 
 /** A highlight video (Btolat feed). */
@@ -151,18 +197,34 @@ data class Video(
     val title: String? = null,
     val thumbnail: String? = null,
     @SerializedName("champ_title") val champTitle: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("created_at") val createdAt: ApiDate? = null,
     @SerializedName("youtube_id") val youtubeId: String? = null,
     @SerializedName("media_url") val mediaUrl: String? = null,
     @SerializedName("tweet_id") val tweetId: String? = null,
     @SerializedName("embed_iframe") val embedIframe: String? = null,
-    @SerializedName("video_url") val videoUrl: String? = null
+    @SerializedName("video_url") val videoUrl: String? = null,
+    @SerializedName("video_type") val videoType: String? = null
 )
+
+/** A video category/championship filter tab. */
+data class VideoCategory(val id: String? = null, val title: String? = null)
 
 data class VideosData(
     val items: List<Video>? = null,
     @SerializedName("has_next") val hasNext: Boolean = false,
-    val page: Int = 1
+    val page: Int = 1,
+    val categories: List<VideoCategory>? = null
+)
+
+/** A resolved, ready-to-play stream source (channels). */
+data class StreamSource(
+    val name: String? = null,
+    val url: String? = null,
+    val type: String? = null
+)
+
+data class ResolveData(
+    val sources: List<StreamSource>? = null
 )
 
 /** A TV channel with playable stream URLs. */

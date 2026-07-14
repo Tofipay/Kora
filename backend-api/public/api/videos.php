@@ -38,8 +38,9 @@ api_serve(function () use ($q, $champ, $page) {
         ? VideoFeed::search($q, $page, VideoFeed::PER_PAGE)
         : VideoFeed::page($champ, $page, VideoFeed::PER_PAGE);
     return [
-        'items'    => array_values($res['items'] ?? []),
-        'has_next' => (bool)($res['has_next'] ?? false),
-        'page'     => (int)($res['page'] ?? $page),
+        'items'      => array_values($res['items'] ?? []),
+        'has_next'   => (bool)($res['has_next'] ?? false),
+        'page'       => (int)($res['page'] ?? $page),
+        'categories' => array_values(VideoFeed::categories()),
     ];
 }, $snapshot, CACHE_TTL_NEWS, api_fail_text());

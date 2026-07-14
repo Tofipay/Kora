@@ -103,6 +103,7 @@ foreach ([
     'leagues'    => 'leagues',
     'search'     => 'search',
     'match_info' => 'matchInfo',
+    'resolve'    => 'resolve',
 ] as $ep => $method) {
     $router->get('/api/' . $ep,          fn() => AppApi::$method());
     $router->get('/api/' . $ep . '.php', fn() => AppApi::$method());

@@ -17,6 +17,11 @@ abstract class SimpleAdapter<T, VB : androidx.viewbinding.ViewBinding> :
 
     fun submit(list: List<T>) { items.clear(); items.addAll(list); notifyDataSetChanged() }
 
+    fun append(list: List<T>) {
+        val start = items.size; items.addAll(list); notifyItemRangeInserted(start, list.size)
+    }
+    fun currentItems(): List<T> = items.toList()
+
     class VH<VB : androidx.viewbinding.ViewBinding>(val b: VB) : RecyclerView.ViewHolder(b.root)
 
     abstract fun inflate(inflater: LayoutInflater, parent: ViewGroup): VB
@@ -34,7 +39,7 @@ class NewsAdapter(private val onClick: (NewsItem) -> Unit) :
     override fun inflate(i: LayoutInflater, p: ViewGroup) = ItemNewsBinding.inflate(i, p, false)
     override fun bind(b: ItemNewsBinding, item: NewsItem) {
         b.title.text = item.title
-        b.time.text = relativeTime(item.createdAt)
+        b.time.text = relativeTime(item.createdAt?.raw)
         b.image.loadImage(Media.news(item.image))
         b.root.setOnClickListener { onClick(item) }
     }
