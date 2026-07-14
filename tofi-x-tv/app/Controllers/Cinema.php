@@ -188,6 +188,63 @@ final class Cinema
         ], $seo);
     }
 
+    /* ---------------- Category browsing (the "عرض الكل" pages) ---------------- */
+
+    /** Category slug => [tmdb list callable per type, lang key]. */
+    private const BROWSE = [
+        'movie' => [
+            'popular'     => ['popularMovies',    'cinema.popular_movies'],
+            'top-rated'   => ['topRatedMovies',   'cinema.top_rated'],
+            'now-playing' => ['nowPlayingMovies', 'cinema.now_playing'],
+            'upcoming'    => ['upcomingMovies',   'cinema.upcoming'],
+            'trending'    => [null,               'cinema.trending'],
+        ],
+        'tv' => [
+            'popular'      => ['popularTv',     'cinema.popular_series'],
+            'top-rated'    => ['topRatedTv',    'cinema.top_rated'],
+            'airing-today' => ['airingTodayTv', 'cinema.airing_today'],
+            'on-the-air'   => ['onTheAirTv',    'cinema.on_the_air'],
+            'trending'     => [null,            'cinema.trending'],
+        ],
+    ];
+
+    public static function browse(string $type, string $category, int $page = 1): void
+    {
+        $type = $type === 'series' ? 'tv' : 'movie';
+        $def = self::BROWSE[$type][$category] ?? null;
+        if ($def === null) { View::notFound(); return; }
+
+        $page = max(1, min(500, $page));
+        [$method, $langKey] = $def;
+        $data = $method === null
+            ? Tmdb::trending($type, 'week', $page)
+            : Tmdb::$method($page);
+
+        $section = $type === 'tv' ? 'series' : 'movies';
+        $base = path($section . '/browse/' . $category);
+        $name = t($langKey);
+
+        $seo = (new Seo())
+            ->title($name . ' — ' . t($type === 'tv' ? 'nav.series' : 'nav.movies') . ($page > 1 ? ' — ' . t('misc.page') . ' ' . $page : ''))
+            ->description(t($type === 'tv' ? 'cinema.series_desc' : 'cinema.movies_desc'))
+            ->canonical($base . ($page > 1 ? '/page/' . $page : ''))
+            ->breadcrumbs([
+                [t('nav.home'), path('/')],
+                [t($type === 'tv' ? 'nav.series' : 'nav.movies'), path($section)],
+                [$name, $base],
+            ]);
+
+        View::page('cinema-genre', [
+            'type'   => $type,
+            'name'   => $name,
+            'items'  => $data['results'] ?? [],
+            'page'   => $page,
+            'pages'  => min(500, (int)($data['total_pages'] ?? 1)),
+            'base'   => $base,
+            'genres' => [],
+        ], $seo);
+    }
+
     /* ---------------- Genre browsing ---------------- */
 
     public static function genre(string $type, string $slug, int $page = 1): void

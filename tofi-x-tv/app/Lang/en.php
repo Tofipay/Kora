@@ -321,6 +321,8 @@ return [
     'fav.teams'   => 'Favorite Teams',
     'fav.leagues' => 'Favorite Leagues',
     'fav.matches' => 'Favorite Matches',
+    'fav.movies'  => 'Favorite Movies',
+    'fav.series'  => 'Favorite Series',
 
     // Footer / misc
     'footer.about'    => 'About',

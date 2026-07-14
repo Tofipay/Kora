@@ -1133,6 +1133,26 @@ function asset_url(string $path): string
     return $path . '?v=' . $ver;
 }
 
+/**
+ * Like asset_url() but serves the pre-minified sibling (app.min.css /
+ * app.min.js) when it exists AND is at least as new as the source — a stale
+ * minified build can never shadow fresh source edits. Falls back to the
+ * plain asset transparently, so deleting the .min files is always safe.
+ */
+function asset_min_url(string $path): string
+{
+    $path = '/' . ltrim($path, '/');
+    if (preg_match('/^(.+)\.(css|js)$/', $path, $m) && !str_contains($path, '.min.')) {
+        $min = $m[1] . '.min.' . $m[2];
+        $srcFile = PUBLIC_DIR . $path;
+        $minFile = PUBLIC_DIR . $min;
+        if (is_file($minFile) && (!is_file($srcFile) || filemtime($minFile) >= filemtime($srcFile))) {
+            return asset_url($min);
+        }
+    }
+    return asset_url($path);
+}
+
 /** Site logo URL (custom upload from admin wins, else brand default). */
 function site_logo(bool $dark = false): string
 {

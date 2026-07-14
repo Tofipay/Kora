@@ -9,10 +9,21 @@ $fcm = Settings::get('fcm', []);
 $altPath = Lang::alternatePath($_SERVER['REQUEST_URI'] ?? '/');
 $isAr = Lang::isRtl();
 ?><!DOCTYPE html>
-<html lang="<?= Lang::current() ?>" dir="<?= Lang::dir() ?>" data-theme="<?= e($theme['default_mode'] ?? 'auto') ?>">
+<html lang="<?= Lang::current() ?>" dir="<?= Lang::dir() ?>" class="dark" data-theme="<?= e($theme['default_mode'] ?? 'dark') ?>" style="background-color:#0f172a;color-scheme:dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+/* Anti-FOUC theme boot — runs BEFORE any CSS. Dark is the default theme;
+ * light applies only when the user explicitly chose it. The class + inline
+ * background are set synchronously, so no white flash can ever paint. */
+(function(){try{
+  var m=localStorage.getItem('q-theme')||'dark',d=m!=='light',r=document.documentElement;
+  r.classList.toggle('dark',d);
+  r.style.backgroundColor=d?'#0f172a':'#ffffff';
+  r.style.colorScheme=d?'dark':'light';
+}catch(e){}})();
+</script>
 <title><?= e($seo->title) ?></title>
 <meta name="description" content="<?= e($seo->description) ?>">
 <link rel="canonical" href="<?= e($seo->canonical) ?>">
@@ -64,11 +75,12 @@ $enPath  = Lang::current() === 'en' ? $curPath : ($altPath ?: '/en');
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://image.tmdb.org">
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
 
-<link rel="stylesheet" href="<?= e(asset_url('/assets/css/app.css')) ?>">
+<link rel="stylesheet" href="<?= e(asset_min_url('/assets/css/app.css')) ?>">
 <?php if (!empty($theme['primary']) || !empty($theme['accent'])): ?>
 <style>:root{<?= !empty($theme['primary']) ? '--primary:' . e($theme['primary']) . ';' : '' ?><?= !empty($theme['accent']) ? '--accent:' . e($theme['accent']) . ';' : '' ?>}</style>
 <?php endif; ?>
@@ -125,8 +137,8 @@ window.TOFIXTV = {
 <?php require APP_DIR . '/Views/layout/notify-sheet.php'; ?>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="<?= e(asset_url('/assets/js/api-service.js')) ?>" defer></script>
-<script src="<?= e(asset_url('/assets/js/app.js')) ?>" defer></script>
+<script src="<?= e(asset_min_url('/assets/js/api-service.js')) ?>" defer></script>
+<script src="<?= e(asset_min_url('/assets/js/app.js')) ?>" defer></script>
 
 <!-- Google AdSense — Auto Ads. Loaded on the FIRST user interaction
      (scroll / touch / click / key) with a 6s fallback timer, so it can never

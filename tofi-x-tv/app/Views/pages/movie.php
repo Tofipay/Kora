@@ -45,6 +45,13 @@ $vote    = (float)($movie['vote_average'] ?? 0);
             <?= e(t('cinema.trailer')) ?>
           </button>
           <?php endif; ?>
+          <button class="btn btn-ghost fav-btn" data-fav="movie" data-id="<?= (int)$movie['id'] ?>"
+                  data-title="<?= e($title) ?>" data-url="<?= e(movie_url($movie)) ?>"
+                  data-img="<?= e(tmdb_poster($movie['poster_path'] ?? null, 'w185')) ?>"
+                  aria-label="<?= e(t('nav.favorites')) ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+            <?= e(t('nav.favorites')) ?>
+          </button>
         </div>
       </div>
     </div>

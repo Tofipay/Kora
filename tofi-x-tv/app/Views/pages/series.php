@@ -21,10 +21,10 @@ use TofiXTv\Core\View;
   <?php endif; ?>
 </div>
 
-<?= View::partial('poster-row', ['title' => t('cinema.popular_series'), 'items' => $popular,     'type' => 'tv']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.airing_today'),   'items' => $airingToday, 'type' => 'tv']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.top_rated'),      'items' => $topRated,    'type' => 'tv']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.on_the_air'),     'items' => $onTheAir,    'type' => 'tv']) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.popular_series'), 'items' => $popular,     'type' => 'tv', 'moreUrl' => path('series/browse/popular')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.airing_today'),   'items' => $airingToday, 'type' => 'tv', 'moreUrl' => path('series/browse/airing-today')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.top_rated'),      'items' => $topRated,    'type' => 'tv', 'moreUrl' => path('series/browse/top-rated')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.on_the_air'),     'items' => $onTheAir,    'type' => 'tv', 'moreUrl' => path('series/browse/on-the-air')]) ?>
 
 <?php if (empty($popular) && empty($topRated)): ?>
 <section class="section container">

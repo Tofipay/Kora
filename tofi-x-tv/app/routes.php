@@ -60,6 +60,11 @@ $router->get('/top-scorers', [Scorers::class, 'index']);
 /* ---------- Cinema: الأفلام والمسلسلات (TMDB-powered) ---------- */
 $router->get('/movies', [\TofiXTv\Controllers\Cinema::class, 'movies']);
 $router->get('/series', [\TofiXTv\Controllers\Cinema::class, 'series']);
+/* Category "view all" pages (registered BEFORE the {slug} detail patterns). */
+$router->get('/movies/browse/{cat:[a-z\-]+}', fn($a) => \TofiXTv\Controllers\Cinema::browse('movies', $a['cat']));
+$router->get('/movies/browse/{cat:[a-z\-]+}/page/{n:\d+}', fn($a) => \TofiXTv\Controllers\Cinema::browse('movies', $a['cat'], (int)$a['n']));
+$router->get('/series/browse/{cat:[a-z\-]+}', fn($a) => \TofiXTv\Controllers\Cinema::browse('series', $a['cat']));
+$router->get('/series/browse/{cat:[a-z\-]+}/page/{n:\d+}', fn($a) => \TofiXTv\Controllers\Cinema::browse('series', $a['cat'], (int)$a['n']));
 /* Genre browsing (registered BEFORE the {slug} detail patterns). */
 $router->get('/movies/genre/{slug}', fn($a) => \TofiXTv\Controllers\Cinema::genre('movies', $a['slug']));
 $router->get('/movies/genre/{slug}/page/{n:\d+}', fn($a) => \TofiXTv\Controllers\Cinema::genre('movies', $a['slug'], (int)$a['n']));

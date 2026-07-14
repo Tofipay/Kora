@@ -58,6 +58,13 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
             <?= e(t('cinema.trailer')) ?>
           </button>
           <?php endif; ?>
+          <button class="btn btn-ghost fav-btn" data-fav="series" data-id="<?= (int)$tv['id'] ?>"
+                  data-title="<?= e($title) ?>" data-url="<?= e($selfPath) ?>"
+                  data-img="<?= e(tmdb_poster($tv['poster_path'] ?? null, 'w185')) ?>"
+                  aria-label="<?= e(t('nav.favorites')) ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+            <?= e(t('nav.favorites')) ?>
+          </button>
         </div>
       </div>
     </div>
@@ -65,10 +72,28 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
 
   <section class="section container" id="player">
     <div class="section-head">
-      <h2><?= e($title) ?> — <?= e(t('cinema.season')) ?> <?= $curSeason ?> <?= e(t('cinema.episode')) ?> <?= $curEpisode ?></h2>
+      <h2><?= e($title) ?> — <?= e(t('cinema.season')) ?> <span data-ep-label-season><?= $curSeason ?></span> <?= e(t('cinema.episode')) ?> <span data-ep-label-episode><?= $curEpisode ?></span></h2>
     </div>
 
-    <!-- Season / episode picker: plain GET links = crawlable + zero JS required -->
+    <?php
+    // Embed URL templates for the Netflix-style client-side episode switcher
+    // ({s}/{e} placeholders). The chips below keep REAL hrefs, so crawlers and
+    // no-JS visitors still get fully server-rendered episode pages.
+    $tvId = (int)$tv['id'];
+    $epConfig = [
+        'season'  => $curSeason,
+        'episode' => $curEpisode,
+        'sources' => [
+            'vidsrc'   => PLAYER_VIDSRC_TO . "/tv/{$tvId}/{s}/{e}",
+            'vidsrccc' => PLAYER_VIDSRC_CC . "/tv/{$tvId}/{s}/{e}",
+            'videasy'  => PLAYER_VIDEASY . "/tv/{$tvId}/{s}/{e}",
+        ],
+    ];
+    ?>
+    <script type="application/json" data-ep-config><?= json_encode($epConfig, JSON_UNESCAPED_SLASHES) ?></script>
+
+    <!-- Season / episode picker: plain GET links = crawlable + zero JS required.
+         JS upgrades EPISODE clicks to an in-place player swap (no reload). -->
     <?php if (!empty($seasons)): ?>
     <div class="hscroll season-chips">
       <?php foreach ($seasons as $s): $sn = (int)($s['season_number'] ?? 0); ?>
@@ -79,6 +104,7 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
     <div class="hscroll episode-chips">
       <?php for ($ep = 1; $ep <= $curSeasonEpisodes; $ep++): ?>
       <a class="chip chip-sm<?= $ep === $curEpisode ? ' active' : '' ?>"
+         data-ep-season="<?= $curSeason ?>" data-ep-episode="<?= $ep ?>"
          href="<?= e($selfPath) ?>?season=<?= $curSeason ?>&amp;episode=<?= $ep ?>#player"><?= $ep ?></a>
       <?php endfor; ?>
     </div>
@@ -92,9 +118,9 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
     </div>
     <div class="player-sources">
       <span><?= e(t('cinema.sources')) ?>:</span>
-      <button class="chip" data-embed-src="<?= e($embed['vidsrc']) ?>" data-embed-target="player">VidSrc</button>
-      <button class="chip" data-embed-src="<?= e($embed['vidsrccc']) ?>" data-embed-target="player">VidSrc CC</button>
-      <button class="chip" data-embed-src="<?= e($embed['videasy']) ?>" data-embed-target="player">Videasy</button>
+      <button class="chip" data-ep-source="vidsrc" data-embed-src="<?= e($embed['vidsrc']) ?>" data-embed-target="player">VidSrc</button>
+      <button class="chip" data-ep-source="vidsrccc" data-embed-src="<?= e($embed['vidsrccc']) ?>" data-embed-target="player">VidSrc CC</button>
+      <button class="chip" data-ep-source="videasy" data-embed-src="<?= e($embed['videasy']) ?>" data-embed-target="player">Videasy</button>
       <small class="player-hint"><?= e(t('cinema.player_hint')) ?></small>
     </div>
   </section>

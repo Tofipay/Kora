@@ -22,6 +22,12 @@ $url   = $type === 'tv' ? series_url($item) : movie_url($item);
     </span>
     <?php endif; ?>
     <span class="poster-type"><?= e($type === 'tv' ? t('cinema.series_one') : t('cinema.movie')) ?></span>
+    <button class="poster-fav" data-fav="<?= $type === 'tv' ? 'series' : 'movie' ?>" data-id="<?= (int)($item['id'] ?? 0) ?>"
+            data-title="<?= e($title) ?>" data-url="<?= e($url) ?>"
+            data-img="<?= e(tmdb_poster($item['poster_path'] ?? null, 'w185')) ?>"
+            aria-label="<?= e(t('nav.favorites')) ?>">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+    </button>
     <span class="poster-play" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
     </span>

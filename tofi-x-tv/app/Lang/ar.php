@@ -321,6 +321,8 @@ return [
     'fav.teams'   => 'الفرق المفضلة',
     'fav.leagues' => 'البطولات المفضلة',
     'fav.matches' => 'المباريات المفضلة',
+    'fav.movies'  => 'الأفلام المفضلة',
+    'fav.series'  => 'المسلسلات المفضلة',
 
     // Footer / misc
     'footer.about'    => 'من نحن',

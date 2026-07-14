@@ -143,13 +143,14 @@ foreach ($sections as $s) { if ($s['on']) $render[] = $s['id']; }
 <?= View::partial('poster-row', [
     'title'   => t('cinema.trending'),
     'items'   => $trendingAll,
-    'moreUrl' => path('movies'),
+    'moreUrl' => path('movies/browse/trending'),
 ]) ?>
 <?php endif; ?>
 <?php if (!empty($newContent)): ?>
 <?= View::partial('poster-row', [
     'title'   => t('cinema.new_releases'),
     'items'   => $newContent,
+    'moreUrl' => path('movies/browse/now-playing'),
 ]) ?>
 <?php endif; ?>
 

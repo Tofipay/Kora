@@ -21,10 +21,10 @@ use TofiXTv\Core\View;
   <?php endif; ?>
 </div>
 
-<?= View::partial('poster-row', ['title' => t('cinema.popular_movies'), 'items' => $popular,    'type' => 'movie']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.now_playing'),    'items' => $nowPlaying, 'type' => 'movie']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.top_rated'),      'items' => $topRated,   'type' => 'movie']) ?>
-<?= View::partial('poster-row', ['title' => t('cinema.upcoming'),       'items' => $upcoming,   'type' => 'movie']) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.popular_movies'), 'items' => $popular,    'type' => 'movie', 'moreUrl' => path('movies/browse/popular')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.now_playing'),    'items' => $nowPlaying, 'type' => 'movie', 'moreUrl' => path('movies/browse/now-playing')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.top_rated'),      'items' => $topRated,   'type' => 'movie', 'moreUrl' => path('movies/browse/top-rated')]) ?>
+<?= View::partial('poster-row', ['title' => t('cinema.upcoming'),       'items' => $upcoming,   'type' => 'movie', 'moreUrl' => path('movies/browse/upcoming')]) ?>
 
 <?php if (empty($popular) && empty($topRated)): ?>
 <section class="section container">

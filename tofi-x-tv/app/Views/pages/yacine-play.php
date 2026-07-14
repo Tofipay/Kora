@@ -104,4 +104,4 @@ $serversJson = array_map(fn($s) => [
         : 'If the current server does not work, try another one. Streams are provided by third parties.') ?></p>
   </div>
 </section>
-<script src="<?= e(asset_url('/assets/js/watch.js')) ?>" defer></script>
+<script src="<?= e(asset_min_url('/assets/js/watch.js')) ?>" defer></script>
