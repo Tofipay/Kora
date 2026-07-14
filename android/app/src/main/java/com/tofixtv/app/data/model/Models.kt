@@ -240,6 +240,70 @@ data class SearchData(
     val teams: List<Team>? = null
 )
 
+/* ---------- Match Center (full detail) ---------- */
+
+/** Full match-detail payload — mirrors /api/match_full. */
+data class MatchFull(
+    val match: Match? = null,
+    val live: Boolean = false,
+    val status: String? = null,
+    val events: List<FullEvent>? = null,
+    val lineups: Lineups? = null,
+    val stats: List<StatRow>? = null,
+    val channels: List<MatchChannel>? = null,
+    val standings: List<StandingRow>? = null,
+    val scorers: List<Scorer>? = null
+)
+
+/** A normalized timeline event (side = "home"|"away", key = goal/yellow/…). */
+data class FullEvent(
+    val minute: String? = null,
+    val side: String? = null,
+    val key: String? = null,
+    val label: String? = null,
+    val player: String? = null,
+    val assist: String? = null
+) {
+    val isHome: Boolean get() = side == "home"
+}
+
+data class Lineups(
+    val home: LineupSide? = null,
+    val away: LineupSide? = null
+)
+
+data class LineupSide(
+    val formation: String? = null,
+    val starters: List<LineupPlayer>? = null,
+    val bench: List<LineupPlayer>? = null
+)
+
+data class LineupPlayer(
+    val name: String? = null,
+    val number: Int? = null,
+    val image: String? = null,
+    val position: String? = null,
+    val captain: Boolean = false,
+    val goal: Int = 0,
+    val yellow: Boolean = false,
+    val red: Boolean = false,
+    val rating: String? = null
+)
+
+/** One head-to-head stat bar (home vs away, homePct drives the bar split). */
+data class StatRow(
+    val label: String? = null,
+    val home: String? = null,
+    val away: String? = null,
+    @SerializedName("home_pct") val homePct: Int = 50
+)
+
+/** A broadcast channel for a match (name + commentator). */
+data class MatchChannel(
+    val name: String? = null,
+    val commentator: String? = null
+)
+
 /** A subscribable notification topic (a competition). */
 data class NotifyTopic(
     val slug: String,

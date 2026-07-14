@@ -90,6 +90,13 @@ interface ApiService {
         @Query("lang") lang: String = "ar"
     ): Envelope<Match>
 
+    /** Full Match Center payload: info, events, lineups, stats, channels, standings, scorers. */
+    @GET("api/match_full.php")
+    suspend fun matchFull(
+        @Query("id") id: Long,
+        @Query("lang") lang: String = "ar"
+    ): Envelope<MatchFull>
+
     /** Fetch a single video by id (for deep links / notifications). */
     @GET("api/videos.php")
     suspend fun videoById(

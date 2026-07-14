@@ -971,6 +971,140 @@ function player_label($p, string $default = ''): string
     return is_string($p) && $p !== '' ? $p : $default;
 }
 
+/**
+ * Aggregate everything the Match Center screen needs, normalized for the app:
+ * match info, timeline events, both lineups, head-to-head stats, broadcast
+ * channels, league standings and top scorers. Returns null when the match id
+ * is unknown. Shared by AppApi::matchFull() and /api/match_full.php so the two
+ * transports never diverge.
+ */
+function build_match_full(int $id): ?array
+{
+    $info = \Qamhad\Core\Api::matchInfo($id);
+    if (empty($info) || empty($info['match_id'])) return null;
+
+    $home   = team_of($info, 'home');
+    $away   = team_of($info, 'away');
+    $homeId = (int)($home['row_id'] ?? 0);
+    $awayId = (int)($away['row_id'] ?? 0);
+
+    /* ---- Timeline events ---- */
+    $eventsData = \Qamhad\Core\Api::matchEvents($id);
+    $rawEvents  = is_array($eventsData['events'] ?? null)
+        ? $eventsData['events']
+        : (is_array($info['events'] ?? null) ? $info['events'] : []);
+    $events = [];
+    foreach ($rawEvents as $ev) {
+        if (!is_array($ev)) continue;
+        $et = event_type($ev);
+        if ($et['key'] === 'period') continue;
+        $minute = (int)($ev['time_minute'] ?? 0);
+        $plus   = (int)($ev['time_plus'] ?? 0);
+        $minStr = $minute > 0
+            ? $minute . ($plus > 0 && $plus !== $minute ? '+' . $plus : '') . "'"
+            : '';
+        $events[] = [
+            'minute' => $minStr,
+            'side'   => ((int)($ev['team_id'] ?? 0) === $homeId) ? 'home' : 'away',
+            'key'    => $et['key'],
+            'label'  => $et['label'],
+            'player' => player_label($ev['player_name'] ?? null),
+            'assist' => player_label($ev['assist_player_name'] ?? null),
+        ];
+    }
+
+    /* ---- Lineups ---- */
+    $lineupData = \Qamhad\Core\Api::matchLineup($id);
+    $sides = is_array($lineupData['lineup'] ?? null) ? $lineupData['lineup'] : [];
+    $mapSide = static function ($tid) use ($sides): ?array {
+        $side = $sides[$tid] ?? null;
+        if (!is_array($side)) return null;
+        $mapGroup = static function (string $grp) use ($side): array {
+            $out = [];
+            foreach (($side[$grp] ?? []) as $lp) {
+                if (!is_array($lp)) continue;
+                $pl = is_array($lp['player'] ?? null) ? $lp['player'] : [];
+                $out[] = [
+                    'name'     => player_label($pl),
+                    'number'   => (int)($pl['player_number'] ?? 0),
+                    'image'    => (string)($pl['image'] ?? ''),
+                    'position' => (string)($pl['position'] ?? ''),
+                    'captain'  => !empty($lp['captain']),
+                    'goal'     => (int)($lp['goal'] ?? 0),
+                    'yellow'   => !empty($lp['yellow']),
+                    'red'      => !empty($lp['red']),
+                    'rating'   => (string)($lp['rating'] ?? ''),
+                ];
+            }
+            return $out;
+        };
+        return [
+            'formation' => (string)($side['formation'] ?? ''),
+            'starters'  => $mapGroup('lineup'),
+            'bench'     => $mapGroup('substitutions'),
+        ];
+    };
+    $lineups = ['home' => $mapSide($homeId), 'away' => $mapSide($awayId)];
+
+    /* ---- Head-to-head stats ---- */
+    $statsData = \Qamhad\Core\Api::matchStats($id);
+    $statsRaw  = is_array($statsData['statics'] ?? null) ? array_values($statsData['statics']) : [];
+    if (!$statsRaw && is_array($info['statics'] ?? null)) $statsRaw = array_values($info['statics']);
+    $byTeam = [];
+    foreach ($statsRaw as $sr) { if (is_array($sr) && isset($sr['team_id'])) $byTeam[(int)$sr['team_id']] = $sr; }
+    $hStats = $byTeam[$homeId] ?? [];
+    $aStats = $byTeam[$awayId] ?? [];
+    $statLabels = [
+        'ball_possession', 'total_shots', 'shots_on_goal', 'shots_off_goal', 'corner_kicks',
+        'offsides', 'fouls', 'yellow_cards', 'red_cards', 'goalkeeper_saves',
+        'total_passes', 'passes_percentage',
+    ];
+    $stats = [];
+    foreach ($statLabels as $key) {
+        $hv = (float)($hStats[$key] ?? 0);
+        $av = (float)($aStats[$key] ?? 0);
+        if ($hv == 0 && $av == 0 && $key !== 'ball_possession') continue;
+        $pct   = in_array($key, ['ball_possession', 'passes_percentage'], true);
+        $total = $hv + $av;
+        $stats[] = [
+            'label'    => t('stat.' . $key),
+            'home'     => $pct ? ($hv . '%') : rtrim(rtrim(number_format($hv, 2, '.', ''), '0'), '.'),
+            'away'     => $pct ? ($av . '%') : rtrim(rtrim(number_format($av, 2, '.', ''), '0'), '.'),
+            'home_pct' => $total > 0 ? (int)round($hv / $total * 100) : 50,
+        ];
+    }
+
+    /* ---- Broadcast channels ---- */
+    $channels = [];
+    foreach (\Qamhad\Core\Api::matchChannels($id) as $c) {
+        if (!is_array($c)) continue;
+        $name = trim((string)($c['channel_name'] ?? ''));
+        if ($name === '') continue;
+        $channels[] = ['name' => $name, 'commentator' => (string)($c['commentator_name'] ?? '')];
+    }
+
+    /* ---- Standings + scorers (league context) ---- */
+    $leagueId = (int)($info['championship']['url_id'] ?? 0);
+    $standing = $leagueId ? \Qamhad\Core\Api::leagueStanding($leagueId) : [];
+    $standingRows = is_array($standing['league'] ?? null)
+        ? array_values(array_filter($standing['league'], fn($r) => is_array($r) && isset($r['team_id'])))
+        : [];
+    $scorers = $leagueId ? array_slice(\Qamhad\Core\Api::leagueScorers($leagueId), 0, 20) : [];
+
+    $state = match_state($info);
+    return [
+        'match'     => $info,
+        'live'      => (bool)($state['live'] ?? false),
+        'status'    => (string)($state['label'] ?? ''),
+        'events'    => $events,
+        'lineups'   => $lineups,
+        'stats'     => $stats,
+        'channels'  => $channels,
+        'standings' => $standingRows,
+        'scorers'   => $scorers,
+    ];
+}
+
 /* ============ Misc ============ */
 
 function excerpt(?string $text, int $len = 140): string

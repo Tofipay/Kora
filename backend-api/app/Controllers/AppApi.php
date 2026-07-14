@@ -178,6 +178,21 @@ final class AppApi
     }
 
     /**
+     * GET /api/match_full[.php]?id=N
+     * Everything the Match Center screen shows on the website, normalized for
+     * the app: match info, timeline events, lineups (both sides), head-to-head
+     * stats, broadcast channels, league standings and top scorers.
+     */
+    public static function matchFull(): void
+    {
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) self::fail('Missing match id');
+        $payload = build_match_full($id);
+        if ($payload === null) self::fail('Match not found', 404);
+        self::emit($payload, !empty($payload['live']) ? 30 : 300);
+    }
+
+    /**
      * GET /api/resolve[.php]?url=<channel/stream url>
      * Server-side resolve of a channel URL into ready-to-play sources — Yacine
      * API links are decrypted and their HLS is returned as an absolute

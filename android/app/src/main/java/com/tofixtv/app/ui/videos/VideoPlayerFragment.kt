@@ -2,6 +2,7 @@ package com.tofixtv.app.ui.videos
 
 import android.annotation.SuppressLint
 import android.app.PictureInPictureParams
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
@@ -9,6 +10,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebSettings
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -32,6 +36,8 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
     private val b get() = _b!!
     private var player: ExoPlayer? = null
     private var playingDirect = false
+    private var isFull = false
+    private var collapsedHeight = 0
 
     private val related = VideoAdapter { v ->
         findNavController().navigate(R.id.videoPlayerFragment, bundleOf("id" to (v.id ?: 0L).toString()))
@@ -68,12 +74,13 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
         val direct = v.mediaUrl ?: v.videoUrl?.takeIf { it.endsWith(".mp4") || it.contains(".m3u8") }
         if (!direct.isNullOrBlank()) {
             playingDirect = true
-            b.webView.gone(); b.playerView.visible()
+            b.webView.gone(); b.playerView.visible(); b.btnVideoFull.visible()
             player = ExoPlayer.Builder(requireContext()).build().also {
                 b.playerView.player = it
                 it.setMediaItem(MediaItem.fromUri(direct))
                 it.prepare(); it.playWhenReady = true
             }
+            b.btnVideoFull.setOnClickListener { toggleFullscreen() }
         } else {
             // Embed (YouTube / X) → WebView.
             val embed = when {
@@ -93,6 +100,44 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
             if (embed != null) b.webView.loadUrl(embed) else b.progress.gone()
         }
     }
+
+    /** Toggle an immersive landscape fullscreen for the inline video player. */
+    private fun toggleFullscreen() {
+        val activity = activity ?: return
+        val window = activity.window ?: return
+        val container = b.playerContainer
+        if (!isFull) {
+            isFull = true
+            collapsedHeight = container.height.takeIf { it > 0 } ?: collapsedHeight
+            (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.hide()
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+            container.updateHeight(ViewGroup.LayoutParams.MATCH_PARENT)
+            b.playerView.layoutParams = b.playerView.layoutParams.apply {
+                height = ViewGroup.LayoutParams.MATCH_PARENT
+            }
+        } else {
+            isFull = false
+            (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.show()
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+            WindowInsetsControllerCompat(window, window.decorView)
+                .show(WindowInsetsCompat.Type.systemBars())
+            val h = if (collapsedHeight > 0) collapsedHeight else dp(220)
+            container.updateHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            b.playerView.layoutParams = b.playerView.layoutParams.apply { height = h }
+        }
+    }
+
+    private fun View.updateHeight(h: Int) {
+        layoutParams = layoutParams.apply { height = h }
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     // ---- Picture in Picture (direct playback only) ----
     override fun shouldEnterPip() = playingDirect && player?.isPlaying == true
@@ -115,6 +160,17 @@ class VideoPlayerFragment : Fragment(), MainActivity.PipAware {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        if (isFull) {
+            activity?.let { act ->
+                (act as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.show()
+                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                act.window?.let { w ->
+                    WindowCompat.setDecorFitsSystemWindows(w, true)
+                    WindowInsetsControllerCompat(w, w.decorView).show(WindowInsetsCompat.Type.systemBars())
+                }
+            }
+            isFull = false
+        }
         player?.release(); player = null
         _b = null
     }

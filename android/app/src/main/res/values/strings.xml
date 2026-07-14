@@ -30,14 +30,43 @@
     <string name="yesterday">أمس</string>
     <string name="tomorrow">غداً</string>
     <string name="watch_now">شاهد الآن</string>
+    <string name="player_resize">تغيير حجم الفيديو</string>
+    <string name="player_settings">الإعدادات</string>
+    <string name="player_quality">الجودة</string>
+    <string name="player_speed">سرعة التشغيل</string>
+    <string name="player_fit">احتواء</string>
+    <string name="player_fill">تمديد</string>
+    <string name="player_zoom">تكبير</string>
     <string name="read_more">اقرأ المزيد</string>
     <string name="finished">انتهت</string>
 
     <!-- Match center tabs -->
     <string name="tab_summary">ملخص</string>
+    <string name="tab_events">الأحداث</string>
     <string name="tab_lineup">التشكيلة</string>
     <string name="tab_stats">الإحصائيات</string>
+    <string name="tab_channels">القنوات</string>
     <string name="tab_standings">الترتيب</string>
+
+    <!-- Match center sections -->
+    <string name="mc_live">مباشر</string>
+    <string name="mc_key_events">أبرز الأحداث</string>
+    <string name="mc_no_events">لا توجد أحداث بعد</string>
+    <string name="mc_no_lineup">لم تُعلن التشكيلة بعد</string>
+    <string name="mc_no_stats">لا توجد إحصائيات متاحة</string>
+    <string name="mc_no_channels">لا توجد قنوات ناقلة</string>
+    <string name="mc_no_standings">لا يتوفر ترتيب لهذه البطولة</string>
+    <string name="mc_starting_lineup">التشكيلة الأساسية</string>
+    <string name="mc_substitutes">البدلاء</string>
+    <string name="mc_info">معلومات المباراة</string>
+    <string name="mc_channels_title">القنوات الناقلة</string>
+    <string name="mc_stats_title">إحصائيات المباراة</string>
+    <string name="mc_top_scorers">الهدافون</string>
+    <string name="mc_commentator">التعليق</string>
+    <string name="mc_league">البطولة</string>
+    <string name="mc_round">الجولة</string>
+    <string name="mc_stadium">الملعب</string>
+    <string name="mc_datetime">الموعد</string>
 
     <!-- Standings columns -->
     <string name="col_pos">#</string>

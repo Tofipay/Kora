@@ -14,6 +14,40 @@
         app:show_buffering="when_playing"
         app:use_controller="true" />
 
+    <!-- Custom control overlay (stream mode only) -->
+    <LinearLayout
+        android:id="@+id/controlsOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="14dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btnResize"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_control_btn"
+            android:src="@drawable/ic_resize"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="@string/player_resize" />
+
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_control_btn"
+            android:src="@drawable/ic_settings"
+            app:tint="@color/white"
+            android:scaleType="centerInside"
+            android:padding="8dp"
+            android:contentDescription="@string/player_settings" />
+    </LinearLayout>
+
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"

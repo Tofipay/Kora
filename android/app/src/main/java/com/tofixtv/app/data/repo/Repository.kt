@@ -62,6 +62,51 @@ class Repository private constructor(context: Context) {
             ?: restore<Match>("match_$id$lang")
     }
 
+    /** Full Match Center detail (events, lineups, stats, channels, standings, scorers).
+     *  Falls back to a cached snapshot, then to the basic match_info endpoint so
+     *  the screen still renders on backends that predate /api/match_full. */
+    suspend fun matchFull(id: Long, lang: String): MatchFull? = withContext(Dispatchers.IO) {
+        runCatching { api.matchFull(id, lang).data }.getOrNull()
+            ?.takeIf { it.match != null }
+            ?.let { snapshot("matchfull_$id$lang", it) }
+            ?: restore<MatchFull>("matchfull_$id$lang")
+            ?: runCatching { api.matchInfo(id, lang).data }.getOrNull()
+                ?.let { m ->
+                    val homeId = m.homeTeam.identifier
+                    val events = m.events.orEmpty()
+                        .filter { (it.type ?: 0) != 100 }
+                        .map { ev ->
+                            val min = ev.minute ?: 0
+                            val plus = ev.plus ?: 0
+                            val minStr = when {
+                                min <= 0 -> ""
+                                plus > 0 -> "$min+$plus'"
+                                else -> "$min'"
+                            }
+                            FullEvent(
+                                minute = minStr,
+                                side = if (ev.teamId == homeId) "home" else "away",
+                                key = eventKey(ev.type ?: 0),
+                                label = null,
+                                player = ev.player?.displayName,
+                                assist = ev.assist?.displayName
+                            )
+                        }
+                    MatchFull(match = m, events = events)
+                }
+    }
+
+    private fun eventKey(type: Int): String = when (type) {
+        1, 4 -> "goal"
+        3 -> "owngoal"
+        2 -> "yellow"
+        5 -> "second_yellow"
+        6, 7 -> "red"
+        8 -> "sub"
+        21 -> "missed_pen"
+        else -> "other"
+    }
+
     // ---------- News ----------
     suspend fun news(page: Int, lang: String): List<NewsItem> = withContext(Dispatchers.IO) {
         val items = runCatching { api.newsPage(page, lang).data?.items }.getOrNull()

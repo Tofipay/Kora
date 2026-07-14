@@ -21,7 +21,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="220dp"
                 app:resize_mode="fit"
+                app:use_controller="true"
                 app:show_buffering="when_playing" />
+
+            <ImageButton
+                android:id="@+id/btnVideoFull"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="12dp"
+                android:background="@drawable/bg_control_btn"
+                android:src="@drawable/ic_resize"
+                android:scaleType="centerInside"
+                android:padding="8dp"
+                android:visibility="gone"
+                android:contentDescription="@string/player_resize" />
 
             <!-- Fallback WebView for YouTube / X embeds without a direct media URL -->
             <WebView
