@@ -79,15 +79,25 @@ final class Sitemap
             Lang::boot($lang);
             $pfx = Lang::prefix();
 
-            // Static pages — with hreflang alternates both ways
+            // Site pages — with hreflang alternates both ways.
+            // changefreq/priority per page class:
+            //   home 1.0 · live hub always/0.9 · hot hubs hourly/0.9 ·
+            //   listing pages daily/0.6 · legal/static pages yearly/0.5
+            $legal = ['/about', '/privacy', '/terms', '/contact'];
+            $hot   = ['/matches', '/news', '/videos'];
             $statics = ['', '/matches', '/live', '/today', '/tomorrow', '/yesterday',
                         '/leagues', '/teams', '/players', '/news', '/videos', '/standings',
                         '/top-scorers', '/about', '/privacy', '/terms', '/contact'];
             foreach ($statics as $p) {
+                if ($p === '') { $freq = 'hourly'; $prio = '1.0'; }
+                elseif ($p === '/live') { $freq = 'always'; $prio = '0.9'; }
+                elseif (in_array($p, $hot, true)) { $freq = 'hourly'; $prio = '0.9'; }
+                elseif (in_array($p, $legal, true)) { $freq = 'yearly'; $prio = '0.5'; }
+                else { $freq = 'daily'; $prio = '0.6'; }
                 $urls[] = [
                     'loc'  => absolute_url(($pfx . $p) ?: '/'),
-                    'freq' => in_array($p, ['', '/matches', '/live', '/news', '/videos'], true) ? 'hourly' : 'daily',
-                    'prio' => $p === '' ? '1.0' : (in_array($p, ['/matches', '/live', '/news', '/videos'], true) ? '0.9' : '0.6'),
+                    'freq' => $freq,
+                    'prio' => $prio,
                     'lastmod' => $todayMod,
                     'alt'  => [
                         'ar' => absolute_url($p ?: '/'),
@@ -96,13 +106,13 @@ final class Sitemap
                 ];
             }
 
-            // Leagues
+            // Leagues — weekly / 0.7
             foreach (array_slice(Api::allLeagues(), 0, 40) as $lg) {
                 $id = (int)($lg['url_id'] ?? 0);
                 if (!$id) continue;
                 $urls[] = [
                     'loc' => absolute_url(league_url($lg)),
-                    'freq' => 'daily', 'prio' => '0.7',
+                    'freq' => 'weekly', 'prio' => '0.7',
                     'lastmod' => $todayMod,
                     'alt' => [
                         'ar' => absolute_url("/league/{$id}"),
@@ -122,10 +132,11 @@ final class Sitemap
                     }
                 }
             }
+            // Teams — weekly / 0.6
             foreach (array_slice($teams, 0, 80, true) as $tid => $t) {
                 $urls[] = [
                     'loc' => absolute_url(team_url($t)),
-                    'freq' => 'daily', 'prio' => '0.6',
+                    'freq' => 'weekly', 'prio' => '0.6',
                     'lastmod' => $todayMod,
                     'alt' => [
                         'ar' => absolute_url("/team/{$tid}"),
@@ -188,7 +199,7 @@ final class Sitemap
         // (8 dates x 2 languages x 3 feed URLs); if the upstream is slow or
         // down that could exceed PHP's execution limit and 500 the sitemap.
         // Serving the last rendered body for 5 minutes caps the worst case.
-        $bodyKey = 'sitemap-match-body-v2';
+        $bodyKey = 'sitemap-match-body-v3';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 300);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -278,7 +289,7 @@ final class Sitemap
         header('Cache-Control: public, max-age=3600');
         http_cache_validate(strtotime('today') ?: time(), 'sitemap-cinema-' . date('Y-m-d-H'));
 
-        $bodyKey = 'sitemap-cinema-body-v2';
+        $bodyKey = 'sitemap-cinema-body-v3';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 3600);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -441,7 +452,9 @@ final class Sitemap
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">' . "\n";
 
-        foreach (['ar' => SITE_NAME_AR, 'en' => SITE_NAME_EN] as $lang => $pubName) {
+        // Google News requires a stable publication name; both language
+        // sections publish under the single brand name "ToFiXTv".
+        foreach (['ar' => 'ToFiXTv', 'en' => 'ToFiXTv'] as $lang => $pubName) {
             Lang::boot($lang);
             foreach (array_slice(Api::newsPage(1)['items'], 0, 50) as $n) {
                 $loc = absolute_url(news_url($n));
@@ -545,7 +558,7 @@ final class Sitemap
         // Whole-body disk cache (same pattern as sitemap-match): a cold
         // build fans out to up to 12 upstream LoadMore calls; serving the
         // last rendered body for 15 minutes caps the worst case.
-        $bodyKey = 'sitemap-video-body-v4';
+        $bodyKey = 'sitemap-video-body-v5';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 900);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -587,12 +600,18 @@ final class Sitemap
                 // Real video link not known (yet) — keep the page crawled
                 // with a plain entry; it gains its <video:video> block once
                 // the player store learns the link.
-                echo "  <url>\n    <loc>" . htmlspecialchars($loc, ENT_XML1) . "</loc>\n  </url>\n";
+                echo "  <url>\n"
+                    . '    <loc>' . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
+                    . "    <changefreq>daily</changefreq>\n"
+                    . "    <priority>0.8</priority>\n"
+                    . "  </url>\n";
                 continue;
             }
 
             echo "  <url>\n"
                 . '    <loc>' . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
+                . "    <changefreq>daily</changefreq>\n"
+                . "    <priority>0.8</priority>\n"
                 . "    <video:video>\n"
                 . '      <video:thumbnail_loc>' . $thumb . "</video:thumbnail_loc>\n"
                 . '      <video:title>' . $title . "</video:title>\n"
