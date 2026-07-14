@@ -37,29 +37,27 @@ final class Sitemap
         header('Cache-Control: public, max-age=1800');
         http_cache_validate(strtotime('today') ?: time(), 'sitemap-index-' . date('Y-m-d-H'));
 
-        // Every child <loc> carries a version token (?v=…) that rolls
-        // forward forever — daily for the slow-moving sets, hourly for the
-        // fast ones (matches / news / videos). Crawlers treat each new
-        // version as a fresh URL, so the whole site — old and new — keeps
-        // getting re-fetched and re-indexed endlessly.
-        $daily  = date('Y.m.d');
-        $hourly = date('Y.m.d.H');
+        // Child <loc> URLs are CLEAN — no query-string version tokens.
+        // Freshness is signalled the standard way: through <lastmod> here and
+        // truthful lastmod/changefreq values inside each child sitemap.
         $children = [
-            'sitemap-ar.xml'     => $daily,
-            'sitemap-en.xml'     => $daily,
-            'sitemap-match.xml'  => $hourly,
-            'sitemap-news.xml'   => $hourly,
-            'sitemap-video.xml'  => $hourly,
-            'sitemap-images.xml' => $daily,
-            'sitemap-cinema.xml' => $daily,
+            'sitemap-ar.xml',
+            'sitemap-en.xml',
+            'sitemap-match.xml',
+            'sitemap-news.xml',
+            'sitemap-video.xml',
+            'sitemap-images.xml',
+            'sitemap-cinema.xml',
         ];
 
         $now = date('c');
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-        foreach ($children as $f => $ver) {
-            echo '  <sitemap><loc>' . htmlspecialchars(SITE_URL . '/' . $f . '?v=' . $ver, ENT_XML1) . '</loc>'
-                . '<lastmod>' . $now . '</lastmod></sitemap>' . "\n";
+        foreach ($children as $f) {
+            echo "  <sitemap>\n"
+                . '    <loc>' . htmlspecialchars(SITE_URL . '/' . $f, ENT_XML1) . "</loc>\n"
+                . '    <lastmod>' . $now . "</lastmod>\n"
+                . "  </sitemap>\n";
         }
         echo '</sitemapindex>';
         exit;
@@ -190,7 +188,7 @@ final class Sitemap
         // (8 dates x 2 languages x 3 feed URLs); if the upstream is slow or
         // down that could exceed PHP's execution limit and 500 the sitemap.
         // Serving the last rendered body for 5 minutes caps the worst case.
-        $bodyKey = 'sitemap-match-body-v1';
+        $bodyKey = 'sitemap-match-body-v2';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 300);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -280,7 +278,7 @@ final class Sitemap
         header('Cache-Control: public, max-age=3600');
         http_cache_validate(strtotime('today') ?: time(), 'sitemap-cinema-' . date('Y-m-d-H'));
 
-        $bodyKey = 'sitemap-cinema-body-v1';
+        $bodyKey = 'sitemap-cinema-body-v2';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 3600);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -400,7 +398,13 @@ final class Sitemap
 
     /* ---------------- shared urlset emitter ---------------- */
 
-    /** @param array<int,array<string,mixed>> $urls */
+    /**
+     * Emit a urlset with EVERY tag on its own indented line. The <loc>
+     * element contains ONLY the page URL — lastmod / changefreq / priority
+     * live in their own sibling tags, so the URL can never appear glued to
+     * metadata, in any XML viewer or parser.
+     * @param array<int,array<string,mixed>> $urls
+     */
     private static function emitUrlset(array $urls, bool $terminate = true): void
     {
         $seen = [];
@@ -409,15 +413,18 @@ final class Sitemap
         foreach ($urls as $u) {
             if (isset($seen[$u['loc']])) continue;
             $seen[$u['loc']] = true;
-            echo '  <url><loc>' . htmlspecialchars($u['loc'], ENT_XML1) . '</loc>';
+            echo "  <url>\n";
+            echo '    <loc>' . htmlspecialchars($u['loc'], ENT_XML1) . "</loc>\n";
             foreach (($u['alt'] ?? []) as $hl => $href) {
-                echo '<xhtml:link rel="alternate" hreflang="' . $hl . '" href="' . htmlspecialchars($href, ENT_XML1) . '"/>';
+                echo '    <xhtml:link rel="alternate" hreflang="' . $hl . '" href="' . htmlspecialchars($href, ENT_XML1) . '"/>' . "\n";
             }
             if (!empty($u['alt']['ar'])) {
-                echo '<xhtml:link rel="alternate" hreflang="x-default" href="' . htmlspecialchars($u['alt']['ar'], ENT_XML1) . '"/>';
+                echo '    <xhtml:link rel="alternate" hreflang="x-default" href="' . htmlspecialchars($u['alt']['ar'], ENT_XML1) . '"/>' . "\n";
             }
-            if (!empty($u['lastmod'])) echo '<lastmod>' . $u['lastmod'] . '</lastmod>';
-            echo '<changefreq>' . $u['freq'] . '</changefreq><priority>' . $u['prio'] . '</priority></url>' . "\n";
+            if (!empty($u['lastmod'])) echo '    <lastmod>' . $u['lastmod'] . "</lastmod>\n";
+            echo '    <changefreq>' . $u['freq'] . "</changefreq>\n";
+            echo '    <priority>' . $u['prio'] . "</priority>\n";
+            echo "  </url>\n";
         }
         echo '</urlset>';
         if ($terminate) exit;
@@ -440,11 +447,17 @@ final class Sitemap
                 $loc = absolute_url(news_url($n));
                 $date = date('c', to_ts($n['created_at'] ?? null) ?: time());
                 $title = htmlspecialchars((string)($n['title'] ?? ''), ENT_XML1);
-                echo '  <url><loc>' . htmlspecialchars($loc, ENT_XML1) . '</loc>'
-                    . '<news:news><news:publication><news:name>' . htmlspecialchars($pubName, ENT_XML1) . '</news:name>'
-                    . '<news:language>' . $lang . '</news:language></news:publication>'
-                    . '<news:publication_date>' . $date . '</news:publication_date>'
-                    . '<news:title>' . $title . '</news:title></news:news></url>' . "\n";
+                echo "  <url>\n"
+                    . '    <loc>' . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
+                    . "    <news:news>\n"
+                    . "      <news:publication>\n"
+                    . '        <news:name>' . htmlspecialchars($pubName, ENT_XML1) . "</news:name>\n"
+                    . '        <news:language>' . $lang . "</news:language>\n"
+                    . "      </news:publication>\n"
+                    . '      <news:publication_date>' . $date . "</news:publication_date>\n"
+                    . '      <news:title>' . $title . "</news:title>\n"
+                    . "    </news:news>\n"
+                    . "  </url>\n";
             }
         }
 
@@ -466,12 +479,20 @@ final class Sitemap
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
 
+        $imgEntry = function (string $loc, string $img, string $title): void {
+            echo "  <url>\n"
+                . '    <loc>' . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
+                . "    <image:image>\n"
+                . '      <image:loc>' . htmlspecialchars($img, ENT_XML1) . "</image:loc>\n"
+                . '      <image:title>' . htmlspecialchars($title, ENT_XML1) . "</image:title>\n"
+                . "    </image:image>\n"
+                . "  </url>\n";
+        };
+
         // News covers — 1200px renders for Google Discover eligibility
         foreach (array_slice(Api::newsPage(1)['items'], 0, 30) as $n) {
             if (empty($n['image'])) continue;
-            echo '  <url><loc>' . htmlspecialchars(absolute_url(news_url($n)), ENT_XML1) . '</loc>'
-                . '<image:image><image:loc>' . htmlspecialchars(absolute_url(news_img($n, '1200')), ENT_XML1) . '</image:loc>'
-                . '<image:title>' . htmlspecialchars((string)($n['title'] ?? ''), ENT_XML1) . '</image:title></image:image></url>' . "\n";
+            $imgEntry(absolute_url(news_url($n)), absolute_url(news_img($n, '1200')), (string)($n['title'] ?? ''));
         }
 
         // Team + league logos from today's fixtures
@@ -480,18 +501,14 @@ final class Sitemap
             $lg = $m['championship'] ?? [];
             if (!empty($lg['image']) && empty($done['l' . $lg['url_id']])) {
                 $done['l' . $lg['url_id']] = true;
-                echo '  <url><loc>' . htmlspecialchars(absolute_url(league_url($lg)), ENT_XML1) . '</loc>'
-                    . '<image:image><image:loc>' . htmlspecialchars(absolute_url(league_img($lg, '96')), ENT_XML1) . '</image:loc>'
-                    . '<image:title>' . htmlspecialchars((string)($lg['title'] ?? ''), ENT_XML1) . '</image:title></image:image></url>' . "\n";
+                $imgEntry(absolute_url(league_url($lg)), absolute_url(league_img($lg, '96')), (string)($lg['title'] ?? ''));
             }
             foreach (['home', 'away'] as $side) {
                 $t = team_of($m, $side);
                 $tid = (int)($t['row_id'] ?? 0);
                 if ($tid && !empty($t['image']) && empty($done['t' . $tid])) {
                     $done['t' . $tid] = true;
-                    echo '  <url><loc>' . htmlspecialchars(absolute_url(team_url($t)), ENT_XML1) . '</loc>'
-                        . '<image:image><image:loc>' . htmlspecialchars(absolute_url(team_img($t, '128')), ENT_XML1) . '</image:loc>'
-                        . '<image:title>' . htmlspecialchars(team_name($t), ENT_XML1) . '</image:title></image:image></url>' . "\n";
+                    $imgEntry(absolute_url(team_url($t)), absolute_url(team_img($t, '128')), team_name($t));
                 }
             }
         }
@@ -528,7 +545,7 @@ final class Sitemap
         // Whole-body disk cache (same pattern as sitemap-match): a cold
         // build fans out to up to 12 upstream LoadMore calls; serving the
         // last rendered body for 15 minutes caps the worst case.
-        $bodyKey = 'sitemap-video-body-v3';
+        $bodyKey = 'sitemap-video-body-v4';
         $cached = \TofiXTv\Core\Cache::get($bodyKey, 900);
         if (is_string($cached) && $cached !== '') {
             echo $cached;
@@ -570,21 +587,23 @@ final class Sitemap
                 // Real video link not known (yet) — keep the page crawled
                 // with a plain entry; it gains its <video:video> block once
                 // the player store learns the link.
-                echo '  <url><loc>' . htmlspecialchars($loc, ENT_XML1) . '</loc></url>' . "\n";
+                echo "  <url>\n    <loc>" . htmlspecialchars($loc, ENT_XML1) . "</loc>\n  </url>\n";
                 continue;
             }
 
-            echo '  <url><loc>' . htmlspecialchars($loc, ENT_XML1) . '</loc>'
-                . '<video:video>'
-                . '<video:thumbnail_loc>' . $thumb . '</video:thumbnail_loc>'
-                . '<video:title>' . $title . '</video:title>'
-                . '<video:description>' . $title . '</video:description>'
-                . ($content !== '' ? '<video:content_loc>' . htmlspecialchars($content, ENT_XML1) . '</video:content_loc>' : '')
-                . ($player !== '' ? '<video:player_loc>' . htmlspecialchars($player, ENT_XML1) . '</video:player_loc>' : '')
-                . ($ts ? '<video:publication_date>' . date('c', $ts) . '</video:publication_date>' : '')
-                . '<video:family_friendly>yes</video:family_friendly>'
-                . '<video:live>no</video:live>'
-                . '</video:video></url>' . "\n";
+            echo "  <url>\n"
+                . '    <loc>' . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
+                . "    <video:video>\n"
+                . '      <video:thumbnail_loc>' . $thumb . "</video:thumbnail_loc>\n"
+                . '      <video:title>' . $title . "</video:title>\n"
+                . '      <video:description>' . $title . "</video:description>\n"
+                . ($content !== '' ? '      <video:content_loc>' . htmlspecialchars($content, ENT_XML1) . "</video:content_loc>\n" : '')
+                . ($player !== '' ? '      <video:player_loc>' . htmlspecialchars($player, ENT_XML1) . "</video:player_loc>\n" : '')
+                . ($ts ? '      <video:publication_date>' . date('c', $ts) . "</video:publication_date>\n" : '')
+                . "      <video:family_friendly>yes</video:family_friendly>\n"
+                . "      <video:live>no</video:live>\n"
+                . "    </video:video>\n"
+                . "  </url>\n";
         }
         echo '</urlset>';
 
