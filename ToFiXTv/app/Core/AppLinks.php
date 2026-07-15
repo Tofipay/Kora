@@ -6,13 +6,15 @@ namespace TofiXTv\Core;
 /**
  * Android-app match links (admin-managed) — the "روابط مباريات التطبيق" tab.
  *
- * Maps a match id to the direct stream URL the Android app should open
- * (e.g. http://ver3.yacinelive.com/api/channel/1473). Used ONLY when the
- * request comes from the Android app (User-Agent: com.tofixtv.app); the
- * normal website behaviour is completely untouched.
+ * Maps a match id to the value the Android app should open. The value may be
+ * a normal http(s) URL (e.g. http://ver3.yacinelive.com/api/channel/1473) OR
+ * any opaque string / encrypted token — it is stored and returned EXACTLY as
+ * entered (no URL validation, no character stripping of +, /, = …). Used ONLY
+ * when the request carries the header "apptofi: com.tofixtv.app"; the normal
+ * website behaviour is completely untouched.
  *
  * storage/settings/app_links.json:
- *   { "<matchId>": { "url": "http://…", "title": "…", "updated_at": "…" } }
+ *   { "<matchId>": { "url": "http://… | <token>", "title": "…", "updated_at": "…" } }
  */
 final class AppLinks
 {
@@ -27,12 +29,15 @@ final class AppLinks
         return self::$all;
     }
 
-    /** Direct app URL stored for a match ('' when none). */
+    /**
+     * Direct app value stored for a match ('' when none). Returned EXACTLY as
+     * stored — may be an http(s) URL or an opaque encrypted token. No URL
+     * validation and no character filtering are applied.
+     */
     public static function forMatch(int $matchId): string
     {
         $e = self::load()[(string)$matchId] ?? null;
-        $u = is_array($e) ? trim((string)($e['url'] ?? '')) : '';
-        return preg_match('#^https?://#i', $u) ? $u : '';
+        return is_array($e) ? (string)($e['url'] ?? '') : '';
     }
 
     /**

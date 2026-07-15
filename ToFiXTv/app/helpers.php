@@ -1206,17 +1206,19 @@ function build_token(): string
     return $v !== '' ? $v : \TofiXTv\Core\Seo::BUILD;
 }
 
-/* ==================== Android app (com.tofixtv.app) ==================== */
+/* ==================== Android app (apptofi header) ==================== */
 
 /**
  * True ONLY when the request comes from the official Android app, which
- * sends the exact User-Agent "com.tofixtv.app". Every app-specific feature
- * is gated on this — normal visitors/browsers are never affected.
+ * sends the custom HTTP header  "apptofi: com.tofixtv.app"  (exposed by PHP
+ * as $_SERVER['HTTP_APPTOFI']). Every app-specific feature is gated on this —
+ * normal visitors/browsers never send this header, so they are never
+ * affected. Detection no longer depends on the User-Agent.
  */
 function is_tofix_app(): bool
 {
-    return isset($_SERVER['HTTP_USER_AGENT'])
-        && trim((string)$_SERVER['HTTP_USER_AGENT']) === 'com.tofixtv.app';
+    return isset($_SERVER['HTTP_APPTOFI'])
+        && trim((string)$_SERVER['HTTP_APPTOFI']) === 'com.tofixtv.app';
 }
 
 /**

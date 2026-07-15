@@ -154,11 +154,11 @@ $aStats = $statsByTeam[$awayId] ?? [];
     </div>
     <?php endif; ?>
     <?php if (!empty($isApp)): ?>
-    <?php /* Android app (User-Agent: com.tofixtv.app) ONLY: the site's orange
-             button is hidden and a BLUE app button takes its place whenever a
-             valid link exists (direct match link OR app channel library) —
-             shown even before kickoff, no live requirement. Normal visitors
-             never reach this branch. */ ?>
+    <?php /* Android app (header "apptofi: com.tofixtv.app") ONLY: the site's
+             orange button is hidden and a BLUE app button takes its place
+             whenever a value exists (direct match link OR app channel library,
+             a normal URL or an encrypted token) — shown even before kickoff,
+             no live requirement. Normal visitors never reach this branch. */ ?>
     <?php if (!empty($appWatchUrl)): ?>
     <style>.watch-cta.watch-cta-app{background:linear-gradient(120deg,#2563eb,#3b82f6);box-shadow:0 10px 26px rgba(37,99,235,.4)}.watch-cta.watch-cta-app:hover{box-shadow:0 14px 32px rgba(37,99,235,.5)}</style>
     <div class="mh-watch">

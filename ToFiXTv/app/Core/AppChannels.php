@@ -5,16 +5,18 @@ namespace TofiXTv\Core;
 
 /**
  * Android-app channel library (admin-managed) — INDEPENDENT of the website
- * channel library (ChannelLib). Used ONLY when the request comes from the
- * Android app (User-Agent: com.tofixtv.app); it never affects normal visitors.
+ * channel library (ChannelLib). Used ONLY when the request carries the header
+ * "apptofi: com.tofixtv.app"; it never affects normal visitors.
  *
- * Each channel has a name and one or more app stream URLs. Multiple URLs may
- * be separated by commas or new lines, e.g.:
+ * Each channel has a name and one or more values. A value may be a normal
+ * http(s) URL OR any opaque string / encrypted token — stored and returned
+ * EXACTLY as entered (no URL validation, no character stripping). Multiple
+ * values may be separated by commas or new lines, e.g.:
  *   http://ver3.yacinelive.com/api/channel/1473?tofi-api&tofiUrlname=beIN Max 1-HD,
  *   http://ver3.yacinelive.com/api/channel/1472?tofi-api&tofiUrlname=beIN Max 1-SD
  *
  * storage/settings/app_channels.json:
- *   { "items": [ { "name": "beIN Max 1", "urls": ["http://…/1473?tofi-api&…"] } ] }
+ *   { "items": [ { "name": "beIN Max 1", "urls": ["http://…/1473?…" | "<token>"] } ] }
  */
 final class AppChannels
 {
@@ -38,13 +40,16 @@ final class AppChannels
         return self::$items;
     }
 
-    /** @return array<int,string> */
+    /**
+     * @return array<int,string> Any non-empty value is kept EXACTLY as stored
+     * (http(s) URL or opaque encrypted token) — no URL validation/filtering.
+     */
     private static function urlsOf(array $it): array
     {
         $urls = [];
         foreach ((array)($it['urls'] ?? []) as $u) {
             $u = trim((string)$u);
-            if ($u !== '' && preg_match('#^https?://#i', $u)) $urls[] = $u;
+            if ($u !== '') $urls[] = $u;
         }
         return $urls;
     }
