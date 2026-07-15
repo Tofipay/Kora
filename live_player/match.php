@@ -25,21 +25,23 @@ $ytThumb = static function (string $u): string {
     return '';
 };
 
-/* ---- "شاهد المباراة الآن" deep link (xmtv://) --------------------------------
-   Turns the match channels into ver3 stream API URLs of the shape
-     http://ver3.yacinelive.com/api/channel/{id}?tofi-api&tofiUrlname={server name}
-   joins them with a comma, encrypts the whole string with AES-192-ECB (PKCS7)
-   using the shared key, and base64-encodes the result. The button then points
-   at  xmtv://<payload>  which launches the com.tofi.player app (its xmtv://
-   intent-filter / MainActivity handles the URI) instead of opening the web
-   player page. tofiUrlname is the server label (channel name, and the
-   commentator when present — e.g. "bein 1 Max - عصام الشوالي").
+/* ---- "شاهد المباراة الآن" — يفتح تطبيق com.tofi.player مباشرة ----------------
+   يبني من قنوات المباراة روابط بث بصيغة
+     http://ver3.yacinelive.com/api/channel/{id}?tofi-api&tofiUrlname={اسم السيرفر}
+   يفصل بينها بفاصلة، يشفّرها كلها AES-192-ECB (PKCS7) بالمفتاح المشترك ثم base64.
 
-   NOTE: the channel id is read from the first of these keys that exists on a
-   channel row: channel_id / url_id / row_id / id — adjust to match your model. */
+   الزر يستخدم رابط  intent://  وهو المكافئ على الويب لكود أندرويد:
+       Intent i = new Intent();
+       i.setComponent(new ComponentName("com.tofi.player",
+                                        "com.tofi.player.MainActivity"));
+       i.setAction("open_app");            // + data ذات scheme=xmtv
+   أي يفتح التطبيق نفسه مباشرة (لا صفحة مشغّل على الموقع). tofiUrlname هو اسم
+   السيرفر (اسم القناة، ويُضاف المعلّق عند وجوده — مثل "bein 1 Max - عصام الشوالي").
+
+   ملاحظة: رقم القناة يُقرأ من أول مفتاح موجود من: channel_id / url_id / row_id / id. */
 $appEncKey  = '6.o4XM7s~I|qZF+p9yZ0eOYi';           // 24-byte AES-192 key
 $appApiBase = 'http://ver3.yacinelive.com/api/channel/';
-$buildAppWatchLink = static function (array $channels) use ($appEncKey, $appApiBase): string {
+$appWatchPayload = static function (array $channels) use ($appEncKey, $appApiBase): string {
     $urls = [];
     foreach ($channels as $c) {
         $cid = (int)($c['channel_id'] ?? $c['url_id'] ?? $c['row_id'] ?? $c['id'] ?? 0);
@@ -52,10 +54,16 @@ $buildAppWatchLink = static function (array $channels) use ($appEncKey, $appApiB
     }
     if (!$urls) return '';
     $enc = openssl_encrypt(implode(',', $urls), 'aes-192-ecb', $appEncKey, OPENSSL_RAW_DATA);
-    if ($enc === false) return '';
-    return 'xmtv://' . base64_encode($enc);
+    return $enc === false ? '' : base64_encode($enc);
 };
-$appWatchLink = $buildAppWatchLink($channels ?? []);
+// الحمولة المشفّرة (قد تكون فارغة قبل توفّر القنوات — يبقى الزر يفتح التطبيق).
+$appWatchPayloadStr = $appWatchPayload($channels ?? []);
+// رابط Intent صريح يطابق setComponent + setAction("open_app") + scheme=xmtv.
+$appWatchLink = 'intent://' . $appWatchPayloadStr
+    . '#Intent;scheme=xmtv;action=open_app;'
+    . 'package=com.tofi.player;'
+    . 'component=com.tofi.player/com.tofi.player.MainActivity;'
+    . 'end';
 
 /* Extra time & penalty shootout (see match_periods / penalty_shootout) */
 $periods  = is_array($periods ?? null) ? $periods : match_periods($m);
@@ -185,16 +193,14 @@ $aStats = $statsByTeam[$awayId] ?? [];
       <?php endif; ?>
     </div>
     <?php endif; ?>
-    <?php /* "شاهد المباراة الآن" — يظهر دائماً (قبل المباراة وأثناءها وبعدها،
-             وليس فقط عندما تكون مباشرة). عند الضغط يفتح تطبيق com.tofi.player
-             عبر رابط xmtv:// مشفّر بدل فتح صفحة المشغّل على الموقع. */ ?>
-    <?php if ($appWatchLink !== ''): ?>
+    <?php /* "شاهد المباراة الآن" — يظهر دائماً: قبل بدء المباراة وأثناءها وبعدها،
+             بلا أي شرط على حالة المباراة. عند الضغط يفتح تطبيق com.tofi.player
+             مباشرة عبر رابط intent:// بدل فتح صفحة مشغّل على الموقع. */ ?>
     <div class="mh-watch">
       <a class="watch-cta" href="<?= e($appWatchLink) ?>">
         <span class="live-dot"></span><?= e(\TofiXTv\Core\Lang::current() === 'ar' ? 'شاهد المباراة الآن' : t('player.watch')) ?>
       </a>
     </div>
-    <?php endif; ?>
     <div class="mh-actions">
       <button class="icon-btn" onclick="QShare()" aria-label="<?= e(t('misc.share')) ?>">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6m-7.6 6 7.6 3.6"/></svg>
