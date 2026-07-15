@@ -1,0 +1,15 @@
+# Never serve anything under storage/ over HTTP.
+# The document root is public/, so this directory is already outside the web
+# root — this file is defense-in-depth in case of a misconfigured docroot.
+# Protects service-account.json, cached OAuth tokens, settings and logs.
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+
+# Apache 2.2
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

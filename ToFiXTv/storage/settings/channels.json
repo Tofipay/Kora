@@ -1,0 +1,59 @@
+{
+    "items": [
+        {
+            "name": "beIN Max 1",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1471",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1501",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1521",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1541",
+                "https:\/\/3.simokora.com\/my-hls\/h9asfma10d5.m3u8"
+            ]
+        },
+        {
+            "name": "beIN Max 2",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1472",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1502",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1522",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1542"
+            ]
+        },
+        {
+            "name": "beIN Max 3",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1473",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1503",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1523",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1543"
+            ]
+        },
+        {
+            "name": "beIN Max 4",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1474",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1504",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1524",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1544"
+            ]
+        },
+        {
+            "name": "beIN Max 5",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1475",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1505",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1525",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1545"
+            ]
+        },
+        {
+            "name": "beIN Max 6",
+            "urls": [
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1476",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1506",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1526",
+                "http:\/\/ver3.yacinelive.com\/api\/channel\/1546"
+            ]
+        }
+    ]
+}
