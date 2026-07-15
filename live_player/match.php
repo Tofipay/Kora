@@ -26,31 +26,29 @@ $ytThumb = static function (string $u): string {
 };
 
 /* ---- "شاهد المباراة الآن" — يفتح تطبيق com.tofi.player مباشرة ----------------
-   يبني من قنوات المباراة روابط بث بصيغة
-     http://ver3.yacinelive.com/api/channel/{id}?tofi-api&tofiUrlname={اسم السيرفر}
-   يفصل بينها بفاصلة، يشفّرها كلها AES-192-ECB (PKCS7) بالمفتاح المشترك ثم base64.
+   رابط القناة يأتي جاهزاً من لوحة الإدارة كما هو، مثل:
+       http://ver3.yacinelive.com/api/channel/1472?tofi-api
+   لا نبنيه ولا نعدّله — نضيف عليه فقط  &tofiUrlname={اسم القناة و المعلّق}.
+   عند وجود أكثر من قناة نفصل بينها بفاصلة، ثم نشفّر النص كاملاً AES-192-ECB
+   (PKCS7) بالمفتاح المشترك ثم base64.
 
-   الزر يستخدم رابط  intent://  وهو المكافئ على الويب لكود أندرويد:
-       Intent i = new Intent();
-       i.setComponent(new ComponentName("com.tofi.player",
-                                        "com.tofi.player.MainActivity"));
-       i.setAction("open_app");            // + data ذات scheme=xmtv
-   أي يفتح التطبيق نفسه مباشرة (لا صفحة مشغّل على الموقع). tofiUrlname هو اسم
-   السيرفر (اسم القناة، ويُضاف المعلّق عند وجوده — مثل "bein 1 Max - عصام الشوالي").
+   الزر يستخدم رابط  intent://  بمخطط xmtv محدَّداً باسم الحزمة (package name)
+   فقط، فيفتح التطبيق مباشرة (لا صفحة مشغّل على الموقع).
 
-   ملاحظة: رقم القناة يُقرأ من أول مفتاح موجود من: channel_id / url_id / row_id / id. */
-$appEncKey  = '6.o4XM7s~I|qZF+p9yZ0eOYi';           // 24-byte AES-192 key
-$appApiBase = 'http://ver3.yacinelive.com/api/channel/';
-$appWatchPayload = static function (array $channels) use ($appEncKey, $appApiBase): string {
+   ملاحظة: رابط لوحة الإدارة يُقرأ من أول مفتاح موجود من:
+   channel_url / url / link / channel_link / stream_url. */
+$appEncKey = '6.o4XM7s~I|qZF+p9yZ0eOYi';           // 24-byte AES-192 key
+$appWatchPayload = static function (array $channels) use ($appEncKey): string {
     $urls = [];
     foreach ($channels as $c) {
-        $cid = (int)($c['channel_id'] ?? $c['url_id'] ?? $c['row_id'] ?? $c['id'] ?? 0);
-        if ($cid <= 0) continue;
+        $u = trim((string)($c['channel_url'] ?? $c['url'] ?? $c['link'] ?? $c['channel_link'] ?? $c['stream_url'] ?? ''));
+        if ($u === '') continue;
         $name = trim((string)($c['channel_name'] ?? ''));
         if (!empty($c['commentator_name'])) {
             $name = trim($name . ' - ' . (string)$c['commentator_name']);
         }
-        $urls[] = $appApiBase . $cid . '?tofi-api&tofiUrlname=' . $name;
+        $sep = str_contains($u, '?') ? '&' : '?';
+        $urls[] = $u . $sep . 'tofiUrlname=' . $name;
     }
     if (!$urls) return '';
     $enc = openssl_encrypt(implode(',', $urls), 'aes-192-ecb', $appEncKey, OPENSSL_RAW_DATA);
@@ -58,12 +56,9 @@ $appWatchPayload = static function (array $channels) use ($appEncKey, $appApiBas
 };
 // الحمولة المشفّرة (قد تكون فارغة قبل توفّر القنوات — يبقى الزر يفتح التطبيق).
 $appWatchPayloadStr = $appWatchPayload($channels ?? []);
-// رابط Intent صريح يطابق setComponent + setAction("open_app") + scheme=xmtv.
+// رابط Intent يفتح التطبيق باسم الحزمة فقط + مخطط xmtv.
 $appWatchLink = 'intent://' . $appWatchPayloadStr
-    . '#Intent;scheme=xmtv;action=open_app;'
-    . 'package=com.tofi.player;'
-    . 'component=com.tofi.player/com.tofi.player.MainActivity;'
-    . 'end';
+    . '#Intent;scheme=xmtv;package=com.tofi.player;end';
 
 /* Extra time & penalty shootout (see match_periods / penalty_shootout) */
 $periods  = is_array($periods ?? null) ? $periods : match_periods($m);
