@@ -12,7 +12,7 @@
     أضف قيمة التطبيق لكل مباراة. يمكن أن تكون رابطاً عادياً
     (<code dir="ltr">http://ver3.yacinelive.com/api/channel/1473</code>)
     <b>أو نصاً/توكن مشفّراً طويلاً</b> — تُحفظ كما أُدخلت تماماً بدون أي فلترة أو تحقق.
-    عند فتح صفحة المباراة من التطبيق (الهيدر <code dir="ltr">apptofi: com.tofixtv.app</code>) يظهر
+    عند فتح صفحة المباراة من تطبيق Android (<code dir="ltr">User-Agent: com.tofixtv.app</code>) يظهر
     الزر الأزرق «شاهد المباراة الآن» ويمرّر القيمة كما هي عبر
     <code dir="ltr">intent://…#Intent;scheme=xmtv;package=com.tofi.player;end</code>.<br>
     المباريات التي لا تملك قيمة مباشرة تسحب قيمها تلقائياً من

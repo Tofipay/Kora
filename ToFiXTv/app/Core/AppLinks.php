@@ -10,8 +10,8 @@ namespace TofiXTv\Core;
  * a normal http(s) URL (e.g. http://ver3.yacinelive.com/api/channel/1473) OR
  * any opaque string / encrypted token — it is stored and returned EXACTLY as
  * entered (no URL validation, no character stripping of +, /, = …). Used ONLY
- * when the request carries the header "apptofi: com.tofixtv.app"; the normal
- * website behaviour is completely untouched.
+ * when the request comes from the Android app (User-Agent: com.tofixtv.app);
+ * the normal website behaviour is completely untouched.
  *
  * storage/settings/app_links.json:
  *   { "<matchId>": { "url": "http://… | <token>", "title": "…", "updated_at": "…" } }

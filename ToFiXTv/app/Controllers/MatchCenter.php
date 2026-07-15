@@ -75,16 +75,14 @@ final class MatchCenter
             'finished' => min($kickoff + 7200, time()),
             default    => min($kickoff, time()),
         };
-        // Android app (header "apptofi: com.tofixtv.app") — resolve the app
-        // stream link (direct per-match link, else the app channel library).
-        // The value may be a normal http(s) URL OR an opaque encrypted token;
-        // it is passed through untouched. Purely additive: '' for normal
-        // visitors, who never send this header.
+        // Android app (User-Agent: com.tofixtv.app) — resolve the app stream
+        // link (direct per-match link, else the app channel library). The
+        // value may be a normal http(s) URL OR an opaque encrypted token; it
+        // is passed through untouched. Purely additive: '' for normal visitors.
         $isApp = is_tofix_app();
         $appWatchUrl = $isApp ? \TofiXTv\Core\AppLinks::resolveForMatch($id) : '';
-        // The HTML differs when the app header is present, so caches must key
-        // on that request header (not User-Agent).
-        header('Vary: apptofi');
+        // The HTML differs for the app User-Agent, so caches must key on it.
+        header('Vary: User-Agent');
 
         header('Cache-Control: public, max-age=' . ($state['live'] ? 30 : 600));
         http_cache_validate($mtime, 'match-' . $id . '|' . ($state['key'] ?? '')
@@ -147,8 +145,8 @@ final class MatchCenter
             'watchable'    => Streams::isWatchable($id) || ChannelLib::hasMatch($id),
             'watchUrl'     => Streams::watchUrl($id),
             'watchTarget'  => Streams::watchTarget($id),
-            // Android app only (header "apptofi: com.tofixtv.app"): the blue
-            // app button replaces the orange one whenever a link exists — the
+            // Android app only (User-Agent: com.tofixtv.app): the blue app
+            // button replaces the orange one whenever a link exists — the
             // match does NOT have to be live. Empty for normal visitors.
             'isApp'        => $isApp,
             'appWatchUrl'  => $appWatchUrl,

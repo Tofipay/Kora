@@ -5,8 +5,8 @@ namespace TofiXTv\Core;
 
 /**
  * Android-app channel library (admin-managed) — INDEPENDENT of the website
- * channel library (ChannelLib). Used ONLY when the request carries the header
- * "apptofi: com.tofixtv.app"; it never affects normal visitors.
+ * channel library (ChannelLib). Used ONLY when the request comes from the
+ * Android app (User-Agent: com.tofixtv.app); it never affects normal visitors.
  *
  * Each channel has a name and one or more values. A value may be a normal
  * http(s) URL OR any opaque string / encrypted token — stored and returned
