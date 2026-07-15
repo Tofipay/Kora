@@ -35,20 +35,34 @@ $ytThumb = static function (string $u): string {
    الزر يستخدم رابط  intent://  بمخطط xmtv محدَّداً باسم الحزمة (package name)
    فقط، فيفتح التطبيق مباشرة (لا صفحة مشغّل على الموقع).
 
-   ملاحظة: رابط لوحة الإدارة يُقرأ من أول مفتاح موجود من:
-   channel_url / url / link / channel_link / stream_url. */
+   الروابط تُلتقط تلقائياً من أي حقل داخل القناة مهما كان اسمه: نمسح كل قيم
+   القناة ونأخذ أي قيمة تبدأ بـ http/https (وندعم عدة روابط مفصولة بأسطر أو
+   فواصل)، ونتجاهل روابط الصور/الشعارات. */
 $appEncKey = '6.o4XM7s~I|qZF+p9yZ0eOYi';           // 24-byte AES-192 key
 $appWatchPayload = static function (array $channels) use ($appEncKey): string {
     $urls = [];
     foreach ($channels as $c) {
-        $u = trim((string)($c['channel_url'] ?? $c['url'] ?? $c['link'] ?? $c['channel_link'] ?? $c['stream_url'] ?? ''));
-        if ($u === '') continue;
+        if (!is_array($c)) continue;
+        // اسم السيرفر = اسم القناة + المعلّق عند وجوده.
         $name = trim((string)($c['channel_name'] ?? ''));
         if (!empty($c['commentator_name'])) {
             $name = trim($name . ' - ' . (string)$c['commentator_name']);
         }
-        $sep = str_contains($u, '?') ? '&' : '?';
-        $urls[] = $u . $sep . 'tofiUrlname=' . $name;
+        // اجمع كل ما يشبه رابط بث من أي حقل في القناة (بأي اسم مفتاح).
+        $links = [];
+        array_walk_recursive($c, static function ($val) use (&$links) {
+            if (!is_string($val)) return;
+            foreach (preg_split('/[\r\n,]+/', $val) as $piece) {
+                $piece = trim($piece);
+                if ($piece === '' || !preg_match('#^https?://#i', $piece)) continue;
+                if (preg_match('#\.(png|jpe?g|gif|svg|webp|ico)(\?|$)#i', $piece)) continue; // تجاهل الصور
+                $links[] = $piece;
+            }
+        });
+        foreach ($links as $u) {
+            $sep = str_contains($u, '?') ? '&' : '?';
+            $urls[] = $u . $sep . 'tofiUrlname=' . $name;
+        }
     }
     if (!$urls) return '';
     $enc = openssl_encrypt(implode(',', $urls), 'aes-192-ecb', $appEncKey, OPENSSL_RAW_DATA);
