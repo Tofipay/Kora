@@ -1,0 +1,36 @@
+# قمهد لايف — root .htaccess for shared hosting where the vhost document root
+# cannot be changed to public/. Routes every request into public/ transparently.
+# DOMAIN-AGNOSTIC: NO hard-coded host — works on whatever domain it is uploaded
+# to (api.tofi-xtv.com or any other). It NEVER redirects to another domain.
+
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # ---- HTTPS enforcement FIRST — before routing into public/ ----
+  # Local dev skips the two redirect rules below.
+  RewriteCond %{HTTP_HOST} ^(localhost|127\.0\.0\.1|192\.168\..*|10\..*|.*\.(test|local))(:\d+)?$ [NC]
+  RewriteRule ^ - [S=2]
+
+  # 1) A leaked/bookmarked /public URL → same URL without the prefix,
+  #    on WHATEVER host was actually requested (host-preserving).
+  RewriteCond %{THE_REQUEST} \s/public(/\S*)?\s [NC]
+  RewriteRule ^ https://%{HTTP_HOST}%1 [L,R=301,NE]
+
+  # 2) Plain http → https on the SAME host. PROXY-AWARE (Cloudflare & other
+  #    TLS-terminating proxies send X-Forwarded-Proto / X-Forwarded-SSL /
+  #    CF-Visitor; checking only %{HTTPS} loops forever).
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{SERVER_PORT} !=443
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+  RewriteCond %{HTTP:X-Forwarded-SSL} !on [NC]
+  RewriteCond %{HTTP:CF-Visitor} !https [NC]
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
+
+  # ---- Block direct access to application internals ----
+  RewriteRule ^(app|storage|database|deploy|docs)(/|$) - [F,L]
+
+  # ---- Serve everything from public/ (internal rewrite, invisible) ----
+  RewriteCond %{REQUEST_URI} !^/public/
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

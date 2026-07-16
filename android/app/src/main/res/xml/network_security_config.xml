@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- HTTPS is enforced for our own API. Cleartext is permitted only for
+         third-party stream hosts (some Yacine/HLS servers are HTTP-only). -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.tofi-xtv.com</domain>
+        <domain includeSubdomains="true">tofi-xtv.com</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

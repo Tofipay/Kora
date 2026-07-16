@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">قمهد لايف</string>
+
+    <!-- Navigation / sections -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_matches">المباريات</string>
+    <string name="nav_live">مباشر</string>
+    <string name="nav_news">الأخبار</string>
+    <string name="nav_videos">الفيديوهات</string>
+    <string name="nav_favorites">المفضلة</string>
+    <string name="nav_leagues">البطولات</string>
+    <string name="nav_standings">الترتيب</string>
+    <string name="nav_scorers">الهدافين</string>
+    <string name="nav_channels">القنوات</string>
+    <string name="nav_search">البحث</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_notifications">الإشعارات</string>
+    <string name="nav_match_center">مركز المباراة</string>
+    <string name="nav_about">حول التطبيق</string>
+
+    <!-- Common -->
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="empty">لا توجد بيانات لعرضها</string>
+    <string name="empty_hint">اسحب للأسفل للتحديث أو حاول مرة أخرى</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="error_generic">تعذّر جلب البيانات. تحقق من الاتصال وحاول مجدداً.</string>
+    <string name="search_hint">ابحث عن فريق أو لاعب…</string>
+    <string name="today">اليوم</string>
+    <string name="yesterday">أمس</string>
+    <string name="tomorrow">غداً</string>
+    <string name="watch_now">شاهد الآن</string>
+    <string name="player_resize">تغيير حجم الفيديو</string>
+    <string name="player_settings">الإعدادات</string>
+    <string name="player_quality">الجودة</string>
+    <string name="player_speed">سرعة التشغيل</string>
+    <string name="player_fit">احتواء</string>
+    <string name="player_fill">تمديد</string>
+    <string name="player_zoom">تكبير</string>
+    <string name="read_more">اقرأ المزيد</string>
+    <string name="finished">انتهت</string>
+
+    <!-- Match center tabs -->
+    <string name="tab_summary">ملخص</string>
+    <string name="tab_events">الأحداث</string>
+    <string name="tab_lineup">التشكيلة</string>
+    <string name="tab_stats">الإحصائيات</string>
+    <string name="tab_channels">القنوات</string>
+    <string name="tab_standings">الترتيب</string>
+
+    <!-- Match center sections -->
+    <string name="mc_live">مباشر</string>
+    <string name="mc_key_events">أبرز الأحداث</string>
+    <string name="mc_no_events">لا توجد أحداث بعد</string>
+    <string name="mc_no_lineup">لم تُعلن التشكيلة بعد</string>
+    <string name="mc_no_stats">لا توجد إحصائيات متاحة</string>
+    <string name="mc_no_channels">لا توجد قنوات ناقلة</string>
+    <string name="mc_no_standings">لا يتوفر ترتيب لهذه البطولة</string>
+    <string name="mc_starting_lineup">التشكيلة الأساسية</string>
+    <string name="mc_substitutes">البدلاء</string>
+    <string name="mc_info">معلومات المباراة</string>
+    <string name="mc_channels_title">القنوات الناقلة</string>
+    <string name="mc_stats_title">إحصائيات المباراة</string>
+    <string name="mc_top_scorers">الهدافون</string>
+    <string name="mc_commentator">التعليق</string>
+    <string name="mc_league">البطولة</string>
+    <string name="mc_round">الجولة</string>
+    <string name="mc_stadium">الملعب</string>
+    <string name="mc_datetime">الموعد</string>
+
+    <!-- Standings columns -->
+    <string name="col_pos">#</string>
+    <string name="col_team">الفريق</string>
+    <string name="col_played">لعب</string>
+    <string name="col_win">فاز</string>
+    <string name="col_draw">تعادل</string>
+    <string name="col_lose">خسر</string>
+    <string name="col_diff">الفارق</string>
+    <string name="col_points">نقاط</string>
+    <string name="col_goals">أهداف</string>
+    <string name="col_assists">صناعة</string>
+
+    <!-- Settings -->
+    <string name="settings_language">اللغة</string>
+    <string name="settings_theme">المظهر</string>
+    <string name="settings_theme_system">حسب النظام</string>
+    <string name="settings_theme_light">فاتح</string>
+    <string name="settings_theme_dark">داكن</string>
+    <string name="settings_notifications">تفعيل الإشعارات</string>
+    <string name="settings_about">حول التطبيق</string>
+    <string name="settings_version">الإصدار</string>
+
+    <!-- Notifications topics -->
+    <string name="notify_all">كل المباريات</string>
+    <string name="notify_subscribe">اشترك</string>
+    <string name="notify_subscribed">مشترك</string>
+
+    <!-- FCM -->
+    <string name="fcm_default_channel_id">tofixtv_default</string>
+    <string name="fcm_default_channel_name">إشعارات توفي</string>
+    <string name="fcm_default_channel_desc">تنبيهات المباريات والأخبار العاجلة</string>
+</resources>

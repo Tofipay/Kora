@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tofixtv.app",
+      "sha256_cert_fingerprints": [
+        "54:04:63:6F:3B:D2:79:64:84:73:15:D8:7F:25:6D:20:00:B5:E7:87:99:F3:ED:93:FC:28:43:95:F7:75:B1:57"
+      ]
+    }
+  }
+]

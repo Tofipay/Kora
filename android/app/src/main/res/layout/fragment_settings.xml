@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:windowBackground"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView style="@style/TextAppearance.Material3.TitleMedium"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/settings_language" android:layout_marginTop="8dp" />
+        <RadioGroup android:id="@+id/langGroup"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+            <RadioButton android:id="@+id/langAr" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="العربية" />
+            <RadioButton android:id="@+id/langEn" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="English" />
+        </RadioGroup>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/divider" android:layout_marginVertical="12dp" />
+
+        <TextView style="@style/TextAppearance.Material3.TitleMedium"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/settings_theme" />
+        <RadioGroup android:id="@+id/themeGroup"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+            <RadioButton android:id="@+id/themeSystem" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/settings_theme_system" />
+            <RadioButton android:id="@+id/themeLight" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/settings_theme_light" />
+            <RadioButton android:id="@+id/themeDark" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/settings_theme_dark" />
+        </RadioGroup>
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/divider" android:layout_marginVertical="12dp" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/notifySwitch"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/settings_notifications" android:checked="true" />
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/divider" android:layout_marginVertical="12dp" />
+
+        <TextView android:id="@+id/versionText"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="@color/muted" android:text="@string/settings_version" />
+    </LinearLayout>
+</ScrollView>

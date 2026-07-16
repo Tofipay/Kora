@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:colorBackground">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- ============ HERO ============ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/gradient_header"
+                android:orientation="vertical"
+                android:paddingHorizontal="18dp"
+                android:paddingTop="18dp"
+                android:paddingBottom="20dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_gravity="center" android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                    <ImageView android:id="@+id/leagueLogo"
+                        android:layout_width="20dp" android:layout_height="20dp"
+                        android:layout_marginEnd="6dp" android:contentDescription="@string/nav_leagues" />
+                    <TextView android:id="@+id/leagueName"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textColor="#EAFFFFFF" android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp" android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <ImageView android:id="@+id/homeLogo" android:layout_width="64dp"
+                            android:layout_height="64dp" android:contentDescription="@string/col_team" />
+                        <TextView android:id="@+id/homeName" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                            android:gravity="center" android:maxLines="2"
+                            android:textColor="@color/white" android:textStyle="bold" android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:gravity="center" android:orientation="vertical" android:paddingHorizontal="10dp">
+                        <TextView android:id="@+id/scoreText" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="-  -"
+                            android:textColor="@color/white" android:textSize="38sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/statusText" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="2dp"
+                            android:background="@drawable/bg_time_pill"
+                            android:paddingHorizontal="12dp" android:paddingVertical="3dp"
+                            android:textColor="@color/white" android:textSize="12sp" />
+                        <TextView android:id="@+id/liveBadge" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                            android:background="@drawable/bg_live_badge" android:text="@string/mc_live"
+                            android:paddingHorizontal="10dp" android:paddingVertical="2dp"
+                            android:textColor="@color/white" android:textSize="11sp"
+                            android:textStyle="bold" android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                        <ImageView android:id="@+id/awayLogo" android:layout_width="64dp"
+                            android:layout_height="64dp" android:contentDescription="@string/col_team" />
+                        <TextView android:id="@+id/awayName" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                            android:gravity="center" android:maxLines="2"
+                            android:textColor="@color/white" android:textStyle="bold" android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/watchButton"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp" android:text="@string/watch_now"
+                    android:textColor="@color/brand_primary_deep"
+                    app:icon="@drawable/ic_play" app:iconTint="@color/brand_primary_deep"
+                    app:backgroundTint="@color/white" app:cornerRadius="14dp" />
+            </LinearLayout>
+
+            <!-- ============ TABS ============ -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/colorSurface"
+                app:tabMode="scrollable"
+                app:tabGravity="start"
+                app:tabIndicatorColor="@color/brand_primary"
+                app:tabIndicatorFullWidth="false"
+                app:tabSelectedTextColor="@color/brand_primary"
+                app:tabTextColor="@color/muted" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp"
+                android:background="?attr/colorOutlineVariant" />
+
+            <!-- ============ SECTION: EVENTS ============ -->
+            <LinearLayout android:id="@+id/secEvents"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="6dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/mc_info" android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" android:textSize="15sp"
+                        android:paddingHorizontal="14dp" android:paddingTop="8dp" android:paddingBottom="4dp" />
+                    <LinearLayout android:id="@+id/infoContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="6dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/mc_key_events" android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" android:textSize="15sp"
+                        android:paddingHorizontal="14dp" android:paddingTop="8dp" android:paddingBottom="4dp" />
+                    <LinearLayout android:id="@+id/eventsContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                    <TextView android:id="@+id/emptyEvents"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:text="@string/mc_no_events" android:gravity="center"
+                        android:textColor="@color/muted" android:padding="20dp" android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ============ SECTION: LINEUP ============ -->
+            <LinearLayout android:id="@+id/secLineup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp" android:visibility="gone">
+                <LinearLayout android:id="@+id/lineupContainer"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+                <TextView android:id="@+id/emptyLineup"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/mc_no_lineup" android:gravity="center"
+                    android:textColor="@color/muted" android:padding="28dp" android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- ============ SECTION: STATS ============ -->
+            <LinearLayout android:id="@+id/secStats"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp" android:visibility="gone">
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="8dp">
+                    <LinearLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp" android:paddingVertical="6dp">
+                        <TextView android:id="@+id/statHomeName" android:layout_width="0dp"
+                            android:layout_weight="1" android:layout_height="wrap_content"
+                            android:gravity="start" android:textStyle="bold" android:maxLines="1"
+                            android:ellipsize="end" android:textColor="?attr/colorOnSurface" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="@string/mc_stats_title" android:textColor="@color/muted"
+                            android:textSize="12sp" android:paddingHorizontal="8dp" />
+                        <TextView android:id="@+id/statAwayName" android:layout_width="0dp"
+                            android:layout_weight="1" android:layout_height="wrap_content"
+                            android:gravity="end" android:textStyle="bold" android:maxLines="1"
+                            android:ellipsize="end" android:textColor="?attr/colorOnSurface" />
+                    </LinearLayout>
+                    <View android:layout_width="match_parent" android:layout_height="1dp"
+                        android:layout_marginHorizontal="14dp" android:layout_marginBottom="2dp"
+                        android:background="?attr/colorOutlineVariant" />
+                    <LinearLayout android:id="@+id/statsContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+                <TextView android:id="@+id/emptyStats"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/mc_no_stats" android:gravity="center"
+                    android:textColor="@color/muted" android:padding="28dp" android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- ============ SECTION: CHANNELS ============ -->
+            <LinearLayout android:id="@+id/secChannels"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp" android:visibility="gone">
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="6dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/mc_channels_title" android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" android:textSize="15sp"
+                        android:paddingHorizontal="14dp" android:paddingTop="8dp" android:paddingBottom="4dp" />
+                    <LinearLayout android:id="@+id/channelsContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+                <TextView android:id="@+id/emptyChannels"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/mc_no_channels" android:gravity="center"
+                    android:textColor="@color/muted" android:padding="28dp" android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- ============ SECTION: STANDINGS ============ -->
+            <LinearLayout android:id="@+id/secStandings"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp" android:visibility="gone">
+                <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="6dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/tab_standings" android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" android:textSize="15sp"
+                        android:paddingHorizontal="14dp" android:paddingTop="8dp" android:paddingBottom="4dp" />
+                    <LinearLayout android:id="@+id/standingsContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <LinearLayout android:id="@+id/scorersCard"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical" android:background="@drawable/bg_section_card"
+                    android:paddingVertical="6dp" android:visibility="gone">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="@string/mc_top_scorers" android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" android:textSize="15sp"
+                        android:paddingHorizontal="14dp" android:paddingTop="8dp" android:paddingBottom="4dp" />
+                    <LinearLayout android:id="@+id/scorersContainer"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <TextView android:id="@+id/emptyStandings"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/mc_no_standings" android:gravity="center"
+                    android:textColor="@color/muted" android:padding="28dp" android:visibility="gone" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <ProgressBar android:id="@+id/progress" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:indeterminateTint="@color/brand_primary" />
+
+    <TextView android:id="@+id/errorText" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:text="@string/error_generic" android:textColor="@color/muted"
+        android:padding="24dp" android:visibility="gone" />
+</FrameLayout>
