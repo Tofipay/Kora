@@ -70,7 +70,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A ToFiXTv/dist
+          git add -f ToFiXTv/dist
           git commit -m "CI result for ${{ github.sha }} [skip ci]" >> "$REPORT" 2>&1
           git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm >> "$REPORT" 2>&1
           PUSH_RC=$?
