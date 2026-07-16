@@ -1,0 +1,48 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/linear8"
+		android:layout_width="130dp"
+		android:layout_height="155dp"
+		android:layout_marginLeft="4dp"
+		android:layout_marginTop="4dp"
+		android:layout_marginRight="6dp"
+		android:layout_marginBottom="6dp"
+		android:padding="8dp"
+		android:gravity="center_horizontal|center_vertical"
+		android:orientation="vertical"
+		android:background="@drawable/ripple_glass_card"
+		android:clickable="true"
+		android:focusable="true"
+		>
+		<ImageView
+			android:id="@+id/imageview2"
+			android:focusable="false"
+			android:layout_width="96dp"
+			android:layout_height="96dp"
+			android:src="@drawable/play"
+			android:contentDescription="@string/cd_play"
+			android:scaleType="fitCenter"
+			android:translationY="2.0dp"
+			android:layout_gravity="center_horizontal|center_vertical" />
+		<TextView
+			android:id="@+id/textview2"
+			android:focusable="false"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="@android:color/transparent"
+			android:gravity="center_horizontal|center_vertical"
+			android:text="TextView"
+			android:textSize="13sp"
+			android:textStyle="bold"
+			android:textColor="@color/tofi_text_primary"
+			android:fontFamily="@font/tajawal"
+			android:maxLines="2"
+			android:ellipsize="end" />
+	</LinearLayout>
+</LinearLayout>

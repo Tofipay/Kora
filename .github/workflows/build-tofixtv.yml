@@ -1,0 +1,62 @@
+name: Build ToFiXTv APK
+
+on:
+  push:
+    branches:
+      - claude/tofi-x-tv-redesign-2026-smu6lm
+    paths:
+      - 'ToFiXTv/**'
+      - '.github/workflows/build-tofixtv.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-tofixtv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build signed release APK
+        working-directory: ToFiXTv
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify APK signature
+        working-directory: ToFiXTv
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          ls -la app/build/outputs/apk/release/
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/apksigner" verify --print-certs "$APK"
+          "$BT/aapt" dump badging "$APK" | head -5
+
+      - name: Publish APK back to branch
+        run: |
+          mkdir -p ToFiXTv/dist
+          cp ToFiXTv/app/build/outputs/apk/release/app-release.apk ToFiXTv/dist/ToFiXTv-v2026.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ToFiXTv/dist/ToFiXTv-v2026.apk
+          git commit -m "Add built ToFiXTv-v2026.apk [skip ci]"
+          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToFiXTv-v2026
+          path: ToFiXTv/dist/ToFiXTv-v2026.apk
