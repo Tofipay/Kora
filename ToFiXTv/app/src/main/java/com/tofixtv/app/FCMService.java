@@ -95,7 +95,7 @@ public class FCMService extends FirebaseMessagingService {
             if (result != null) {
                 builder.setStyle(new NotificationCompat.BigPictureStyle()
                         .bigPicture(result)
-                        .bigLargeIcon(null));
+                        .bigLargeIcon((Bitmap) null));
             }
             if (notificationManager != null) {
                 notificationManager.notify((int) System.currentTimeMillis(), builder.build());

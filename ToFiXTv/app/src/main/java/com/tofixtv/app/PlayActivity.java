@@ -212,7 +212,7 @@ import android.graphics.drawable.Drawable;
 import android.content.res.ColorStateList;
 import androidx.media3.common.util.Clock;
 import androidx.media3.exoplayer.upstream.BandwidthMeter;
-import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 
 public class PlayActivity extends AppCompatActivity {
 	
@@ -1498,7 +1498,7 @@ public class PlayActivity extends AppCompatActivity {
 					            // Handle playback parameter changes
 					        }
 				
-				        @Override
+				        // onSeekProcessed لم تعد ضمن Player.Listener في Media3؛ أُبقيت الدالة كما هي بدون @Override
 				        public void onSeekProcessed() {
 					            // إظهار ProgressBar عند بدء التقديم
 					            pb.setVisibility(View.VISIBLE);
