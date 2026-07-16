@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: build-tofixtv-${{ github.ref }}
@@ -23,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: claude/tofi-x-tv-redesign-2026-smu6lm
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,46 +34,56 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build signed release APK
-        working-directory: ToFiXTv
+      - name: Build, verify, and publish results
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set +e
+          REPORT=/tmp/report.md
+          echo "## ToFiXTv CI result (run ${{ github.run_id }})" > "$REPORT"
+
+          cd ToFiXTv
           chmod +x gradlew
-          set -o pipefail
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
+          ./gradlew assembleRelease --no-daemon --stacktrace > /tmp/build.log 2>&1
+          RC=$?
+          echo "gradle exit code: $RC" >> "$REPORT"
+          cd ..
 
-      - name: Verify APK signature
-        working-directory: ToFiXTv
-        run: |
-          APK=app/build/outputs/apk/release/app-release.apk
-          ls -la app/build/outputs/apk/release/
-          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          "$BT/apksigner" verify --print-certs "$APK"
-          "$BT/aapt" dump badging "$APK" | head -5
+          APK=ToFiXTv/app/build/outputs/apk/release/app-release.apk
+          if [ $RC -eq 0 ] && [ -f "$APK" ]; then
+            BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+            "$BT/apksigner" verify --print-certs "$APK" > /tmp/verify.log 2>&1
+            VRC=$?
+            echo "apksigner exit code: $VRC" >> "$REPORT"
+            sed 's/^/    /' /tmp/verify.log >> "$REPORT"
+            mkdir -p ToFiXTv/dist
+            cp "$APK" ToFiXTv/dist/ToFiXTv-v2026.apk
+            ls -la ToFiXTv/dist >> "$REPORT"
+          else
+            echo "BUILD FAILED — last 300 log lines:" >> "$REPORT"
+            echo '```' >> "$REPORT"
+            tail -300 /tmp/build.log >> "$REPORT"
+            echo '```' >> "$REPORT"
+            mkdir -p ToFiXTv/dist
+            tail -600 /tmp/build.log > ToFiXTv/dist/build-log.txt
+          fi
 
-      - name: Publish APK back to branch
-        run: |
-          mkdir -p ToFiXTv/dist
-          cp ToFiXTv/app/build/outputs/apk/release/app-release.apk ToFiXTv/dist/ToFiXTv-v2026.apk
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin claude/tofi-x-tv-redesign-2026-smu6lm || true
-          git add ToFiXTv/dist/ToFiXTv-v2026.apk
-          git commit -m "Add built ToFiXTv-v2026.apk [skip ci]"
-          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm
+          git add -A ToFiXTv/dist
+          git commit -m "CI result for ${{ github.sha }} [skip ci]" >> "$REPORT" 2>&1
+          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm >> "$REPORT" 2>&1
+          PUSH_RC=$?
+          echo "git push exit code: $PUSH_RC" >> "$REPORT"
 
-      - name: Publish build log on failure
-        if: failure()
-        run: |
-          mkdir -p ToFiXTv/dist
-          tail -500 /tmp/build.log > ToFiXTv/dist/build-log.txt 2>/dev/null || echo "no build log captured" > ToFiXTv/dist/build-log.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin claude/tofi-x-tv-redesign-2026-smu6lm || true
-          git add ToFiXTv/dist/build-log.txt
-          git commit -m "CI failure build log [skip ci]"
-          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm
+          # Second visibility channel: PR comment (best effort)
+          gh pr comment 3 --repo "$GITHUB_REPOSITORY" --body-file "$REPORT" || \
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body-file "$REPORT" || true
+
+          exit $RC
 
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ToFiXTv-v2026
