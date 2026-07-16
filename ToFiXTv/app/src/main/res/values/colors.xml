@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- لون هوية ToFi X Tv الأساسي (يُستخدم من الكود باسم red — لا تغيّر الاسم) -->
+    <color name="red">#0A1324</color>
+
+    <!-- ===== ToFi X Tv 2026 Design Tokens ===== -->
+    <!-- Brand backgrounds -->
+    <color name="tofi_background">#0A1324</color>
+    <color name="tofi_background_deep">#060D1A</color>
+    <color name="tofi_surface">#111D31</color>
+    <color name="tofi_surface_high">#182741</color>
+    <color name="tofi_surface_highest">#1F3050</color>
+
+    <!-- Brand accents (heritage: #008DCD blue / #FFD54F amber / #FF5252 red) -->
+    <color name="tofi_primary">#3EB2FF</color>
+    <color name="tofi_primary_dim">#1E88D8</color>
+    <color name="tofi_on_primary">#04121F</color>
+    <color name="tofi_primary_container">#0F3A5C</color>
+    <color name="tofi_on_primary_container">#BFE4FF</color>
+    <color name="tofi_secondary">#FFC94D</color>
+    <color name="tofi_on_secondary">#231A02</color>
+    <color name="tofi_secondary_container">#4A3A0E</color>
+    <color name="tofi_on_secondary_container">#FFE9B8</color>
+    <color name="tofi_tertiary">#FF5C72</color>
+    <color name="tofi_error">#FF6B6B</color>
+
+    <!-- Text -->
+    <color name="tofi_text_primary">#F2F6FC</color>
+    <color name="tofi_text_secondary">#AAB8CC</color>
+    <color name="tofi_text_hint">#7A889D</color>
+
+    <!-- Glassmorphism layers -->
+    <color name="tofi_glass">#B3131F36</color>
+    <color name="tofi_glass_high">#CC182741</color>
+    <color name="tofi_glass_stroke">#26FFFFFF</color>
+    <color name="tofi_glass_stroke_strong">#40FFFFFF</color>
+    <color name="tofi_glass_light">#14FFFFFF</color>
+    <color name="tofi_scrim">#99060D1A</color>
+
+    <!-- Ripple / states -->
+    <color name="tofi_ripple">#333EB2FF</color>
+    <color name="tofi_ripple_light">#33FFFFFF</color>
+    <color name="tofi_outline">#33405A7A</color>
+
+    <!-- Dynamic accent (Android 12+ overrides this with the system Material You accent) -->
+    <color name="tofi_dynamic_accent">#3EB2FF</color>
+
+    <!-- System bars -->
+    <color name="tofi_status_bar">#0A1324</color>
+    <color name="tofi_nav_bar">#0A1324</color>
+</resources>

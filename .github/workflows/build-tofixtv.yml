@@ -1,0 +1,90 @@
+name: Build ToFiXTv APK
+
+on:
+  push:
+    branches:
+      - claude/tofi-x-tv-redesign-2026-smu6lm
+    paths:
+      - 'ToFiXTv/**'
+      - '.github/workflows/build-tofixtv.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: build-tofixtv-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: claude/tofi-x-tv-redesign-2026-smu6lm
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build, verify, and publish results
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          REPORT=/tmp/report.md
+          echo "## ToFiXTv CI result (run ${{ github.run_id }})" > "$REPORT"
+
+          cd ToFiXTv
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace > /tmp/build.log 2>&1
+          RC=$?
+          echo "gradle exit code: $RC" >> "$REPORT"
+          cd ..
+
+          APK=ToFiXTv/app/build/outputs/apk/release/app-release.apk
+          if [ $RC -eq 0 ] && [ -f "$APK" ]; then
+            BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+            "$BT/apksigner" verify --print-certs "$APK" > /tmp/verify.log 2>&1
+            VRC=$?
+            echo "apksigner exit code: $VRC" >> "$REPORT"
+            sed 's/^/    /' /tmp/verify.log >> "$REPORT"
+            mkdir -p ToFiXTv/dist
+            cp "$APK" ToFiXTv/dist/ToFiXTv-v2026.apk
+            ls -la ToFiXTv/dist >> "$REPORT"
+          else
+            echo "BUILD FAILED — last 300 log lines:" >> "$REPORT"
+            echo '```' >> "$REPORT"
+            tail -300 /tmp/build.log >> "$REPORT"
+            echo '```' >> "$REPORT"
+            mkdir -p ToFiXTv/dist
+            tail -600 /tmp/build.log > ToFiXTv/dist/build-log.txt
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f ToFiXTv/dist
+          git commit -m "CI result for ${{ github.sha }} [skip ci]" >> "$REPORT" 2>&1
+          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm >> "$REPORT" 2>&1
+          PUSH_RC=$?
+          echo "git push exit code: $PUSH_RC" >> "$REPORT"
+
+          # Second visibility channel: PR comment (best effort)
+          gh pr comment 3 --repo "$GITHUB_REPOSITORY" --body-file "$REPORT" || \
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body-file "$REPORT" || true
+
+          exit $RC
+
+      - name: Upload artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ToFiXTv-v2026
+          path: ToFiXTv/dist/ToFiXTv-v2026.apk

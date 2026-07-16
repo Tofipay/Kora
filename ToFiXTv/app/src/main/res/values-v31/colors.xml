@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dynamic Color (Material You): على أندرويد 12+ تتبع لمسات التمييز لون النظام -->
+    <color name="tofi_dynamic_accent">@android:color/system_accent1_300</color>
+    <color name="tofi_ripple">@android:color/system_accent1_700</color>
+</resources>

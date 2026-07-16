@@ -1,0 +1,106 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/linear_background"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:paddingLeft="32dp"
+		android:paddingTop="16dp"
+		android:paddingRight="32dp"
+		android:paddingBottom="16dp"
+		android:background="@drawable/bg_app_gradient"
+		android:gravity="center_horizontal|center_vertical"
+		android:orientation="vertical">
+		<ImageView
+			android:id="@+id/imageview1"
+			android:layout_width="120dp"
+			android:layout_height="120dp"
+			android:src="@drawable/notification"
+			android:contentDescription="@string/cd_logo"
+			android:scaleType="centerInside" />
+		<TextView
+			android:id="@+id/textview_topic"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:layout_marginBottom="20dp"
+			android:padding="8dp"
+			android:textSize="13sp"
+			android:textStyle="bold"
+			android:textColor="@color/tofi_text_primary"
+			android:fontFamily="@font/tajawal" />
+		<EditText
+			android:id="@+id/edittext_title"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="10dp"
+			android:padding="14dp"
+			android:background="@drawable/bg_input_glass"
+			android:textSize="14sp"
+			android:textColor="@color/tofi_text_primary"
+			android:hint="Title"
+			android:fontFamily="@font/tajawal"
+			android:textColorHint="@color/tofi_text_hint" />
+		<EditText
+			android:id="@+id/edittext_message"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="10dp"
+			android:padding="14dp"
+			android:background="@drawable/bg_input_glass"
+			android:textSize="14sp"
+			android:textColor="@color/tofi_text_primary"
+			android:hint="Massage"
+			android:fontFamily="@font/tajawal"
+			android:textColorHint="@color/tofi_text_hint" />
+		<EditText
+			android:id="@+id/edittext_imageurl"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="24dp"
+			android:padding="14dp"
+			android:background="@drawable/bg_input_glass"
+			android:textSize="14sp"
+			android:textColor="@color/tofi_text_primary"
+			android:hint="Image Url"
+			android:fontFamily="@font/tajawal"
+			android:textColorHint="@color/tofi_text_hint" />
+		<Button
+			android:id="@+id/button_send"
+			android:layout_width="220dp"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="20dp"
+			android:padding="14dp"
+			android:background="@drawable/bg_button_primary"
+			android:stateListAnimator="@null"
+			android:text="Send Notification"
+			android:textSize="14sp"
+			android:textStyle="bold"
+			android:textColor="@color/tofi_on_primary"
+			android:fontFamily="@font/tajawal" />
+		<TextView
+			android:id="@+id/textview_notifRes"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="5dp"
+			android:padding="8dp"
+			android:text="Notification Response"
+			android:textSize="12sp"
+			android:textColor="@color/tofi_text_secondary"
+			android:fontFamily="@font/tajawal" />
+	</LinearLayout>
+	<de.hdodenhof.circleimageview.CircleImageView
+		android:id="@+id/circleimageview1"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		android:src="@drawable/default_image"
+		app:civ_border_width="3dp"
+		app:civ_border_color="@color/tofi_primary"
+		app:civ_circle_background_color="@color/tofi_surface"
+		app:civ_border_overlay="true" />
+</LinearLayout>

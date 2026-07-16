@@ -1,0 +1,54 @@
+<resources>
+    <string name="app_name">ToFi X Tv</string>
+    <string name="tofi_tagline">بث مباشر بجودة عالية · تجربة 2026</string>
+    <string name="cd_back">رجوع</string>
+    <string name="cd_menu">القائمة</string>
+    <string name="cd_close">إغلاق</string>
+    <string name="cd_logo">شعار ToFi X Tv</string>
+    <string name="cd_add_link">إضافة رابط جديد</string>
+    <string name="cd_delete">حذف</string>
+    <string name="cd_edit">تعديل</string>
+    <string name="cd_privacy">سياسة الخصوصية</string>
+    <string name="cd_website">الموقع الإلكتروني</string>
+    <string name="cd_telegram">قناة تيليجرام</string>
+    <string name="cd_rate">قيّم التطبيق</string>
+    <string name="cd_share">مشاركة التطبيق</string>
+    <string name="cd_apps">تطبيقاتنا</string>
+    <string name="cd_channel_logo">شعار القناة</string>
+    <string name="cd_play">تشغيل</string>
+    <string name="cd_cast">إرسال إلى الشاشة</string>
+    <string name="cd_pip">وضع نافذة داخل نافذة</string>
+    <string name="cd_zoom">تكبير/تصغير</string>
+    <string name="cd_rotate">تدوير الشاشة</string>
+    <string name="cd_quality">اختيار الجودة</string>
+    <string name="exo_controls_fullscreen_description">Fullscreen</string>
+    <string name="exo_controls_hide">Hide</string>
+    <string name="exo_controls_show">Show</string>
+    <string name="exo_controls_shuffle_off_description">Shuffle Off</string>
+    <string name="exo_controls_shuffle_on_description">Shuffle On</string>
+    <string name="exo_controls_vr_description">VR Mode</string>
+    <string name="exo_download_completed">Download Completed</string>
+    <string name="exo_download_description">Download Description</string>
+    <string name="exo_download_downloading">Downloading</string>
+    <string name="exo_download_failed">Download Failed</string>
+    <string name="exo_download_notification_channel_name">Download Notifications</string>
+    <string name="exo_download_removing">Removing Download</string>
+
+    <!-- جودات الفيديو بالدقة والبت ريت كما هو مطلوب -->
+    <string name="exo_track_resolution_1">384 × 216, 0.35 Mbps</string>
+    <string name="exo_track_resolution_2">512 × 288, 0.60 Mbps</string>
+    <string name="exo_track_resolution_3">768 × 432, 1.30 Mbps</string>
+    <string name="exo_track_resolution_4">960 × 540, 1.80 Mbps</string>
+    <string name="exo_track_resolution_5">1280 x 720, 3.00 Mbps</string>
+
+    <string name="exo_track_role_alternate">Alternate</string>
+    <string name="exo_track_role_closed_captions">Closed Captions</string>
+    <string name="exo_track_role_commentary">Commentary</string>
+    <string name="exo_track_role_supplementary">Supplementary</string>
+    <string name="exo_track_selection_auto">Auto</string>
+    <string name="exo_track_selection_none">None</string>
+    <string name="exo_track_selection_title_audio">Audio</string>
+    <string name="exo_track_selection_title_text">Subtitles</string>
+    <string name="exo_track_selection_title_video">Video</string>
+    <string name="exo_track_unknown">Unknown</string>
+</resources>

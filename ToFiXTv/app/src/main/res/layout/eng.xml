@@ -1,0 +1,69 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+
+	<!-- Splash 2026 — تدرّج داكن + توهّج زجاجي خلف الشعار -->
+	<LinearLayout
+		android:id="@+id/linear3"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:padding="24dp"
+		android:background="@drawable/bg_app_gradient"
+		android:gravity="center_horizontal|center_vertical"
+		android:orientation="vertical">
+
+		<FrameLayout
+			android:layout_width="240dp"
+			android:layout_height="240dp"
+			android:layout_gravity="center">
+
+			<View
+				android:layout_width="240dp"
+				android:layout_height="240dp"
+				android:layout_gravity="center"
+				android:background="@drawable/bg_logo_glow"
+				android:importantForAccessibility="no" />
+
+			<ImageView
+				android:id="@+id/imageview1"
+				android:layout_width="150dp"
+				android:layout_height="150dp"
+				android:layout_gravity="center"
+				android:src="@drawable/logo"
+				android:contentDescription="@string/cd_logo"
+				android:scaleType="centerInside" />
+		</FrameLayout>
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="20dp"
+			android:text="@string/app_name"
+			android:textSize="30sp"
+			android:textStyle="bold"
+			android:letterSpacing="0.04"
+			android:textColor="@color/tofi_text_primary"
+			android:fontFamily="@font/tajawal" />
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="8dp"
+			android:text="@string/tofi_tagline"
+			android:textSize="14sp"
+			android:textColor="@color/tofi_text_secondary"
+			android:fontFamily="@font/tajawal" />
+
+		<ProgressBar
+			android:layout_width="36dp"
+			android:layout_height="36dp"
+			android:layout_marginTop="36dp"
+			android:indeterminate="true"
+			android:indeterminateTint="@color/tofi_primary"
+			android:importantForAccessibility="no" />
+	</LinearLayout>
+</LinearLayout>
