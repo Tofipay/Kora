@@ -34,7 +34,8 @@ jobs:
         working-directory: ToFiXTv
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build.log
 
       - name: Verify APK signature
         working-directory: ToFiXTv
@@ -51,8 +52,21 @@ jobs:
           cp ToFiXTv/app/build/outputs/apk/release/app-release.apk ToFiXTv/dist/ToFiXTv-v2026.apk
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin claude/tofi-x-tv-redesign-2026-smu6lm || true
           git add ToFiXTv/dist/ToFiXTv-v2026.apk
           git commit -m "Add built ToFiXTv-v2026.apk [skip ci]"
+          git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm
+
+      - name: Publish build log on failure
+        if: failure()
+        run: |
+          mkdir -p ToFiXTv/dist
+          tail -500 /tmp/build.log > ToFiXTv/dist/build-log.txt 2>/dev/null || echo "no build log captured" > ToFiXTv/dist/build-log.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin claude/tofi-x-tv-redesign-2026-smu6lm || true
+          git add ToFiXTv/dist/build-log.txt
+          git commit -m "CI failure build log [skip ci]"
           git push origin HEAD:claude/tofi-x-tv-redesign-2026-smu6lm
 
       - name: Upload artifact
