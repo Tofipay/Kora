@@ -1,5 +1,5 @@
 {
-    "total": 45,
+    "total": 37,
     "days": {
         "2026-07-14": {
             "total": 37,
@@ -13,53 +13,25 @@
             "videos": 1,
             "live": 1,
             "league": 1
-        },
-        "2026-07-17": {
-            "total": 8,
-            "home": 1,
-            "uv_seen": {
-                "0545aaeef5": 1
-            },
-            "uv": 1,
-            "matches": 1,
-            "live": 1,
-            "standings": 1,
-            "scorers": 1,
-            "leagues": 1,
-            "movies": 1,
-            "series": 1
         }
     },
     "sources": {
-        "direct": 45
+        "direct": 37
     },
     "devices": {
-        "other": 33,
+        "other": 25,
         "linux": 12
     },
     "browsers": {
-        "other": 33,
+        "other": 25,
         "chrome": 12
     },
     "online": {
-        "0545aaeef5": 1784292757
+        "0545aaeef5": 1784045829
     },
     "top": {
         "videos": {
             "الكل": 1
         }
-    },
-    "countries": {
-        "other": 8
-    },
-    "pages": {
-        "\/": 1,
-        "\/matches": 1,
-        "\/live": 1,
-        "\/standings": 1,
-        "\/top-scorers": 1,
-        "\/leagues": 1,
-        "\/movies": 1,
-        "\/series": 1
     }
 }
