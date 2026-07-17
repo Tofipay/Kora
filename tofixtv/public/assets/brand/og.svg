@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="ToFi X Tv">
+<defs>
+<linearGradient id="obg" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#0b1120"/><stop offset=".55" stop-color="#0f172a"/><stop offset="1" stop-color="#1e293b"/>
+</linearGradient>
+<linearGradient id="og1" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#2563eb"/>
+</linearGradient>
+</defs>
+<rect width="1200" height="630" fill="url(#obg)"/>
+<circle cx="1060" cy="90" r="220" fill="#2563eb" opacity=".12"/>
+<circle cx="120" cy="560" r="180" fill="#38bdf8" opacity=".10"/>
+<g transform="translate(430,120) scale(8.5)">
+  <path d="M4 0h10l6 9 6-9h10L23.5 18 36 40H26l-6-10.5L14 40H4l12.5-22z" fill="url(#og1)"/>
+  <path d="M15 13.5 27 20l-12 6.5z" fill="#ffffff"/>
+</g>
+<text x="600" y="530" text-anchor="middle" font-family="'Inter','Cairo',system-ui,sans-serif" font-size="72" font-weight="900" fill="#ffffff">ToFi <tspan fill="#3b82f6">X</tspan> Tv</text>
+<text x="600" y="590" text-anchor="middle" font-family="'Cairo','Inter',system-ui,sans-serif" font-size="28" font-weight="600" fill="#94a3b8">بث مباشر للمباريات · أفلام ومسلسلات</text>
+</svg>

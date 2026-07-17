@@ -1,0 +1,65 @@
+{
+    "total": 45,
+    "days": {
+        "2026-07-14": {
+            "total": 37,
+            "home": 12,
+            "movies": 11,
+            "series": 2,
+            "matches": 6,
+            "news": 1,
+            "leagues": 1,
+            "standings": 1,
+            "videos": 1,
+            "live": 1,
+            "league": 1
+        },
+        "2026-07-17": {
+            "total": 8,
+            "home": 1,
+            "uv_seen": {
+                "0545aaeef5": 1
+            },
+            "uv": 1,
+            "matches": 1,
+            "live": 1,
+            "standings": 1,
+            "scorers": 1,
+            "leagues": 1,
+            "movies": 1,
+            "series": 1
+        }
+    },
+    "sources": {
+        "direct": 45
+    },
+    "devices": {
+        "other": 33,
+        "linux": 12
+    },
+    "browsers": {
+        "other": 33,
+        "chrome": 12
+    },
+    "online": {
+        "0545aaeef5": 1784292757
+    },
+    "top": {
+        "videos": {
+            "الكل": 1
+        }
+    },
+    "countries": {
+        "other": 8
+    },
+    "pages": {
+        "\/": 1,
+        "\/matches": 1,
+        "\/live": 1,
+        "\/standings": 1,
+        "\/top-scorers": 1,
+        "\/leagues": 1,
+        "\/movies": 1,
+        "\/series": 1
+    }
+}
