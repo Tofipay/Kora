@@ -392,16 +392,24 @@ return [
     'page.cookies.title' => 'سياسة ملفات الارتباط',
 
     // Settings & More hub
-    'more.title'       => 'الإعدادات والمزيد',
-    'more.desc'        => 'اللغة والمظهر وجميع أقسام توفي إكس تيفي في مكان واحد.',
-    'more.general'     => 'عام',
+    'more.title'       => 'الإعدادات',
+    'more.general'     => 'الإعدادات العامة',
     'more.language'    => 'اللغة',
     'more.appearance'  => 'المظهر',
     'more.dark'        => 'داكن',
     'more.light'       => 'فاتح',
-    'more.sections'    => 'الأقسام',
-    'more.information' => 'معلومات',
-    'more.tv_channels' => 'القنوات التلفزيونية',
+    'more.application' => 'التطبيق',
+    'more.download_app'=> 'تحميل التطبيق',
+    'more.app_version' => 'إصدار التطبيق',
+    'more.pwa_install' => 'تثبيت نسخة الويب (PWA)',
+    'more.support'     => 'الدعم',
+    'more.telegram'    => 'قناة تيليجرام',
+
+    // Telegram join dialog
+    'tg.title' => 'انضم إلى قناة ToFi X Tv على تيليجرام',
+    'tg.desc'  => 'تابع آخر الأخبار والمباريات والتحديثات مباشرة عبر قناة تيليجرام الرسمية.',
+    'tg.join'  => 'الانضمام الآن',
+    'tg.later' => 'لاحقاً',
 
     // Cookie consent
     'cookies.settings_title' => 'إعدادات ملفات الارتباط',
@@ -423,9 +431,10 @@ return [
     'cookies.cat_marketing_desc' => 'إعلانات ملائمة من شركاء الإعلانات مثل Google.',
 
     // Cinema access control
-    'cinema.app_only_title'  => 'هذا المحتوى متاح في التطبيق فقط',
-    'cinema.app_only_text'   => 'مشاهدة «{title}» متاحة حصرياً عبر تطبيق توفي إكس تيفي للأندرويد. حمّل التطبيق وشغّله فوراً بجودة عالية.',
+    'cinema.app_only_title'  => 'المشاهدة متاحة عبر تطبيق ToFi X Tv فقط',
+    'cinema.app_only_text'   => 'قم بتحميل التطبيق لمتابعة المحتوى.',
     'cinema.get_app'         => 'تحميل التطبيق',
+    'cinema.close'           => 'إغلاق',
     'cinema.app_only_badge'  => 'التطبيق فقط',
     'cinema.age_blocked_title' => 'هذا المحتوى غير متاح',
     'cinema.age_blocked_text'  => 'هذا العنوان مصنّف +18 وغير متاح للعرض حالياً وفق سياسة المحتوى.',

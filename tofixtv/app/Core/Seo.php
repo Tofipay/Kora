@@ -15,7 +15,7 @@ final class Seo
      * search "qseo-build"). If Search Console shows old schema but this stamp
      * is the new one, the issue is Google's cache, not your deploy.
      */
-    public const BUILD = '2026-07-07-www-migration';
+    public const BUILD = '2026-07-17-v2.2';
 
     public string $title;
     public string $description;

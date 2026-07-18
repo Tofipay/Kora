@@ -2494,3 +2494,57 @@ html.dark .age-badge.age-18 { color: #f87171; }
 @media (prefers-reduced-motion: reduce) {
   .cookie-bar, .seg-btn, .sw-track, .sw-track::after { transition: none; }
 }
+
+/* ============================================================
+   v2.2 additions — mobile header cleanup, Telegram dialog,
+   settings-page rows, lock-screen dismiss.
+   ============================================================ */
+
+/* Mobile header: logo + search only; logo pinned LEFT in both languages
+   (identical to the English layout), actions pinned right. */
+@media (max-width: 959px) {
+  .mob-hide { display: none !important; }
+  [dir="rtl"] .site-header .header-inner { flex-direction: row-reverse; }
+  [dir="rtl"] .site-header .header-actions { margin-inline-start: 0; margin-inline-end: auto; }
+}
+
+/* Settings rows that act as links + static value rows */
+.mg-link { color: var(--text); }
+.mg-link:active { background: var(--surface-2); }
+.mg-value { color: var(--text-3); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* Lock screen dismissed via its Close button */
+.locked-panel.lp-min { display: none; }
+
+/* ---------- Telegram join dialog ---------- */
+.tg-dialog {
+  position: fixed; inset: 0; z-index: 95;
+  display: grid; place-items: center; padding: 20px;
+}
+.tg-dialog .tgd-overlay {
+  position: absolute; inset: 0; background: rgba(2, 6, 23, .62);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity .28s var(--ease-out);
+}
+.tg-dialog .tgd-card {
+  position: relative; width: min(400px, 100%);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: 28px 22px 22px; text-align: center; box-shadow: var(--shadow-2);
+  display: grid; justify-items: center; gap: 10px;
+  opacity: 0; transform: translateY(18px) scale(.96);
+  transition: opacity .3s var(--ease-out), transform .34s var(--ease-spring);
+}
+.tg-dialog.show .tgd-overlay { opacity: 1; }
+.tg-dialog.show .tgd-card { opacity: 1; transform: none; }
+.tg-dialog .tgd-ic {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: linear-gradient(135deg, #2AABEE, #229ED9);
+  box-shadow: 0 8px 24px rgba(34, 158, 217, .4); margin-bottom: 2px;
+}
+.tg-dialog .tgd-title { font-size: 17px; font-weight: 800; line-height: 1.5; }
+.tg-dialog .tgd-desc { color: var(--text-2); font-size: 13.5px; line-height: 1.75; max-width: 320px; margin: 0; }
+.tg-dialog .tgd-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding-top: 8px; }
+.tg-dialog .tgd-actions .btn { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  .tg-dialog .tgd-overlay, .tg-dialog .tgd-card { transition: none; }
+}

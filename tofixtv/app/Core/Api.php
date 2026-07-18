@@ -234,6 +234,63 @@ final class Api
         return self::$dayMemo[$memoKey] = $rows;
     }
 
+    /**
+     * Unified match-status resolver — the single source of truth used by the
+     * match detail page and the /api/match endpoint.
+     *
+     * The listings feed (matches_date_get) and the detail endpoint
+     * (match_info) are cached independently upstream and can disagree for
+     * minutes: the classic symptom is a list card showing 90+17′ live while
+     * the detail page still renders "not started" with a countdown. This
+     * overlays the live fields of whichever payload is FURTHER ALONG
+     * (upcoming < live < finished; within live, the higher total score wins —
+     * goals only ever increase) onto the detail payload.
+     *
+     * Zero performance cost: it reads ONLY the day feed that match pages
+     * already load for their JSON-LD fixtures list (memoized per request,
+     * disk-cached otherwise) — no new endpoints, no extra polling.
+     */
+    public static function unifyMatchState(array $info): array
+    {
+        $id   = (int)($info['match_id'] ?? 0);
+        $date = (string)($info['match_date'] ?? '');
+        if ($id < 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) return $info;
+
+        // Only matches around their kickoff window can meaningfully disagree.
+        // Today's feed is already loaded by the match page; yesterday's is
+        // consulted only for matches that may still be running past midnight.
+        $today = date('Y-m-d');
+        $kick  = match_kickoff_ts($info);
+        if ($date !== $today
+            && !($date === date('Y-m-d', strtotime('-1 day')) && $kick > 0 && time() - $kick < 6 * 3600)) {
+            return $info;
+        }
+
+        $row = null;
+        foreach (self::matchesByDate($date) as $m) {
+            if ((int)($m['match_id'] ?? 0) === $id) { $row = $m; break; }
+        }
+        if (!$row) return $info;
+
+        $rank = static fn(array $m): int => match (match_state($m)['key']) {
+            'finished' => 2,
+            'live'     => 1,
+            default    => 0,
+        };
+        $ri = $rank($info);
+        $rr = $rank($row);
+        $rowFresher = $rr > $ri
+            || ($rr === 1 && $ri === 1
+                && ((int)($row['home_scores'] ?? 0) + (int)($row['away_scores'] ?? 0))
+                 > ((int)($info['home_scores'] ?? 0) + (int)($info['away_scores'] ?? 0)));
+        if (!$rowFresher) return $info;
+
+        foreach (['status', 'live', 'ht_time', 'minutes', 'home_scores', 'away_scores', 'score_time', 'ex_time'] as $k) {
+            if (array_key_exists($k, $row)) $info[$k] = $row[$k];
+        }
+        return $info;
+    }
+
     /* ================= Teams (real endpoints, verified JSON) ================= */
 
     /**

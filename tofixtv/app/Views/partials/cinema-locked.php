@@ -21,12 +21,15 @@ $appOnly = $reason === 'app_only';
   </span>
   <?php if ($appOnly): ?>
     <h3 class="lp-title"><?= e(t('cinema.app_only_title')) ?></h3>
-    <p class="lp-text"><?= e(t('cinema.app_only_text', ['title' => $title])) ?></p>
+    <p class="lp-text"><?= e(t('cinema.app_only_text')) ?></p>
     <div class="lp-actions">
-      <a class="btn btn-primary" href="<?= e(path('about')) ?>#app" rel="nofollow">
+      <a class="btn btn-primary" href="https://apk.tofi-xtv.com" target="_blank" rel="noopener nofollow">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         <?= e(t('cinema.get_app')) ?>
       </a>
+      <button class="btn btn-ghost" type="button" onclick="this.closest('.locked-panel').classList.add('lp-min')">
+        <?= e(t('cinema.close')) ?>
+      </button>
     </div>
     <ul class="lp-perks">
       <li><?= $isAr ? 'مشاهدة بجودة عالية وبدون تقطيع' : 'HD playback without interruptions' ?></li>

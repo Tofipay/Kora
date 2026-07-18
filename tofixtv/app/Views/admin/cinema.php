@@ -60,6 +60,21 @@ $posterUrl = fn(string $p): string => $p !== '' ? 'https://image.tmdb.org/t/p/w9
 <?php if (!empty($msg)): ?><div class="msg"><?= e($msg) ?></div><?php endif; ?>
 
 <div class="card">
+  <b>وضع عرض القسم بالكامل — <?= $isTv ? 'المسلسلات' : 'الأفلام' ?></b>
+  <small class="hint">«التطبيق فقط» يبقي كل الصفحات والوصف والبيانات المهيكلة كما هي للأرشفة، لكنه يخفي مشغّل الفيديو على الموقع ويعرض شاشة قفل مع رابط تحميل التطبيق. المشغّل يعمل طبيعياً داخل التطبيق (User-Agent: com.tofixtv.app).</small>
+  <form method="post" action="<?= e($self) ?>" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+    <select name="section_mode" style="width:auto;min-width:200px">
+      <option value="all" <?= ($mode ?? 'all') === 'all' ? 'selected' : '' ?>>الموقع + التطبيق</option>
+      <option value="app" <?= ($mode ?? '') === 'app' ? 'selected' : '' ?>>التطبيق فقط</option>
+      <option value="off" <?= ($mode ?? '') === 'off' ? 'selected' : '' ?>>معطّل</option>
+    </select>
+    <button class="btn" name="save_mode" value="1" style="margin-top:0">حفظ الوضع</button>
+    <?= $accessChip($mode ?? 'all') ?>
+  </form>
+</div>
+
+<div class="card">
   <b>إعدادات المحتوى +18</b>
   <small class="hint">تحكّم كامل بعرض المحتوى المصنّف +18 على مستوى المنصة (يشمل الأفلام والمسلسلات معاً).</small>
   <form method="post" action="<?= e($self) ?>">

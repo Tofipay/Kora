@@ -392,16 +392,24 @@ return [
     'page.cookies.title' => 'Cookie Policy',
 
     // Settings & More hub
-    'more.title'       => 'Settings & More',
-    'more.desc'        => 'Language, appearance and every ToFi X Tv section in one place.',
-    'more.general'     => 'General',
+    'more.title'       => 'Settings',
+    'more.general'     => 'General Settings',
     'more.language'    => 'Language',
     'more.appearance'  => 'Appearance',
     'more.dark'        => 'Dark',
     'more.light'       => 'Light',
-    'more.sections'    => 'Sections',
-    'more.information' => 'Information',
-    'more.tv_channels' => 'TV Channels',
+    'more.application' => 'Application',
+    'more.download_app'=> 'Download App',
+    'more.app_version' => 'App Version',
+    'more.pwa_install' => 'Install Web App (PWA)',
+    'more.support'     => 'Support',
+    'more.telegram'    => 'Telegram Channel',
+
+    // Telegram join dialog
+    'tg.title' => 'Join ToFi X Tv Telegram Channel',
+    'tg.desc'  => 'Get the latest news, matches and updates directly from our official Telegram channel.',
+    'tg.join'  => 'Join Now',
+    'tg.later' => 'Later',
 
     // Cookie consent
     'cookies.settings_title' => 'Cookie Settings',
@@ -423,9 +431,10 @@ return [
     'cookies.cat_marketing_desc' => 'Relevant ads from advertising partners such as Google.',
 
     // Cinema access control
-    'cinema.app_only_title'  => 'This title is available in the app only',
-    'cinema.app_only_text'   => 'Watching “{title}” is exclusive to the ToFi X Tv Android app. Get the app and play it instantly in HD.',
-    'cinema.get_app'         => 'Get the app',
+    'cinema.app_only_title'  => 'Watching is available on the ToFi X Tv app only',
+    'cinema.app_only_text'   => 'Download the app to continue watching.',
+    'cinema.get_app'         => 'Download the app',
+    'cinema.close'           => 'Close',
     'cinema.app_only_badge'  => 'App only',
     'cinema.age_blocked_title' => 'This content is not available',
     'cinema.age_blocked_text'  => 'This title is rated 18+ and is currently unavailable under the content policy.',

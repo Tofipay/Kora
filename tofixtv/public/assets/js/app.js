@@ -170,6 +170,69 @@
     else setTimeout(showConsentBanner, 900);
   })();
 
+  /* ================= Telegram join dialog =================
+   * Shown after page load. "Join Now" opens the channel and never shows the
+   * dialog again; "Later" hides it for the next 10 page visits. Stored in
+   * localStorage (q_tg). Skipped while the cookie banner is pending so two
+   * dialogs never stack. */
+  (function () {
+    const TG_URL = 'https://t.me/tofi_tv';
+    const TKEY = 'q_tg';
+    const read = () => { try { return JSON.parse(localStorage.getItem(TKEY)) || {}; } catch (e) { return {}; } };
+    const write = v => { try { localStorage.setItem(TKEY, JSON.stringify(v)); } catch (e) {} };
+
+    const st = read();
+    if (st.state === 'joined') return;
+    if (st.state === 'later') {
+      st.visits = (st.visits || 0) + 1;
+      write(st);
+      if (st.visits < 10) return;
+    }
+    if (!getConsent()) return;            // cookie banner first — this visit still counted
+
+    function dismiss(later) {
+      const dlg = $('#tg-dialog');
+      if (!dlg) return;
+      dlg.classList.remove('show');
+      setTimeout(() => dlg.remove(), 300);
+      if (later) write({ state: 'later', visits: 0 });
+    }
+    function show() {
+      if ($('#tg-dialog')) return;
+      const T = Q.t;
+      const dlg = document.createElement('div');
+      dlg.id = 'tg-dialog';
+      dlg.className = 'tg-dialog';
+      dlg.setAttribute('role', 'dialog');
+      dlg.setAttribute('aria-modal', 'true');
+      dlg.setAttribute('aria-label', T.tg_title || 'Telegram');
+      dlg.innerHTML =
+        '<div class="tgd-overlay" data-tg-later></div>' +
+        '<div class="tgd-card glass">' +
+          '<span class="tgd-ic" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-4.9 9-8.1c.4-.3-.1-.5-.6-.2L6.2 13.4l-4.8-1.5c-1-.3-1.1-1 .2-1.5l18.7-7.2c.9-.3 1.7.2 1.4 1.1z"/></svg>' +
+          '</span>' +
+          '<h3 class="tgd-title">' + (T.tg_title || '') + '</h3>' +
+          '<p class="tgd-desc">' + (T.tg_desc || '') + '</p>' +
+          '<div class="tgd-actions">' +
+            '<a class="btn btn-primary" data-tg-join href="' + TG_URL + '" target="_blank" rel="noopener">' + (T.tg_join || 'Join') + '</a>' +
+            '<button class="btn btn-ghost" type="button" data-tg-later>' + (T.tg_later || 'Later') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(dlg);
+      requestAnimationFrame(() => dlg.classList.add('show'));
+      dlg.addEventListener('click', e => {
+        if (e.target.closest('[data-tg-join]')) {
+          write({ state: 'joined' });
+          dismiss(false);
+          return; // let the link open normally
+        }
+        if (e.target.closest('[data-tg-later]')) dismiss(true);
+      });
+    }
+    setTimeout(show, 1400);
+  })();
+
   /* ---------------- Toast ---------------- */
   let toastTimer;
   window.QToast = function (msg) {
@@ -819,8 +882,16 @@
     if (b) b.hidden = false;
   });
   document.addEventListener('click', async e => {
-    if (!e.target.closest('#install-btn')) return;
-    if (!deferredPrompt) return;
+    if (!e.target.closest('#install-btn,[data-pwa-install]')) return;
+    if (!deferredPrompt) {
+      // Already installed, or the browser doesn't expose the prompt.
+      if (e.target.closest('[data-pwa-install]')) {
+        QToast(document.documentElement.lang === 'ar'
+          ? 'التطبيق مثبّت بالفعل أو المتصفح لا يدعم التثبيت'
+          : 'Already installed, or not supported by this browser');
+      }
+      return;
+    }
     deferredPrompt.prompt();
     await deferredPrompt.userChoice;
     deferredPrompt = null;

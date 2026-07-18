@@ -69,6 +69,7 @@ final class ApiJson
     {
         $m = Api::matchInfo($id);
         if (empty($m['match_id'])) View::json(['ok' => false], 404);
+        $m = Api::unifyMatchState($m);   // same status source as the listings
         $state = match_state($m);
         $events = [];
         foreach (array_slice(is_array($m['events'] ?? null) ? $m['events'] : [], 0, 40) as $ev) {

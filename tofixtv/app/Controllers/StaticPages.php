@@ -37,7 +37,7 @@ final class StaticPages
     {
         $seo = (new Seo())
             ->title(t('more.title'))
-            ->description(t('more.desc'))
+            ->description(t('more.title') . ' — ' . \TofiXTv\Core\Lang::siteName())
             ->breadcrumbs([
                 [t('nav.home'), path('/')],
                 [t('nav.more'), path('more')],

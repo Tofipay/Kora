@@ -32,6 +32,12 @@ final class MatchCenter
         $info = Api::matchInfo($id);
         if (empty($info) || empty($info['match_id'])) View::notFound();
 
+        // Unified status resolver: the detail payload can lag the listings
+        // feed (list shows 90+17′, detail still "not started") — overlay the
+        // fresher live fields from the already-loaded day feed so this page
+        // always agrees with the match lists.
+        $info = Api::unifyMatchState($info);
+
         Settings::trackHit('match', team_name(team_of($info, 'home')) . ' × ' . team_name(team_of($info, 'away')));
 
         // Canonical slug URL — redirect /match/123 or stale slugs

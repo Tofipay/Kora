@@ -121,7 +121,9 @@ window.TOFIXTV = {
        ck_title:'<?= e(t('cookies.banner_title')) ?>', ck_text:'<?= e(t('cookies.banner_text')) ?>',
        ck_accept:'<?= e(t('cookies.accept_all')) ?>', ck_reject:'<?= e(t('cookies.reject')) ?>',
        ck_custom:'<?= e(t('cookies.customize')) ?>', ck_saved:'<?= e(t('cookies.saved')) ?>',
-       ck_policy:'<?= e(t('page.cookies.title')) ?>' },
+       ck_policy:'<?= e(t('page.cookies.title')) ?>',
+       tg_title:'<?= e(t('tg.title')) ?>', tg_desc:'<?= e(t('tg.desc')) ?>',
+       tg_join:'<?= e(t('tg.join')) ?>', tg_later:'<?= e(t('tg.later')) ?>' },
   fcm: <?= json_encode(array_intersect_key(is_array($fcm) ? $fcm : [], array_flip(['apiKey','authDomain','projectId','messagingSenderId','appId','vapidKey'])), JSON_UNESCAPED_SLASHES) ?: '{}' ?>
 };
 </script>

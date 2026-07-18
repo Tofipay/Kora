@@ -185,6 +185,11 @@ final class Admin
                 \TofiXTv\Core\CinemaPolicy::remove((string)$_POST['remove_key']);
                 $msg = 'تمت إعادة العنصر للوضع الافتراضي';
             }
+            // Section-wide display mode (website+app / app only / disabled).
+            if (isset($_POST['save_mode'])) {
+                \TofiXTv\Core\CinemaPolicy::saveMode($type, (string)($_POST['section_mode'] ?? ''));
+                $msg = 'تم حفظ وضع عرض القسم';
+            }
             // 18+ blocking switches (shared by both sections).
             if (isset($_POST['save_block18'])) {
                 \TofiXTv\Core\CinemaPolicy::saveBlock18([
@@ -249,6 +254,7 @@ final class Admin
             'q'       => $q,
             'filter'  => $filter,
             'block18' => \TofiXTv\Core\CinemaPolicy::block18(),
+            'mode'    => \TofiXTv\Core\CinemaPolicy::modes()[$type],
         ]);
     }
 

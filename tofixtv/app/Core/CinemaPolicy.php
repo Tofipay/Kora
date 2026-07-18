@@ -34,6 +34,7 @@ final class CinemaPolicy
         if (!is_array($d)) $d = [];
         $d['items']   = is_array($d['items'] ?? null) ? $d['items'] : [];
         $d['block18'] = is_array($d['block18'] ?? null) ? $d['block18'] : [];
+        $d['modes']   = is_array($d['modes'] ?? null) ? $d['modes'] : [];
         return self::$memo = $d;
     }
 
@@ -63,6 +64,31 @@ final class CinemaPolicy
             'access' => in_array($row['access'] ?? '', self::ACCESS, true) ? $row['access'] : 'all',
             'rating' => in_array((string)($row['rating'] ?? ''), self::RATINGS, true) ? (string)$row['rating'] : 'g',
         ];
+    }
+
+    /**
+     * SECTION-WIDE display modes: one switch per catalogue.
+     *   all → website + app (default) · app → app only · off → disabled.
+     * Section modes only gate the PLAYER — pages, titles, descriptions,
+     * metadata, structured data and internal links stay exactly as before
+     * (SEO untouched), so nothing is ever hidden from listings by a mode.
+     * @return array{movie:string, tv:string}
+     */
+    public static function modes(): array
+    {
+        $m = self::data()['modes'];
+        return [
+            'movie' => in_array($m['movie'] ?? '', self::ACCESS, true) ? $m['movie'] : 'all',
+            'tv'    => in_array($m['tv'] ?? '', self::ACCESS, true) ? $m['tv'] : 'all',
+        ];
+    }
+
+    public static function saveMode(string $type, string $mode): void
+    {
+        if (!in_array($mode, self::ACCESS, true)) return;
+        $d = self::data();
+        $d['modes'][$type === 'tv' ? 'tv' : 'movie'] = $mode;
+        self::persist($d);
     }
 
     /** 18+ blocking switches. */
@@ -167,6 +193,21 @@ final class CinemaPolicy
             $out['playable'] = false;
             $out['locked'] = true;
             $out['reason'] = 'app_only';
+        }
+
+        // Section-wide mode on top of the per-title policy. Never touches
+        // `visible` — the page, its metadata and its listing entries remain
+        // fully crawlable; only the player is withheld.
+        if ($out['playable']) {
+            $mode = self::modes()[$type === 'tv' ? 'tv' : 'movie'];
+            if ($mode === 'off') {
+                $out['playable'] = false;
+                $out['reason'] = 'disabled';
+            } elseif ($mode === 'app' && !$isApp) {
+                $out['playable'] = false;
+                $out['locked'] = true;
+                $out['reason'] = 'app_only';
+            }
         }
         return $out;
     }
