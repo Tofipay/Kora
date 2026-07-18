@@ -379,6 +379,33 @@
     QF.toggle(btn);
   });
 
+  /* ---------------- Poster details on touch ----------------
+   * The hover info panel (overview + rating + genres) only exists for real
+   * pointers (@media hover:hover), so Chrome on Android and app WebViews
+   * never showed it. On touch: the FIRST tap reveals the panel, the second
+   * tap opens the title. Tapping anywhere else closes it. Mouse users keep
+   * plain hover + instant click. Capture phase = runs before the PJAX router. */
+  let lastPointerType = 'mouse';
+  addEventListener('pointerdown', e => { lastPointerType = e.pointerType || 'mouse'; }, { capture: true, passive: true });
+  addEventListener('touchstart', () => { lastPointerType = 'touch'; }, { capture: true, passive: true });
+  document.addEventListener('click', e => {
+    const card = e.target.closest('.poster-card');
+    if (!card) {
+      $$('.poster-card.pi-open').forEach(c => c.classList.remove('pi-open'));
+      return;
+    }
+    if (lastPointerType !== 'touch') return;          // mouse/pen: native hover
+    if (e.target.closest('.poster-fav')) return;      // the star keeps working
+    if (!card.querySelector('.poster-info')) return;
+    if (!card.classList.contains('pi-open')) {
+      e.preventDefault();
+      e.stopPropagation();
+      $$('.poster-card.pi-open').forEach(c => c.classList.remove('pi-open'));
+      card.classList.add('pi-open');
+    }
+    // Already open → let the tap navigate normally.
+  }, true);
+
   /* ---------------- Newsletter (delegated) ---------------- */
   document.addEventListener('submit', async e => {
     const nl = e.target.closest('#newsletter-form');
@@ -582,10 +609,23 @@
         const poster = kind === 'movie' || kind === 'series';
         html += '<section class="fav-group"><h2>' + label + '</h2><div class="fav-items' + (poster ? ' fav-posters' : '') + '">';
         items.forEach(it => {
-          html += '<a class="fav-item card-hover' + (poster ? ' fav-poster' : '') + '" href="' + it.url + '">' +
-            (it.img ? '<img src="' + it.img + '" alt="" loading="lazy">' : '') +
-            '<span>' + (it.title || '').replace(/</g, '&lt;') + '</span>' +
-            '<button class="fav-x" data-k="' + kind + '" data-i="' + it.id + '" aria-label="remove">✕</button></a>';
+          const safeTitle = (it.title || '').replace(/</g, '&lt;');
+          if (poster) {
+            // Cinema favorites: real poster cards, same visual language as
+            // the movies/series section grids.
+            html += '<a class="fav-pcard card-hover" href="' + it.url + '" title="' + safeTitle.replace(/"/g, '&quot;') + '">' +
+              '<span class="fp-thumb">' +
+                (it.img ? '<img src="' + it.img + '" alt="" loading="lazy" decoding="async">'
+                        : '<span class="fp-empty" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M2 9h20M7 4l2.5 5M12 4l2.5 5M17 4l2.5 5"/></svg></span>') +
+                '<span class="fp-caption">' + safeTitle + '</span>' +
+              '</span>' +
+              '<button class="fav-x fp-x" data-k="' + kind + '" data-i="' + it.id + '" aria-label="remove">✕</button></a>';
+          } else {
+            html += '<a class="fav-item card-hover" href="' + it.url + '">' +
+              (it.img ? '<img src="' + it.img + '" alt="" loading="lazy">' : '') +
+              '<span>' + safeTitle + '</span>' +
+              '<button class="fav-x" data-k="' + kind + '" data-i="' + it.id + '" aria-label="remove">✕</button></a>';
+          }
         });
         html += '</div></section>';
       });
@@ -596,7 +636,8 @@
         e.preventDefault();
         const f2 = favs();
         if (f2[x.dataset.k]) { delete f2[x.dataset.k][x.dataset.i]; saveFavs(f2); }
-        x.closest('.fav-item').remove();
+        const card = x.closest('.fav-item,.fav-pcard');
+        if (card) card.remove();
       });
     }
 
