@@ -76,6 +76,14 @@ $info = [
       </span>
     </div>
 
+    <a class="mg-row mg-link" href="<?= e(path('favorites')) ?>">
+      <span class="mg-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+      </span>
+      <span class="mg-label"><?= e(t('nav.favorites')) ?></span>
+      <svg class="mg-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="<?= $arrow ?>"/></svg>
+    </a>
+
     <a class="mg-row mg-link" href="https://t.me/tofi_tv" target="_blank" rel="noopener">
       <span class="mg-ic" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor"><path d="M21.9 4.3 18.7 19.4c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.3-4.9 9-8.1c.4-.3-.1-.5-.6-.2L6.2 13.4l-4.8-1.5c-1-.3-1.1-1 .2-1.5l18.7-7.2c.9-.3 1.7.2 1.4 1.1z"/></svg>
