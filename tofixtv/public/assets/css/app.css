@@ -2548,3 +2548,13 @@ html.dark .age-badge.age-18 { color: #f87171; }
 @media (prefers-reduced-motion: reduce) {
   .tg-dialog .tgd-overlay, .tg-dialog .tgd-card { transition: none; }
 }
+
+/* ============================================================
+   v2.3 — footer is desktop-only. On phones/small tablets the
+   whole footer disappears (its functionality lives in /more);
+   the links remain in the HTML for crawlers, nothing is
+   rendered and no space is reserved. Desktop unchanged.
+   ============================================================ */
+@media (max-width: 959px) {
+  .site-footer { display: none; }
+}

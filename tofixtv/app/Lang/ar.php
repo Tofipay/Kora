@@ -392,8 +392,10 @@ return [
     'page.cookies.title' => 'سياسة ملفات الارتباط',
 
     // Settings & More hub
-    'more.title'       => 'الإعدادات',
+    'more.title'       => 'الإعدادات والمزيد',
     'more.general'     => 'الإعدادات العامة',
+    'more.sections'    => 'الأقسام',
+    'more.information' => 'معلومات',
     'more.language'    => 'اللغة',
     'more.appearance'  => 'المظهر',
     'more.dark'        => 'داكن',

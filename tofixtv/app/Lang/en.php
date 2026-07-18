@@ -392,8 +392,10 @@ return [
     'page.cookies.title' => 'Cookie Policy',
 
     // Settings & More hub
-    'more.title'       => 'Settings',
+    'more.title'       => 'Settings & More',
     'more.general'     => 'General Settings',
+    'more.sections'    => 'Sections',
+    'more.information' => 'Information',
     'more.language'    => 'Language',
     'more.appearance'  => 'Appearance',
     'more.dark'        => 'Dark',
