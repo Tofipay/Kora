@@ -40,10 +40,29 @@ final class FFmpegManager
     }
 
     /**
-     * هل نظام FFmpeg متاح على الخادم؟
+     * هل دوال تنفيذ الأوامر (shell_exec/exec) مفعّلة على الخادم؟
+     * كثير من الاستضافات المشتركة (CloudLinux/LiteSpeed) تعطّلها افتراضيًا،
+     * وبدونها لا يمكن تشغيل FFmpeg إطلاقًا.
+     */
+    public static function execEnabled(): bool
+    {
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        foreach (['shell_exec', 'exec'] as $fn) {
+            if (!function_exists($fn) || in_array($fn, $disabled, true)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * هل نظام FFmpeg متاح على الخادم؟ (يتطلّب تفعيل exec ووجود الملفّ التنفيذي).
      */
     public function isAvailable(): bool
     {
+        if (!self::execEnabled()) {
+            return false;
+        }
         $out = @shell_exec(escapeshellarg($this->binary) . ' -version 2>&1');
         return is_string($out) && str_contains($out, 'ffmpeg version');
     }
@@ -65,25 +84,47 @@ final class FFmpegManager
             return ['ok' => false, 'message' => 'البثّ يعمل بالفعل.', 'pid' => $this->pid($id) ?? 0];
         }
 
+        // تشخيص دقيق لسبب تعذّر التشغيل.
+        if (!self::execEnabled()) {
+            return ['ok' => false, 'message' =>
+                'دوال تشغيل الأوامر (exec/shell_exec) معطّلة في استضافتك، '
+                . 'لذا لا يمكن تشغيل FFmpeg. فعّلها من إعدادات PHP (disable_functions) '
+                . 'أو استخدم خادمًا/VPS يسمح بها. يمكنك استخدام وضع Proxy بدون إعادة ترميز.'];
+        }
         if (!$this->isAvailable()) {
-            return ['ok' => false, 'message' => 'FFmpeg غير مثبّت على الخادم.'];
+            return ['ok' => false, 'message' =>
+                'FFmpeg غير مثبّت أو غير موجود في المسار المحدّد ('
+                . $this->binary . '). ثبّته على الخادم أو اضبط FFMPEG_BIN.'];
         }
 
         $channelDir = $this->outputDir . '/' . $id;
         if (!is_dir($channelDir)) {
             @mkdir($channelDir, 0775, true);
         }
+        if (!is_writable($channelDir)) {
+            return ['ok' => false, 'message' => 'مجلّد الإخراج streams/ غير قابل للكتابة. اضبط صلاحياته (chmod 775).'];
+        }
         $playlist = $channelDir . '/index.m3u8';
 
         $cmd = $this->buildCommand($channel, $playlist);
         $logFile = Config::get('paths.logs') . "/ffmpeg-{$id}.log";
 
-        // تشغيل في الخلفية مع فصل العملية وكتابة السجل.
-        $fullCmd = sprintf('%s > %s 2>&1 & echo $!', $cmd, escapeshellarg($logFile));
+        // تشغيل في الخلفية مع فصل العملية (setsid) وكتابة السجل.
+        // setsid يفصل العملية عن جلسة الويب حتى لا تُقتل عند انتهاء الطلب.
+        $setsid = $this->hasSetsid() ? 'setsid ' : '';
+        $fullCmd = sprintf('%s%s > %s 2>&1 & echo $!', $setsid, $cmd, escapeshellarg($logFile));
         $pid = (int) trim((string) shell_exec($fullCmd));
 
         if ($pid <= 0) {
-            return ['ok' => false, 'message' => 'تعذّر تشغيل FFmpeg.'];
+            return ['ok' => false, 'message' => 'تعذّر تشغيل FFmpeg (لم تُرجَع عملية).'];
+        }
+
+        // تحقّق قصير: هل العملية حيّة بعد لحظة أم ماتت فورًا (خطأ في الأمر)؟
+        usleep(600_000);
+        if (!$this->processExists($pid)) {
+            $tail = $this->logTail($logFile);
+            Logger::warning('FFmpeg مات فور التشغيل', ['channel' => $id, 'log' => $tail]);
+            return ['ok' => false, 'message' => 'بدأ FFmpeg ثم توقّف فورًا. آخر سطور السجل: ' . $tail];
         }
 
         $this->savePid($id, $pid);
@@ -91,9 +132,9 @@ final class FFmpegManager
 
         return [
             'ok'      => true,
-            'message' => 'تم تشغيل البثّ.',
+            'message' => 'تم تشغيل البثّ بنجاح.' . (!empty($channel['watermark']['enabled']) ? ' (مع الشعار)' : ''),
             'pid'     => $pid,
-            'output'  => Config::get('app.base_url') . "/streams/{$id}/index.m3u8",
+            'output'  => Config::baseUrl() . "/stream/{$id}/index.m3u8",
         ];
     }
 
@@ -323,19 +364,21 @@ final class FFmpegManager
             return null;
         }
 
+        $cid = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $channel['id']);
+
         // 1) رابط يخصّ أصولنا المحلّية -> نحوّله لمسار في نظام الملفّات.
         $base = Config::baseUrl();
         if (str_starts_with($image, $base . '/')) {
             $rel = ltrim(substr($image, strlen($base)), '/');
             $local = Config::get('paths.root') . '/' . $rel;
             if (is_file($local)) {
-                return $local;
+                return $this->rasterizeIfSvg($local, $cid);
             }
         }
 
         // 2) مسار محلّي مباشر موجود.
         if (is_file($image)) {
-            return $image;
+            return $this->rasterizeIfSvg($image, $cid);
         }
 
         // 3) رابط خارجي -> تنزيل إلى storage/watermarks/{channelId}.
@@ -344,16 +387,71 @@ final class FFmpegManager
             if (!is_dir($dir)) {
                 @mkdir($dir, 0775, true);
             }
-            $ext = pathinfo((string) parse_url($image, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'png';
-            $dest = $dir . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $channel['id']) . '.' . $ext;
+            $ext = strtolower(pathinfo((string) parse_url($image, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'png');
+            $dest = $dir . '/' . $cid . '.' . $ext;
             $data = @file_get_contents($image);
             if ($data !== false && $data !== '') {
                 @file_put_contents($dest, $data);
-                return $dest;
+                return $this->rasterizeIfSvg($dest, $cid);
             }
         }
 
         return null;
+    }
+
+    /**
+     * FFmpeg لا يقرأ SVG في أغلب البُنى. إن كان الشعار SVG نحوّله إلى PNG:
+     *   - عبر إضافة Imagick إن كانت متوفّرة (لا تحتاج exec).
+     *   - أو عبر rsvg-convert / ImageMagick convert إن كان exec مفعّلًا.
+     * وإلا نُعيد الملفّ كما هو (قد ينجح إن كان FFmpeg مبنيًّا مع librsvg).
+     *
+     * @return string المسار الجاهز للاستخدام مع FFmpeg.
+     */
+    private function rasterizeIfSvg(string $path, string $cid): string
+    {
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== 'svg') {
+            return $path;
+        }
+
+        $dir = Config::get('paths.storage') . '/watermarks';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $png = $dir . '/' . $cid . '_raster.png';
+
+        // (أ) Imagick (لا يتطلّب صلاحيات تنفيذ أوامر).
+        if (extension_loaded('imagick')) {
+            try {
+                $im = new \Imagick();
+                $im->setBackgroundColor(new \ImagickPixel('transparent'));
+                $im->readImageBlob((string) @file_get_contents($path));
+                $im->setImageFormat('png32');
+                $im->writeImage($png);
+                $im->clear();
+                if (is_file($png)) {
+                    return $png;
+                }
+            } catch (\Throwable $e) {
+                Logger::warning('فشل تحويل SVG عبر Imagick', ['err' => $e->getMessage()]);
+            }
+        }
+
+        // (ب) أدوات سطر الأوامر إن كان exec مفعّلًا.
+        if (self::execEnabled()) {
+            $src = escapeshellarg($path);
+            $out = escapeshellarg($png);
+            @shell_exec("rsvg-convert -w 400 {$src} -o {$out} 2>/dev/null");
+            if (!is_file($png)) {
+                @shell_exec("convert -background none {$src} {$out} 2>/dev/null");
+            }
+            if (is_file($png)) {
+                return $png;
+            }
+        }
+
+        // (ج) تعذّر التحويل — نُعيد الأصل (قد ينجح مع librsvg).
+        Logger::warning('تعذّر تحويل SVG إلى PNG؛ يُفضّل رفع شعار PNG.', ['path' => $path]);
+        return $path;
     }
 
     /**
@@ -401,6 +499,31 @@ final class FFmpegManager
     private function removePid(string $channelId): void
     {
         @unlink($this->pidFile($channelId));
+    }
+
+    /**
+     * هل الأمر setsid متاح؟ (لفصل عملية FFmpeg عن جلسة الويب).
+     */
+    private function hasSetsid(): bool
+    {
+        $out = @shell_exec('command -v setsid 2>/dev/null');
+        return is_string($out) && trim($out) !== '';
+    }
+
+    /**
+     * قراءة آخر أسطر من ملفّ سجلّ FFmpeg (لعرض سبب الفشل للمستخدم).
+     */
+    private function logTail(string $file, int $lines = 4): string
+    {
+        if (!is_file($file)) {
+            return '(لا يوجد سجل)';
+        }
+        $content = trim((string) @file_get_contents($file));
+        if ($content === '') {
+            return '(السجل فارغ)';
+        }
+        $arr = array_slice(explode("\n", $content), -$lines);
+        return trim(implode(' | ', $arr));
     }
 
     /**

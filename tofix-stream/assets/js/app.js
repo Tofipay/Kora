@@ -34,6 +34,7 @@ const api = {
   stream:      (act, id) => api.request({ resource: 'stream', action: act, id }, { method: act === 'status' || act === 'monitor' ? 'GET' : 'POST' }),
   stats:       ()        => api.request({ resource: 'stats' }),
   system:      ()        => api.request({ resource: 'system' }),
+  diagnostics: ()        => api.request({ resource: 'diagnostics' }),
 };
 
 /* ============ أدوات مساعدة ============ */
@@ -228,13 +229,36 @@ function renderServerCards() {
   renderServer(['#serverMetersFull']);
 }
 
+/* عرض شريط تشخيص قدرات الخادم (يوضّح سبب تعطّل إعادة البثّ/الشعار). */
+function renderDiagnostics(d) {
+  const box = $('#diagBanner');
+  if (!d) { box.innerHTML = ''; return; }
+  const issues = [];
+  if (!d.exec_enabled) issues.push('دوال <b>exec/shell_exec</b> معطّلة في الاستضافة — لا يمكن تشغيل FFmpeg (إعادة البثّ الحقيقي والشعار داخل الفيديو). استخدم وضع <b>Proxy</b>، أو استضافة/VPS تسمح بها.');
+  else if (!d.ffmpeg) issues.push('<b>FFmpeg</b> غير مثبّت على الخادم — ثبّته لتفعيل إعادة الترميز والشعار داخل البثّ.');
+  if (d.exec_enabled && d.ffmpeg && !d.streams_writable) issues.push('مجلّد <b>streams/</b> غير قابل للكتابة — اضبط الصلاحيات (chmod 775).');
+
+  if (!issues.length) {
+    box.innerHTML = `<div class="diag ok"><i class="bi bi-check-circle-fill"></i> النظام جاهز: FFmpeg وإعادة البثّ والشعار داخل الفيديو مفعّلة.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="diag warn">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div><b>تنبيه القدرات:</b><ul>${issues.map((i) => `<li>${i}</li>`).join('')}</ul>
+    <small class="muted">وضع Proxy يعمل دائمًا (إعادة بثّ الرابط وإخفاء المصدر). أمّا الشعار داخل الفيديو فيتطلّب FFmpeg.</small></div>
+  </div>`;
+}
+
 /* ============ تحميل البيانات ============ */
 async function loadAll() {
   try {
-    const [channels, stats, system] = await Promise.all([api.channels(), api.stats(), api.system()]);
+    const [channels, stats, system, diag] = await Promise.all([
+      api.channels(), api.stats(), api.system(), api.diagnostics().catch(() => null),
+    ]);
     state.channels = channels || [];
     state.stats = stats || {};
     state.system = system || {};
+    renderDiagnostics(diag);
 
     // فحص أي القنوات تعمل عبر FFmpeg (وسم _running).
     await Promise.all(state.channels.map(async (ch) => {

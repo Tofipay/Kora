@@ -208,6 +208,18 @@ table.data td .ch small { color: var(--text-dim); }
 }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+/* ---------------- Diagnostics banner ---------------- */
+.diag {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px;
+  border-radius: 14px; margin-bottom: 20px; font-size: 14px; line-height: 1.7;
+  border: 1px solid var(--border);
+}
+.diag i { font-size: 20px; margin-top: 2px; }
+.diag ul { margin: 6px 0 4px; padding-inline-start: 18px; }
+.diag.ok { background: rgba(35,214,160,0.10); color: var(--accent); }
+.diag.warn { background: rgba(255,184,77,0.10); color: var(--warn); }
+.diag.warn b { color: var(--text); }
+
 /* ---------------- Watermark box ---------------- */
 .wm-box { padding: 14px 16px; margin: 6px 0 16px; }
 .wm-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; }

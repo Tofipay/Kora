@@ -43,7 +43,7 @@ $logo = htmlspecialchars((string) ($channel['logo'] ?? ''));
   <title><?= $name ?> — ToFi X Stream Player</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://vjs.zencdn.net/8.16.1/video-js.css" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/player.css">
+  <link rel="stylesheet" href="../assets/css/player.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/assets/css/player.css') ?>">
 </head>
 <body>
   <div class="player-shell">
@@ -106,6 +106,6 @@ $logo = htmlspecialchars((string) ($channel['logo'] ?? ''));
       isDash: false,
     };
   </script>
-  <script src="../assets/js/player.js"></script>
+  <script src="../assets/js/player.js?v=<?= (int) @filemtime(dirname(__DIR__) . '/assets/js/player.js') ?>"></script>
 </body>
 </html>

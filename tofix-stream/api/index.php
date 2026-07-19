@@ -207,6 +207,25 @@ try {
             break;
 
         // ---------------------------------------------------------------
+        // تشخيص القدرات (لماذا لا يعمل إعادة البثّ/الشعار؟)
+        // ---------------------------------------------------------------
+        case 'diagnostics':
+            $ff = new FFmpegManager();
+            $streamsDir = Config::get('paths.streams');
+            Response::json([
+                'exec_enabled'     => FFmpegManager::execEnabled(),
+                'ffmpeg'           => $ff->isAvailable(),
+                'ffprobe'          => (new StreamMonitor())->isAvailable(),
+                'imagick'          => extension_loaded('imagick'),
+                'streams_writable' => is_dir($streamsDir) && is_writable($streamsDir),
+                'notes'            => [
+                    'exec' => 'مطلوب لتشغيل FFmpeg وإعادة البثّ الحقيقي. إن كان معطّلًا استخدم وضع Proxy.',
+                    'svg'  => 'شعار SVG يُحوَّل تلقائيًا إن توفّر Imagick أو exec؛ الأفضل رفع PNG.',
+                ],
+            ]);
+            break;
+
+        // ---------------------------------------------------------------
         // توليد توكن موقّع لقناة
         // ---------------------------------------------------------------
         case 'token':

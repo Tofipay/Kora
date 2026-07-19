@@ -32,7 +32,8 @@ $apiKey = Config::get('security.api_key');
   <title><?= htmlspecialchars($appName) ?> — Control Panel</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="../assets/css/app.css">
+  <?php $assetV = static fn (string $p): int => (int) @filemtime(dirname(__DIR__) . $p); ?>
+  <link rel="stylesheet" href="../assets/css/app.css?v=<?= $assetV('/assets/css/app.css') ?>">
 </head>
 <body>
 <div class="layout">
@@ -70,6 +71,9 @@ $apiKey = Config::get('security.api_key');
         <button class="btn btn-primary" id="addChannelBtn"><i class="bi bi-plus-lg"></i> قناة جديدة</button>
       </div>
     </div>
+
+    <!-- شريط تشخيص القدرات (يظهر عند وجود قيود على الاستضافة) -->
+    <div id="diagBanner"></div>
 
     <!-- ===== View: Dashboard ===== -->
     <section id="view-dashboard">
@@ -215,6 +219,6 @@ $apiKey = Config::get('security.api_key');
     apiKey:  <?= json_encode($apiKey) ?>,
   };
 </script>
-<script src="../assets/js/app.js"></script>
+<script src="../assets/js/app.js?v=<?= $assetV('/assets/js/app.js') ?>"></script>
 </body>
 </html>

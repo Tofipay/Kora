@@ -180,6 +180,24 @@ curl -X POST "http://localhost:8080/api/index.php?resource=channels" \
    <kbd>Broadcast</kbd> ليبدأ الإنتاج ويظهر الشعار داخل الفيديو على رابط `.m3u8` نفسه.
 
 > يتطلّب تثبيت `ffmpeg` على الخادم (مع `libfreetype` لعرض النصّ). العلامة على الصورة تعمل بأي بناء FFmpeg قياسي.
+> شعار SVG يُحوَّل تلقائيًا إلى PNG عبر Imagick أو rsvg-convert، أو يقرأه FFmpeg مباشرة إن بُني مع `librsvg` — والأضمن رفع شعار PNG بخلفية شفّافة.
+
+### لماذا لا يبدأ البثّ / لا يظهر الشعار؟ (التشخيص)
+
+تعرض اللوحة **شريط تشخيص** أعلى الصفحة يوضّح جاهزية الخادم، أو استعلم مباشرة:
+```
+GET /api/index.php?resource=diagnostics
+```
+يُرجع حالة: `exec_enabled` (تفعيل exec/shell_exec)، `ffmpeg`، `ffprobe`، `imagick`، `streams_writable`.
+
+- **exec معطّلة** (شائع في الاستضافة المشتركة CloudLinux/LiteSpeed): لا يمكن تشغيل FFmpeg —
+  إعادة البثّ الحقيقي والشعار داخل الفيديو لن تعمل. استخدم **وضع Proxy** (يعمل دائمًا)، أو
+  انقل لخادم/VPS يسمح بـ exec.
+- **ffmpeg غير مثبّت**: ثبّته (`apt install ffmpeg`) أو اضبط `FFMPEG_BIN`.
+- **streams/ غير قابلة للكتابة**: `chmod -R 775 streams`.
+
+> ملاحظة: العلامة المائية والجودة (transcode) تعملان فقط في **وضع FFmpeg** بعد تشغيل البثّ.
+> وضع **Proxy** يعيد بثّ الرابط ويخفي المصدر لكن دون دمج شعار (لأنه لا يعيد ترميز الفيديو).
 
 ## 🛡️ ملاحظات أمان للإنتاج
 
