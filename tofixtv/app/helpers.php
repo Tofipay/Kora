@@ -519,6 +519,14 @@ function match_state(array $m): array
 
     if ($status === 4) return $finished();
 
+    // A match whose kickoff is still clearly in the future can NOT be live,
+    // no matter what the feed's flags say. The upstream `live` field means
+    // "live stream available", and big fixtures carry live=1 hours before
+    // kickoff — trusting it alone rendered tonight's final as "LIVE 0-0"
+    // seven hours early. 10 minutes of grace covers clock skew and matches
+    // kicked off slightly ahead of schedule.
+    if ($elapsed !== null && $elapsed < -600) return $upcoming();
+
     // Longest possible football match: 120′ + HT/ET breaks + shootout ≈ 3h;
     // 4h leaves a wide margin for delays while still catching feeds that
     // never flip a match to status 4.
