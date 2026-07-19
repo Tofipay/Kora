@@ -7,17 +7,21 @@
 
 ```
 .
-├── index.html          # الصفحة الكاملة (SEO + Schema.org)
+├── index.html          # الصفحة الكاملة — CSS وJS مدمجان بداخلها (SEO + Schema.org)
 ├── favicon.ico
 ├── robots.txt          # يسمح بالزحف الكامل + رابط sitemap
 ├── sitemap.xml         # خريطة الموقع مع صور
 ├── site.webmanifest    # PWA manifest
 └── assets/
     ├── brand/          # الشعار والأيقونات
-    ├── css/main.css    # كل التنسيقات (Design tokens)
-    ├── js/app.js       # سلايدر الهاتف، نسخ الكود، القوائم، الحركات
+    ├── css/main.css    # نسخة مصدرية من التنسيقات (مدمجة أصلًا في index.html)
+    ├── js/app.js       # نسخة مصدرية من الجافاسكربت (مدمج أصلًا في index.html)
     └── screens/        # لقطات شاشة WebP حقيقية من التطبيق
 ```
+
+> **ملاحظة:** كل التنسيقات والجافاسكربت مدمجة داخل `index.html` مباشرة،
+> فلا تتأثر الصفحة بإعدادات MIME أو مسارات الاستضافة — يكفي رفع
+> `index.html` مع مجلد `assets` (للصور) في أي مكان.
 
 ## Schema.org المضمّنة
 
@@ -28,8 +32,9 @@
 
 ## النشر
 
-ارفع محتوى المجلد إلى جذر النطاق `https://www.tofi-xtv.com/`
-(المسارات جذرية `/assets/...`).
+ارفع محتوى المجلد إلى `https://apk.tofi-xtv.com/` (أو أي مجلد —
+كل المسارات نسبية). أزرار «الموقع الرسمي» تشير إلى
+`https://www.tofi-xtv.com/` وزر التحميل إلى `https://apk.tofi-xtv.com/`.
 
 معاينة محلية:
 
@@ -42,6 +47,7 @@ python3 -m http.server 8000
 - صورة الـ Hero فقط `fetchpriority=high` + preload، والبقية `loading=lazy`.
 - كل الصور WebP بأبعاد صريحة (`width`/`height`) لمنع CLS.
 - خط Cairo عبر `display=swap` مع `preconnect`.
+- CSS وJS مدمجان في HTML: صفر طلبات حاجبة للعرض.
 - JS واحد صغير (`defer`) بدون أي اعتماديات، والحركات تحترم
   `prefers-reduced-motion`.
 - كود التفعيل: زر «نسخ الكود» ينسخ `1212` ويعرض رسالة «تم نسخ الكود بنجاح».

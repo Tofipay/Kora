@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.tofi-xtv.com/sitemap.xml
+Sitemap: https://apk.tofi-xtv.com/sitemap.xml
