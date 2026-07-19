@@ -4,13 +4,13 @@
   "description": "تحميل تطبيق ToFi X Tv 2026 — مباريات مباشرة وأخبار رياضية وأفلام ومسلسلات في تطبيق واحد.",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#050b1d",
   "theme_color": "#050b1d",
   "icons": [
     {
-      "src": "/assets/brand/icon-512.png",
+      "src": "assets/brand/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
