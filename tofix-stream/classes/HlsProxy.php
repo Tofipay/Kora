@@ -43,7 +43,7 @@ final class HlsProxy
 
     public function __construct()
     {
-        $this->endpoint = Config::get('app.base_url') . '/proxy/index.php';
+        $this->endpoint = Config::baseUrl() . '/proxy/index.php';
     }
 
     // -------------------------------------------------------------------------
@@ -178,6 +178,10 @@ final class HlsProxy
         $envProxy = getenv('HTTPS_PROXY') ?: getenv('https_proxy') ?: '';
         if ($envProxy !== '') {
             curl_setopt($ch, CURLOPT_PROXY, $envProxy);
+            // تجاوز البروكسي للمضيفين المحلّيين/الداخليين (NO_PROXY) — مهمّ
+            // لمصادر localhost/الشبكة الداخلية أو مخرجات FFmpeg المحلّية.
+            $noProxy = getenv('NO_PROXY') ?: getenv('no_proxy') ?: 'localhost,127.0.0.1,::1';
+            curl_setopt($ch, CURLOPT_NOPROXY, $noProxy);
         }
         // استخدام حزمة الشهادات المخصّصة إن كانت معرّفة في البيئة.
         $caBundle = getenv('CURL_CA_BUNDLE') ?: '';

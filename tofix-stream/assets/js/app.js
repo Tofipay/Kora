@@ -41,6 +41,50 @@ const $  = (s, c = document) => c.querySelector(s);
 const $$ = (s, c = document) => [...c.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 
+/* نسخ نصّ إلى الحافظة مع بديل يعمل خارج السياق الآمن (http). */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    return true;
+  } catch { return false; }
+}
+
+/* نافذة تعرض رابط البثّ الجديد بعد الإضافة مع زر نسخ. */
+function showStreamLink(ch) {
+  const url = ch?.playback?.hls || '';
+  if (!url) return;
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop-x show';
+  back.innerHTML = `
+    <div class="modal-x glass" style="max-width:560px;text-align:center">
+      <div style="font-size:40px;color:var(--accent)"><i class="bi bi-check-circle-fill"></i></div>
+      <h3 style="justify-content:center">تم إنشاء رابط البثّ الجديد ✅</h3>
+      <p class="muted">هذا رابط البثّ الخاص بموقعك (المصدر الأصلي مخفيّ). انسخه واستخدمه في أي مشغّل أو تطبيق IPTV:</p>
+      <div class="url-cell" style="margin:14px 0">
+        <input readonly class="url-input" value="${esc(url)}" onclick="this.select()">
+        <button class="btn btn-primary btn-sm" id="_copyLink"><i class="bi bi-clipboard"></i> نسخ</button>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:10px">
+        <a class="btn" href="${esc(ch.playback.player)}" target="_blank"><i class="bi bi-play-circle"></i> معاينة في المشغّل</a>
+        <button class="btn btn-primary" id="_closeLink">تم</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+  back.querySelector('#_copyLink').onclick = async () => {
+    (await copyText(url)) ? toast('تم نسخ الرابط') : toast('تعذّر النسخ', 'err');
+  };
+  const close = () => back.remove();
+  back.querySelector('#_closeLink').onclick = close;
+  back.onclick = (e) => { if (e.target === back) close(); };
+}
+
 function toast(msg, type = 'ok') {
   const el = document.createElement('div');
   el.className = `toast-x ${type}`;
@@ -129,7 +173,12 @@ function renderChannels() {
       <td>${esc(ch.country || '—')}</td>
       <td>${esc(ch.quality)}</td>
       <td>${statusBadge(ch.status, ch._running)}</td>
-      <td><a class="muted" href="player.php?channel=${ch.id}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> المشغّل</a></td>
+      <td>
+        <div class="url-cell">
+          <input readonly class="url-input" value="${esc(ch.playback?.hls || '')}" onclick="this.select()" title="${esc(ch.playback?.hls || '')}">
+          <button class="btn btn-sm" data-act="copy" data-id="${ch.id}" title="نسخ رابط البث"><i class="bi bi-clipboard"></i></button>
+        </div>
+      </td>
       <td>${actionButtons(ch)}</td>
     </tr>`).join('') : empty;
 
@@ -220,8 +269,13 @@ form.addEventListener('submit', async (e) => {
   const data = Object.fromEntries(new FormData(form).entries());
   const id = data.id; delete data.id;
   try {
-    if (id) { await api.updateCh(id, data); toast('تم تحديث القناة'); }
-    else { await api.createCh(data); toast('تمت إضافة القناة'); }
+    if (id) {
+      await api.updateCh(id, data); toast('تم تحديث القناة');
+    } else {
+      const created = await api.createCh(data);
+      toast('تمت إضافة القناة');
+      showStreamLink(created);     // إظهار رابط البثّ الجديد فورًا.
+    }
     closeModal(); loadAll();
   } catch (err) { toast(err.message, 'err'); }
 });
@@ -244,6 +298,11 @@ document.addEventListener('click', async (e) => {
         break;
       case 'duplicate':
         await api.duplicateCh(id); toast('تم تكرار القناة'); loadAll(); break;
+      case 'copy': {
+        const link = ch?.playback?.hls || '';
+        (await copyText(link)) ? toast('تم نسخ رابط البثّ') : toast('تعذّر النسخ', 'err');
+        break;
+      }
       case 'start': {
         const r = await api.stream('start', id); toast(r.message, r.ok ? 'ok' : 'err'); loadAll(); break;
       }

@@ -92,7 +92,7 @@ if (($channel['mode'] ?? 'proxy') === 'ffmpeg') {
     $localPlaylist = Config::get('ffmpeg.output_dir') . '/' . $channelId . '/index.m3u8';
     if (is_file($localPlaylist)) {
         // نمرّر البلاي-ليست المحلّي عبر نفس منطق إعادة الكتابة ليصبح المسار مطلقًا.
-        $sourceUrl = Config::get('app.base_url') . '/streams/' . $channelId . '/index.m3u8';
+        $sourceUrl = Config::baseUrl() . '/streams/' . $channelId . '/index.m3u8';
     }
 }
 

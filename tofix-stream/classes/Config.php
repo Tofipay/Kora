@@ -73,4 +73,41 @@ final class Config
         }
         return self::$items;
     }
+
+    /**
+     * العنوان العام للمنصّة الذي تُبنى منه روابط إعادة البثّ.
+     *
+     * إن كان APP_URL مضبوطًا في الإعدادات يُستخدم كما هو؛ وإلا يُكتشف تلقائيًا
+     * من الطلب الحالي (البروتوكول + النطاق + مجلّد التطبيق داخل جذر الويب).
+     * هكذا يظهر الرابط الجديد بنطاقك الحقيقي دون أي إعداد يدوي.
+     */
+    public static function baseUrl(): string
+    {
+        $configured = (string) self::get('app.base_url', '');
+        if ($configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        // من سطر الأوامر لا يوجد طلب — نعيد قيمة افتراضية.
+        if (PHP_SAPI === 'cli' || empty($_SERVER['HTTP_HOST'])) {
+            return 'http://localhost:8080';
+        }
+
+        // اكتشاف البروتوكول (يراعي البروكسيات/موازِنات الأحمال).
+        $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+            || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+            || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+        $scheme = $https ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'];
+
+        // اكتشاف المسار الفرعي إن كان التطبيق داخل مجلّد ضمن جذر الويب.
+        $path = '';
+        $docRoot = !empty($_SERVER['DOCUMENT_ROOT']) ? realpath((string) $_SERVER['DOCUMENT_ROOT']) : '';
+        $appRoot = realpath((string) self::get('paths.root'));
+        if ($docRoot && $appRoot && str_starts_with($appRoot, $docRoot)) {
+            $path = str_replace('\\', '/', substr($appRoot, strlen($docRoot)));
+        }
+
+        return rtrim("{$scheme}://{$host}{$path}", '/');
+    }
 }

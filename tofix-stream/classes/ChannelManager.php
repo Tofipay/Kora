@@ -144,17 +144,20 @@ final class ChannelManager
      */
     private function decorate(array $row): array
     {
-        $base = Config::get('app.base_url');
+        $base = Config::baseUrl();
         $id = $row['id'] ?? '';
 
         // الرابط الجديد الذي يظهر للمستخدم بدل الرابط الأصلي.
         $row['playback'] = [
-            // رابط HLS المُعاد بثّه عبر البروكسي (يخفي المصدر).
-            'hls'    => "{$base}/proxy/index.php?channel={$id}",
+            // ★ الرابط النظيف الجاهز — ينتهي بـ .m3u8 ويعمل في أي مشغّل/تطبيق IPTV.
+            //   مثال: https://test.tofi-xtv.com/stream/ID/index.m3u8
+            'hls'     => "{$base}/stream/{$id}/index.m3u8",
+            // الرابط المباشر للبروكسي (احتياطي إن لم يكن إعادة الكتابة مفعّلة).
+            'hls_raw' => "{$base}/proxy/index.php?channel={$id}",
             // رابط صفحة المشغّل الجاهزة.
-            'player' => "{$base}/public/player.php?channel={$id}",
+            'player'  => "{$base}/public/player.php?channel={$id}",
             // رابط embed للتضمين في المواقع الأخرى.
-            'embed'  => "{$base}/public/embed.php?channel={$id}",
+            'embed'   => "{$base}/public/embed.php?channel={$id}",
         ];
 
         return $row;

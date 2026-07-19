@@ -49,7 +49,9 @@ return [
         'debug'     => $env('APP_DEBUG', false),
         'timezone'  => $env('APP_TIMEZONE', 'UTC'),
         // العنوان العام للمنصّة، يُستخدم لبناء الروابط الجديدة لإعادة البث.
-        'base_url'  => rtrim((string) $env('APP_URL', 'http://localhost:8080'), '/'),
+        // اتركه فارغًا (الافتراضي) ليُكتشف نطاقك تلقائيًا من الطلب،
+        // أو اضبط APP_URL يدويًا مثل: https://test.tofi-xtv.com
+        'base_url'  => rtrim((string) $env('APP_URL', ''), '/'),
         'locale'    => 'ar',
     ],
 

@@ -90,7 +90,7 @@ $apiKey = Config::get('security.api_key');
     <!-- ===== View: Channels ===== -->
     <section id="view-channels" style="display:none">
       <div class="glass table-wrap"><table class="data"><thead>
-        <tr><th>القناة</th><th>المصدر</th><th>التصنيف</th><th>الدولة</th><th>الجودة</th><th>الحالة</th><th>البثّ</th><th>إجراءات</th></tr>
+        <tr><th>القناة</th><th>المصدر</th><th>التصنيف</th><th>الدولة</th><th>الجودة</th><th>الحالة</th><th>رابط البثّ الجديد (.m3u8)</th><th>إجراءات</th></tr>
       </thead><tbody id="channelsTable"></tbody></table></div>
     </section>
 

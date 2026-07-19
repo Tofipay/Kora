@@ -161,6 +161,16 @@ table.data td .ch img, table.data td .ch .ph {
 table.data td .ch b { display: block; }
 table.data td .ch small { color: var(--text-dim); }
 
+/* ---------------- URL cell (copyable stream link) ---------------- */
+.url-cell { display: flex; align-items: center; gap: 6px; min-width: 240px; }
+.url-input {
+  flex: 1; min-width: 0; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--border); background: rgba(108,139,255,0.08);
+  color: var(--brand); font-size: 12px; font-family: ui-monospace, monospace;
+  cursor: text; overflow: hidden; text-overflow: ellipsis;
+}
+.url-input:focus { outline: none; border-color: var(--brand); }
+
 /* ---------------- Badges ---------------- */
 .badge {
   padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
