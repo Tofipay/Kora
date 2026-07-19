@@ -34,6 +34,25 @@ if (!$channel) {
 $streamUrl = $channel['playback']['hls'];
 $name = htmlspecialchars((string) $channel['name']);
 $logo = htmlspecialchars((string) ($channel['logo'] ?? ''));
+
+// العلامة المائية: في وضع FFmpeg تُحرق داخل الفيديو، أمّا في وضع Proxy فنعرضها
+// كطبقة فوق المشغّل (تعمل بدون FFmpeg، وتدعم SVG والعربية بشكل مثالي).
+$wm = is_array($channel['watermark'] ?? null) ? $channel['watermark'] : [];
+$showOverlay = !empty($wm['enabled']) && ($channel['mode'] ?? 'proxy') !== 'ffmpeg';
+
+/**
+ * ترجمة موضع العلامة إلى أنماط CSS للطبقة فوق المشغّل.
+ */
+$wmStyle = static function (array $wm): string {
+    $m = (int) ($wm['margin'] ?? 24) . 'px';
+    return match ($wm['position'] ?? 'top-right') {
+        'top-left'     => "top:$m;inset-inline-start:$m",
+        'bottom-left'  => "bottom:$m;inset-inline-start:$m",
+        'bottom-right' => "bottom:$m;inset-inline-end:$m",
+        'center'       => 'top:50%;left:50%;transform:translate(-50%,-50%)',
+        default        => "top:$m;inset-inline-end:$m", // top-right
+    };
+};
 ?>
 <!doctype html>
 <html lang="ar" dir="rtl">
@@ -70,6 +89,20 @@ $logo = htmlspecialchars((string) ($channel['logo'] ?? ''));
       <?php else: ?>
         <video id="player" controls playsinline crossorigin="anonymous"
                x-webkit-airplay="allow" style="width:100%;height:100%;background:#000"></video>
+      <?php endif; ?>
+
+      <?php if ($showOverlay): ?>
+        <?php $op = (float) ($wm['opacity'] ?? 0.9); ?>
+        <?php if (($wm['type'] ?? 'image') === 'image' && !empty($wm['image'])): ?>
+          <img class="wm-overlay" alt="logo"
+               src="<?= htmlspecialchars((string) $wm['image']) ?>"
+               style="<?= $wmStyle($wm) ?>;width:<?= (int) ($wm['size'] ?? 140) ?>px;opacity:<?= $op ?>">
+        <?php elseif (($wm['type'] ?? '') === 'text' && !empty($wm['text'])): ?>
+          <div class="wm-overlay wm-text"
+               style="<?= $wmStyle($wm) ?>;color:#<?= htmlspecialchars((string) ($wm['color'] ?? 'ffffff')) ?>;opacity:<?= $op ?>;font-size:<?= (int) ($wm['size'] ?? 28) ?>px">
+            <?= htmlspecialchars((string) $wm['text']) ?>
+          </div>
+        <?php endif; ?>
       <?php endif; ?>
     </div>
 

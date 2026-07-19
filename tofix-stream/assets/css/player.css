@@ -40,6 +40,18 @@ body {
 .video-frame { position: relative; background: #000; aspect-ratio: 16/9; width: 100%; }
 .video-frame .video-js, .video-frame video { width: 100%; height: 100%; }
 
+/* طبقة الشعار/النصّ فوق المشغّل (لوضع Proxy بدون FFmpeg) */
+.wm-overlay {
+  position: absolute; z-index: 5; pointer-events: none;
+  max-width: 40%; height: auto;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+}
+.wm-overlay.wm-text {
+  font-weight: 800; letter-spacing: 0.5px;
+  padding: 4px 12px; border-radius: 8px; background: rgba(0,0,0,0.35);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+
 .player-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; gap: 14px; flex-wrap: wrap; }
 .player-bar .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pbtn {

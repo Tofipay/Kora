@@ -193,7 +193,9 @@ $apiKey = Config::get('security.api_key');
             <div class="field"><label>الحجم (بكسل)</label><input type="number" name="watermark_size" id="wmSize" value="120" min="8"></div>
             <div class="field"><label>الشفافية (0.1 - 1)</label><input type="number" step="0.05" min="0.1" max="1" name="watermark_opacity" value="0.85"></div>
           </div>
-          <small class="muted"><i class="bi bi-info-circle"></i> تفعيل العلامة يحوّل القناة لوضع FFmpeg ويحتاج تشغيل البثّ (زرّ <i class="bi bi-broadcast"></i>) ليظهر الشعار داخل الفيديو.</small>
+          <small class="muted"><i class="bi bi-info-circle"></i>
+            <b>وضع Proxy</b> (بدون FFmpeg): يظهر الشعار كطبقة فوق مشغّل ToFi و embed — يعمل على أي استضافة ويدعم SVG والعربية.
+            <b>وضع FFmpeg</b>: يُحرق الشعار داخل ملف الفيديو نفسه فيظهر في كل المشغّلات وتطبيقات IPTV (يتطلّب FFmpeg + exec وتشغيل البثّ <i class="bi bi-broadcast"></i>).</small>
         </div>
       </div>
 

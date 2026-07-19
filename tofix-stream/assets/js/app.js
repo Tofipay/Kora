@@ -313,8 +313,8 @@ function syncWatermarkUI() {
   // القيمة الافتراضية للحجم تختلف بين الصورة (بكسل عرض) والنصّ (حجم خط).
   const sizeEl = $('#wmSize');
   if (isText && Number(sizeEl.value) > 200) sizeEl.value = 28;
-  // العلامة المائية تتطلّب وضع FFmpeg.
-  if (on && form.mode) form.mode.value = 'ffmpeg';
+  // ملاحظة: لا نفرض وضع FFmpeg — في وضع Proxy يظهر الشعار كطبقة فوق المشغّل
+  // (بدون FFmpeg)، وفي وضع FFmpeg يُحرق داخل ملف الفيديو نفسه.
 }
 function closeModal() { modal.classList.remove('show'); }
 
