@@ -1,0 +1,181 @@
+# ToFi X Stream 🎥
+
+منصّة بثّ احترافية ذاتية الاستضافة مبنيّة بـ **PHP 8.3+** خالصة (بدون Laravel / Node.js / React / Vue).
+تُعيد بثّ روابط **HLS (m3u8)** و **MPEG-DASH (mpd)** الخاصّة بك عبر **بروكسي ذكي** يُخفي المصدر الأصلي،
+وتُدار بالكامل من **لوحة تحكّم Glassmorphism** شبيهة بـ Gumlet / Mux / Cloudflare Stream.
+
+> إعادة بثّ + إخفاء المصدر + إدارة قنوات غير محدودة + مشغّل متعدّد المحرّكات + REST API + FFmpeg.
+
+---
+
+## ✨ المميّزات
+
+| المجال | التفاصيل |
+|--------|----------|
+| **إعادة البثّ** | تحويل `https://source/live.m3u8` إلى `https://yourdomain/proxy/index.php?channel=ID` |
+| **البروكسي الذكي** | إعادة كتابة كاملة للمانيفست: كل روابط `ts` / `m4s` / `mp4` / المفاتيح / البلاي-ليست الفرعية تمرّ عبر سيرفرك — **لا يُكشف المصدر أبدًا** |
+| **الأمان** | روابط موقّعة HMAC، حماية SSRF، توكن + انتهاء صلاحية، Hotlink Protection، IP Allowlist، Rate Limit، مفتاح API |
+| **FFmpeg** | تشغيل/إيقاف/إعادة تشغيل، نسخ (copy) أو إعادة ترميز، إعادة اتصال تلقائي، Auto-Restart، Detect-Offline |
+| **المصادر المدعومة** | m3u8, mpd, mp4, rtmp, udp, http, https |
+| **الجودات** | Source, 1080p, 720p, 480p, 360p, 240p |
+| **المشغّل** | Video.js + Hls.js + Shaka — PiP، Fullscreen، AirPlay، Chromecast، سرعات، ترجمات، تعدّد صوت |
+| **اللوحة** | بطاقات إحصائيات، مراقبة حيّة (Bitrate/FPS/Resolution/Codecs)، مؤشّرات الخادم (CPU/RAM/Storage) |
+| **REST API** | CRUD كامل بصيغة JSON موحّدة |
+| **التخزين** | JSON مع قفل ملفّات (بدون قاعدة بيانات) |
+
+---
+
+## 📁 هيكل المشروع
+
+```
+tofix-stream/
+├── index.php                 # يعيد التوجيه إلى لوحة التحكّم
+├── bootstrap.php             # المُحمِّل التلقائي + تحميل الإعدادات + التهيئة
+├── config/
+│   ├── config.php            # كل الإعدادات (قابلة للتجاوز بمتغيّرات البيئة)
+│   └── nginx.conf.example    # نموذج إعداد Nginx
+├── classes/                  # النواة (OOP / SOLID)
+│   ├── Config.php            # قراءة الإعدادات بأسلوب النقطة
+│   ├── Logger.php            # تسجيل الأحداث في ملفّات يومية
+│   ├── JsonStore.php         # طبقة تخزين JSON مع قفل (Repository)
+│   ├── Channel.php           # كيان القناة + التحقّق من الصحّة
+│   ├── ChannelManager.php    # خدمة CRUD للقنوات + بناء الروابط
+│   ├── HlsProxy.php          # ★ البروكسي الذكي وإعادة كتابة المانيفست
+│   ├── FFmpegManager.php     # إدارة عمليات FFmpeg (PID/start/stop)
+│   ├── StreamMonitor.php     # مقاييس ffprobe (bitrate/fps/codecs)
+│   ├── StreamSupervisor.php  # Auto-Restart + Detect-Offline (يعمل عبر Cron)
+│   ├── SystemStats.php       # مؤشّرات الخادم (CPU/RAM/Storage)
+│   ├── Security.php          # التوقيع/التوكن/Rate-limit/Hotlink/IP
+│   └── Response.php          # استجابات JSON موحّدة
+├── api/
+│   └── index.php             # موجّه REST API
+├── proxy/
+│   └── index.php             # ★ نقطة دخول البروكسي (الرابط الجديد للمشاهدين)
+├── public/
+│   ├── index.php             # لوحة التحكّم (Dashboard)
+│   ├── player.php            # المشغّل الاحترافي (3 محرّكات)
+│   └── embed.php             # مشغّل خفيف للتضمين عبر iframe
+├── assets/
+│   ├── css/app.css           # تصميم اللوحة (Glassmorphism)
+│   ├── css/player.css        # تصميم المشغّل
+│   ├── js/app.js             # منطق اللوحة (AJAX/CRUD)
+│   └── js/player.js          # تهيئة محرّكات التشغيل
+├── cron/
+│   └── supervisor.php        # سكربت Cron للمراقبة وإعادة التشغيل
+├── storage/                  # ملفّات JSON (channels.json) + pids/
+├── streams/                  # مخرجات HLS من FFmpeg
+├── cache/                    # كاش البروكسي + عدّادات Rate-limit
+├── logs/                     # السجلّات
+├── .htaccess                 # إعداد Apache + رؤوس أمان
+└── .env.example              # نموذج متغيّرات البيئة
+```
+
+---
+
+## 🚀 التشغيل السريع
+
+### المتطلّبات
+- PHP 8.3+ مع إضافة `curl`
+- (اختياري) `ffmpeg` و `ffprobe` لإعادة الترميز والمراقبة التقنية
+- Apache (mod_rewrite) أو Nginx (php-fpm)
+
+### محليًّا (خادم PHP المدمج)
+```bash
+cd tofix-stream
+APP_URL="http://localhost:8080" php -S 127.0.0.1:8080
+# افتح لوحة التحكّم:
+#   http://localhost:8080/public/index.php
+```
+
+### الإنتاج
+1. انسخ المجلّد إلى جذر الويب (مثال `/var/www/tofix-stream`).
+2. انسخ `.env.example` إلى `.env` وعدّل على الأقل:
+   - `APP_URL` — نطاقك العام.
+   - `APP_SECRET` — مفتاح عشوائي طويل (لتوقيع الروابط).
+   - `API_KEY` — مفتاح لوحة التحكّم.
+3. اجعل `storage/`, `streams/`, `cache/`, `logs/` قابلة للكتابة (`chmod -R 775`).
+4. لـ Nginx استخدم `config/nginx.conf.example`.
+5. (اختياري) فعّل المراقبة التلقائية عبر Cron:
+   ```cron
+   * * * * * /usr/bin/php /var/www/tofix-stream/cron/supervisor.php >> /var/www/tofix-stream/logs/cron.log 2>&1
+   ```
+
+---
+
+## 🔌 REST API
+
+كل الاستجابات JSON بالشكل: `{ "success": bool, "data": ..., "error": ... }`.
+عمليات الكتابة (POST/PUT/DELETE) تتطلّب رأس `X-API-Key`.
+
+| الطريقة | المسار | الوصف |
+|---------|--------|-------|
+| `GET` | `/api/index.php?resource=channels` | قائمة القنوات |
+| `GET` | `/api/index.php?resource=channels&id=ID` | قناة واحدة |
+| `POST` | `/api/index.php?resource=channels` | إنشاء قناة (JSON body) |
+| `PUT` | `/api/index.php?resource=channels&id=ID` | تحديث قناة |
+| `DELETE` | `/api/index.php?resource=channels&id=ID` | حذف قناة |
+| `POST` | `/api/index.php?resource=channels&action=duplicate&id=ID` | تكرار |
+| `POST` | `/api/index.php?resource=stream&action=start&id=ID` | تشغيل FFmpeg |
+| `POST` | `/api/index.php?resource=stream&action=stop&id=ID` | إيقاف |
+| `POST` | `/api/index.php?resource=stream&action=restart&id=ID` | إعادة تشغيل |
+| `GET` | `/api/index.php?resource=stream&action=status&id=ID` | حالة البثّ |
+| `GET` | `/api/index.php?resource=stream&action=monitor&id=ID` | مقاييس ffprobe |
+| `GET` | `/api/index.php?resource=stats` | إحصائيات اللوحة |
+| `GET` | `/api/index.php?resource=system` | مؤشّرات الخادم |
+
+### مثال — إنشاء قناة
+```bash
+curl -X POST "http://localhost:8080/api/index.php?resource=channels" \
+  -H "X-API-Key: tofix_admin_key_change_me" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "My Sports HD",
+        "source_url": "https://stream.gumlet.io/.../main.m3u8",
+        "source_type": "m3u8",
+        "category": "Sports",
+        "quality": "source",
+        "mode": "proxy"
+      }'
+```
+الاستجابة تتضمّن `playback.hls` — وهو **رابط البثّ الجديد الذي تعطيه للمشاهدين** (المصدر مخفيّ).
+
+---
+
+## 🧠 كيف يعمل البروكسي الذكي؟
+
+```
+المشاهد → /proxy/index.php?channel=ID
+              │
+              ▼
+   ChannelManager يجلب الرابط الأصلي من التخزين
+              │
+              ▼
+   HlsProxy يسحب المانيفست عبر cURL (بهويّة السيرفر، مع انتحال Referer)
+              │
+              ▼
+   إعادة كتابة كل الروابط الداخلية إلى روابط موقّعة:
+     /proxy/index.php?u=<base64url(الرابط الأصلي)>&s=<HMAC>
+              │
+              ▼
+   المشاهد يطلب كل مقطع عبر نفس البروكسي → لا يرى المصدر إطلاقًا
+```
+
+- التوقيع `HMAC-SHA256` يمنع حقن روابط خارجية (**حماية SSRF**): أي رابط غير موقّع أو بغير بروتوكول `http/https` يُرفض.
+- يدعم الروابط النسبية والمطلقة وروابط جذر النطاق و`//cdn`.
+- يعالج وسوم `EXT-X-KEY` و`EXT-X-MAP` و`EXT-X-MEDIA` (سمة `URI=`) في HLS، و`BaseURL` وقوالب `media`/`initialization` في DASH.
+
+---
+
+## 🛡️ ملاحظات أمان للإنتاج
+
+- **غيّر** `APP_SECRET` و`API_KEY` إلى قيم عشوائية طويلة.
+- فعّل `HOTLINK_PROTECTION` واضبط `ALLOWED_REFERERS` لمنع سرقة الروابط.
+- استخدم HTTPS دائمًا؛ الرؤوس الأمنية مضبوطة في `.htaccess` / نموذج Nginx.
+- مجلّدات `storage/`, `logs/`, `config/`, `classes/` محجوبة عن الوصول المباشر.
+
+---
+
+## ⚖️ تنبيه قانوني
+أعد بثّ المحتوى الذي تملك حقوقه أو المصرّح لك به فقط. أنت مسؤول عن استخدامك للمنصّة.
+
+**ToFi X Stream** — صُنع بحبّ للبثّ. 🚀

@@ -1,0 +1,15 @@
+# بيئة
+.env
+
+# ملفّات وقت التشغيل (تُنشأ تلقائيًا)
+logs/*.log
+cache/*
+streams/*
+storage/pids/*
+storage/stats.json
+
+# لا نتجاهل مجلّدات البنية نفسها
+!logs/.gitkeep
+!cache/.gitkeep
+!streams/.gitkeep
+!storage/pids/.gitkeep

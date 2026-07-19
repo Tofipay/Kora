@@ -1,0 +1,39 @@
+# -----------------------------------------------------------------------------
+# ToFi X Stream — Apache configuration
+# ملاحظة: نسخة Nginx متوفّرة في config/nginx.conf.example
+# -----------------------------------------------------------------------------
+
+# منع عرض محتويات المجلّدات.
+Options -Indexes
+
+# الصفحة الافتراضية.
+DirectoryIndex index.php
+
+# ضغط المخرجات (Compression) لتحميل أسرع.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json application/vnd.apple.mpegurl
+</IfModule>
+
+# كاش الأصول الثابتة (Assets caching).
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+</IfModule>
+
+# حماية الملفّات الحسّاسة.
+<FilesMatch "\.(env|json|log|pid)$">
+  Require all denied
+</FilesMatch>
+
+# استثناء ملفّات القنوات العامة إن لزم (تبقى محميّة افتراضيًا).
+# منع الوصول المباشر لمجلّدات التخزين والسجلّات.
+RedirectMatch 403 ^/tofix-stream/(storage|logs|cache|config|classes)/.*$
+
+# رؤوس أمان أساسية.
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

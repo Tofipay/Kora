@@ -1,0 +1,46 @@
+# -----------------------------------------------------------------------------
+# ToFi X Stream — نموذج إعداد Nginx
+# انسخه إلى /etc/nginx/sites-available/ وعدّل server_name و root.
+# -----------------------------------------------------------------------------
+
+server {
+    listen 80;
+    server_name stream.example.com;
+
+    root /var/www/tofix-stream;
+    index index.php;
+
+    # ضغط لتحميل أسرع.
+    gzip on;
+    gzip_types text/css application/javascript application/json application/vnd.apple.mpegurl;
+
+    # منع الوصول للمجلّدات الحسّاسة.
+    location ~ ^/(storage|logs|cache|config|classes)/ {
+        deny all;
+        return 403;
+    }
+
+    # مقاطع HLS المُنتَجة محليًا عبر FFmpeg (كاش قصير).
+    location /streams/ {
+        add_header Cache-Control "no-cache";
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # الأصول الثابتة مع كاش طويل.
+    location /assets/ {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    # توجيه PHP إلى php-fpm.
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 3600;   # لدعم البثّ الطويل عبر البروكسي.
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+}

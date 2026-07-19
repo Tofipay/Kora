@@ -1,0 +1,20 @@
+[
+    {
+        "id": "demo6a5d1746af80",
+        "name": "ToFi Demo Channel",
+        "logo": "",
+        "category": "General",
+        "description": "قناة تجريبية تستخدم رابط Gumlet للاختبار.",
+        "status": "active",
+        "country": "SA",
+        "quality": "source",
+        "audio_lang": "ar",
+        "source_type": "m3u8",
+        "source_url": "https://stream.gumlet.io/6a5d0dd3ea2cda78ea83f22b/6a5d1746af806827027a8bcc/main.m3u8",
+        "mode": "proxy",
+        "metrics": [],
+        "viewers": 0,
+        "created_at": "2026-07-19T00:00:00+00:00",
+        "updated_at": "2026-07-19T00:00:00+00:00"
+    }
+]

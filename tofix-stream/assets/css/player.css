@@ -1,0 +1,54 @@
+/*
+ * assets/css/player.css
+ * -----------------------------------------------------------------------------
+ * تصميم صفحة المشغّل — Dark Glassmorphism متناسق مع لوحة التحكّم.
+ */
+
+:root {
+  --bg-0: #05070e; --glass: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.1);
+  --text: #e8ecf6; --dim: #9aa6bf; --brand: #6c8bff; --brand-2: #a06bff; --accent: #23d6a0; --danger: #ff5c7a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; color: var(--text);
+  font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+  background:
+    radial-gradient(1000px 500px at 20% -10%, rgba(108,139,255,0.22), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(160,107,255,0.18), transparent 55%), var(--bg-0);
+  display: grid; place-items: center; padding: 24px;
+}
+.player-shell {
+  width: 100%; max-width: 1080px;
+  background: var(--glass); border: 1px solid var(--border); border-radius: 22px;
+  backdrop-filter: blur(18px); overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+}
+.player-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; gap: 16px; flex-wrap: wrap; }
+.ch-id { display: flex; align-items: center; gap: 14px; }
+.ch-id img, .ch-id .ph {
+  width: 52px; height: 52px; border-radius: 14px; object-fit: cover;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2)); display: grid; place-items: center; font-size: 24px; font-weight: 800;
+}
+.ch-id h1 { font-size: 20px; margin: 0; }
+.live-dot { font-size: 12px; color: var(--accent); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.live-dot span { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: blink 1.4s infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+
+.engine-switch { display: flex; gap: 6px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 12px; }
+.engine-switch a { padding: 7px 13px; border-radius: 9px; color: var(--dim); font-size: 13px; font-weight: 600; }
+.engine-switch a.active { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+
+.video-frame { position: relative; background: #000; aspect-ratio: 16/9; width: 100%; }
+.video-frame .video-js, .video-frame video { width: 100%; height: 100%; }
+
+.player-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; gap: 14px; flex-wrap: wrap; }
+.player-bar .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pbtn {
+  width: 40px; height: 40px; border-radius: 11px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; font-size: 17px; transition: 0.2s;
+}
+.pbtn:hover { background: rgba(255,255,255,0.14); }
+.speed { font-size: 13px; color: var(--dim); display: inline-flex; align-items: center; gap: 8px; }
+.speed select { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); border-radius: 9px; padding: 6px 8px; }
+.muted { color: var(--dim); font-size: 13px; }
+.player-foot { padding: 14px 22px; border-top: 1px solid var(--border); word-break: break-all; }
+.player-foot code { color: var(--brand); }
