@@ -282,6 +282,31 @@ h1, h2, h3 { line-height: 1.25; font-weight: 800; text-wrap: balance; }
 
 .hero__actions { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 26px; }
 
+.hero__counter {
+  display: inline-flex; align-items: center; gap: 16px;
+  margin-bottom: 26px;
+  padding: 10px 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(12, 26, 54, .6);
+  color: var(--text-2);
+  font-size: .92rem; font-weight: 700;
+}
+.hero__counter[hidden] { display: none; }
+.hero__counter-item { display: inline-flex; align-items: center; gap: 8px; }
+.hero__counter-item .ic { color: var(--blue-2); }
+.hero__counter strong {
+  color: var(--text);
+  font-size: 1.1rem; font-weight: 900;
+  background: var(--grad);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.hero__counter-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--line-strong);
+}
+
 .hero__chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
 .hero__chips li {
   display: inline-flex; align-items: center; gap: 8px;

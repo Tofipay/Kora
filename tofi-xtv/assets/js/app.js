@@ -130,6 +130,45 @@
     });
   }
 
+  /* ---------- عدّاد الزيارات والتحميلات ---------- */
+  var counterApi = "counter.php";
+  var counterBox = document.getElementById("counterBox");
+  var statDl = document.getElementById("statDownloads");
+  var statVisits = document.getElementById("statVisits");
+
+  function renderCounts(d) {
+    if (!d || typeof d.downloads === "undefined") return;
+    if (statDl) statDl.textContent = Number(d.downloads || 0).toLocaleString("en-US");
+    if (statVisits) statVisits.textContent = Number(d.visits || 0).toLocaleString("en-US");
+    if (counterBox) counterBox.hidden = false;
+  }
+
+  var visitAction = "visit";
+  try {
+    if (sessionStorage.getItem("txv-visited")) visitAction = "get";
+  } catch (e) { /* تجاهل */ }
+
+  fetch(counterApi + "?action=" + visitAction, { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      try { sessionStorage.setItem("txv-visited", "1"); } catch (e) { /* تجاهل */ }
+      renderCounts(d);
+    })
+    .catch(function () { /* استضافة بدون PHP: يبقى العدّاد مخفيًا */ });
+
+  document.querySelectorAll("a[data-dl]").forEach(function (a) {
+    a.addEventListener("click", function () {
+      try {
+        if (navigator.sendBeacon) navigator.sendBeacon(counterApi + "?action=download");
+        else fetch(counterApi + "?action=download", { keepalive: true }).catch(function () {});
+      } catch (e) { /* تجاهل */ }
+      if (statDl && counterBox && !counterBox.hidden) {
+        var n = parseInt(statDl.textContent.replace(/,/g, ""), 10) || 0;
+        statDl.textContent = (n + 1).toLocaleString("en-US");
+      }
+    });
+  });
+
   /* ---------- Tilt on showcase mockups ---------- */
   var finePointer = window.matchMedia("(pointer: fine)").matches;
   if (finePointer && !reduceMotion) {
