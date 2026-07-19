@@ -29,6 +29,9 @@ final class Channel
     public const MODE_PROXY  = 'proxy';   // إعادة كتابة المانيفست فقط (خفيف)
     public const MODE_FFMPEG = 'ffmpeg';  // إعادة ترميز/نسخ عبر FFmpeg
 
+    /** مواضع العلامة المائية داخل الفيديو. */
+    public const WM_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'];
+
     /**
      * @param array<string,mixed> $attributes
      */
@@ -62,6 +65,8 @@ final class Channel
             'metrics'       => $data['metrics'] ?? [],
             // عدّاد المشاهدين التقريبي
             'viewers'       => (int) ($data['viewers'] ?? 0),
+            // العلامة المائية المدموجة داخل البثّ (شعار/نصّ يظهر داخل الفيديو).
+            'watermark'     => self::buildWatermark($data),
         ];
 
         // الحفاظ على أختام الوقت إن وُجدت.
@@ -72,6 +77,47 @@ final class Channel
         }
 
         return new self($defaults);
+    }
+
+    /**
+     * بناء إعدادات العلامة المائية من مصفوفة قادمة (تدعم الشكل المتداخل
+     * `watermark` أو الحقول المسطّحة `watermark_*` القادمة من نموذج HTML).
+     *
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>
+     */
+    private static function buildWatermark(array $data): array
+    {
+        // إن أُرسلت مصفوفة متداخلة جاهزة نعتمدها كأساس.
+        $wm = is_array($data['watermark'] ?? null) ? $data['watermark'] : [];
+
+        // دعم الحقول المسطّحة من النموذج (watermark_enabled, watermark_text ...).
+        $flat = static fn (string $k, $def = null) => $data['watermark_' . $k] ?? ($wm[$k] ?? $def);
+
+        $enabled = $flat('enabled', false);
+        $enabled = in_array((string) $enabled, ['1', 'true', 'on', 'yes'], true) || $enabled === true;
+
+        $position = (string) $flat('position', 'top-right');
+        if (!in_array($position, self::WM_POSITIONS, true)) {
+            $position = 'top-right';
+        }
+
+        return [
+            'enabled'  => $enabled,
+            'type'     => in_array($flat('type', 'image'), ['image', 'text'], true) ? $flat('type', 'image') : 'image',
+            'image'    => trim((string) $flat('image', '')),   // رابط/مسار صورة الشعار
+            'text'     => (string) $flat('text', ''),           // نصّ العلامة المائية
+            'position' => $position,
+            // الشفافية 0..1 (1 = معتم تمامًا).
+            'opacity'  => max(0.05, min(1.0, (float) $flat('opacity', 0.85))),
+            // حجم الشعار بالبكسل (العرض) أو حجم خطّ النصّ.
+            'size'     => max(8, (int) $flat('size', 120)),
+            // لون النصّ (Hex).
+            'color'    => preg_match('/^#?[0-9a-fA-F]{6}$/', (string) $flat('color', 'ffffff'))
+                ? ltrim((string) $flat('color', 'ffffff'), '#') : 'ffffff',
+            // الهامش عن الحواف بالبكسل.
+            'margin'   => max(0, (int) $flat('margin', 24)),
+        ];
     }
 
     /**

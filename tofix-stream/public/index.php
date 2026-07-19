@@ -143,6 +143,56 @@ $apiKey = Config::get('security.api_key');
         <div class="field"><label>لغة الصوت</label><input name="audio_lang" placeholder="ar" value="ar"></div>
       </div>
       <div class="field"><label>الوصف</label><textarea name="description" rows="2" placeholder="وصف مختصر للقناة"></textarea></div>
+
+      <!-- ===== العلامة المائية داخل البثّ (شعار/نصّ محروق في الفيديو) ===== -->
+      <div class="wm-box glass">
+        <label class="wm-toggle">
+          <input type="checkbox" name="watermark_enabled" id="wmEnabled" value="1">
+          <span><i class="bi bi-badge-wc"></i> إضافة شعار / نصّ داخل البثّ نفسه</span>
+        </label>
+        <div id="wmFields" style="display:none;margin-top:12px">
+          <div class="grid-2">
+            <div class="field"><label>النوع</label><select name="watermark_type" id="wmType">
+              <option value="image">صورة (شعار)</option>
+              <option value="text">نصّ</option>
+            </select></div>
+            <div class="field"><label>الموضع</label><select name="watermark_position">
+              <option value="top-right">أعلى يمين</option>
+              <option value="top-left">أعلى يسار</option>
+              <option value="bottom-right">أسفل يمين</option>
+              <option value="bottom-left">أسفل يسار</option>
+              <option value="center">المنتصف</option>
+            </select></div>
+          </div>
+
+          <!-- حقول الصورة -->
+          <div id="wmImageFields">
+            <div class="field"><label>صورة الشعار</label>
+              <input type="file" id="wmFile" accept="image/png,image/jpeg,image/gif,image/webp">
+              <input type="hidden" name="watermark_image" id="wmImageUrl">
+              <div id="wmPreview" class="wm-preview"></div>
+              <small class="muted">PNG بخلفية شفّافة يعطي أفضل نتيجة. أو الصق رابط صورة في الحقل أدناه.</small>
+              <input name="watermark_image_url_alt" id="wmImageManual" placeholder="https://... (رابط صورة اختياري)" style="margin-top:6px">
+            </div>
+          </div>
+
+          <!-- حقول النصّ -->
+          <div id="wmTextFields" style="display:none">
+            <div class="grid-2">
+              <div class="field"><label>النصّ</label><input name="watermark_text" placeholder="TOFI X TV"></div>
+              <div class="field"><label>لون النصّ</label><input type="color" name="watermark_color" value="#ffffff" style="height:44px;padding:4px"></div>
+            </div>
+            <small class="muted">ملاحظة: FFmpeg لا يشكّل الحروف العربية جيّدًا في النصّ — للشعار العربي استخدم "صورة".</small>
+          </div>
+
+          <div class="grid-2" style="margin-top:6px">
+            <div class="field"><label>الحجم (بكسل)</label><input type="number" name="watermark_size" id="wmSize" value="120" min="8"></div>
+            <div class="field"><label>الشفافية (0.1 - 1)</label><input type="number" step="0.05" min="0.1" max="1" name="watermark_opacity" value="0.85"></div>
+          </div>
+          <small class="muted"><i class="bi bi-info-circle"></i> تفعيل العلامة يحوّل القناة لوضع FFmpeg ويحتاج تشغيل البثّ (زرّ <i class="bi bi-broadcast"></i>) ليظهر الشعار داخل الفيديو.</small>
+        </div>
+      </div>
+
       <div class="field"><label>الحالة</label><select name="status">
         <option value="active">نشطة (Active)</option>
         <option value="inactive">متوقّفة (Inactive)</option>

@@ -178,13 +178,19 @@ final class FFmpegManager
     // -------------------------------------------------------------------------
 
     /**
-     * بناء أمر FFmpeg كاملًا حسب إعدادات القناة (copy أو transcode).
+     * بناء أمر FFmpeg كاملًا حسب إعدادات القناة (copy أو transcode + علامة مائية).
      */
     private function buildCommand(array $channel, string $playlist): string
     {
         $bin = escapeshellarg($this->binary);
         $source = (string) $channel['source_url'];
         $quality = (string) ($channel['quality'] ?? 'source');
+
+        // هل توجد علامة مائية مفعّلة؟ (تفرض إعادة ترميز الفيديو).
+        $wm = is_array($channel['watermark'] ?? null) ? $channel['watermark'] : [];
+        $wmEnabled = !empty($wm['enabled']);
+        $wmType = $wm['type'] ?? 'image';
+        $logoPath = null;
 
         $input = [];
 
@@ -195,18 +201,53 @@ final class FFmpegManager
         }
         $input[] = '-i ' . escapeshellarg($source);
 
+        // إدخال ثانٍ لصورة الشعار (بحلقة لتبقى ظاهرة طوال البثّ).
+        if ($wmEnabled && $wmType === 'image') {
+            $logoPath = $this->resolveLogo($channel);
+            if ($logoPath !== null) {
+                $input[] = '-i ' . escapeshellarg($logoPath);
+            } else {
+                $wmEnabled = false; // تعذّر تجهيز الشعار — نتجاهل العلامة.
+            }
+        }
+
+        // بناء سلسلة الفلاتر للعلامة المائية.
+        $filter = $wmEnabled ? $this->buildWatermarkFilter($wm, $logoPath !== null) : '';
+
         // إعدادات الترميز.
         $codec = [];
         $qualities = (array) Config::get('ffmpeg.qualities', []);
-        if ($quality === 'source' || !isset($qualities[$quality]) || !empty($qualities[$quality]['copy'])) {
-            // نسخ مباشر بلا إعادة ترميز (أخف وأسرع).
+        $needsTranscode = $wmEnabled
+            || !($quality === 'source' || !isset($qualities[$quality]) || !empty($qualities[$quality]['copy']));
+
+        if (!$needsTranscode) {
+            // نسخ مباشر بلا إعادة ترميز (أخف وأسرع) — لا علامة مائية.
             $codec[] = '-c copy';
         } else {
-            $q = $qualities[$quality];
-            $codec[] = '-c:v libx264 -preset veryfast -profile:v main';
-            $codec[] = '-b:v ' . escapeshellarg((string) $q['v_bitrate']);
-            $codec[] = '-vf ' . escapeshellarg("scale={$q['width']}:{$q['height']}");
-            $codec[] = '-c:a aac -b:a ' . escapeshellarg((string) $q['a_bitrate']);
+            $vf = [];
+            // مقياس الجودة عند اختيار جودة محدّدة.
+            if (isset($qualities[$quality]) && empty($qualities[$quality]['copy'])) {
+                $q = $qualities[$quality];
+                $vf[] = "scale={$q['width']}:{$q['height']}";
+                $codec[] = '-b:v ' . escapeshellarg((string) $q['v_bitrate']);
+                $codec[] = '-c:a aac -b:a ' . escapeshellarg((string) $q['a_bitrate']);
+            } else {
+                // علامة مائية دون تغيير الجودة: نبقي الصوت كما هو.
+                $codec[] = '-c:a copy';
+            }
+
+            if ($wmType === 'image' && $logoPath !== null) {
+                // دمج الفيديو مع الشعار عبر filter_complex.
+                $codec[] = '-filter_complex ' . escapeshellarg($filter);
+            } elseif ($filter !== '') {
+                // نصّ أو مقياس فقط عبر -vf.
+                $vfCombined = $vf ? implode(',', $vf) . ',' . $filter : $filter;
+                $codec[] = '-vf ' . escapeshellarg($vfCombined);
+            } elseif ($vf) {
+                $codec[] = '-vf ' . escapeshellarg(implode(',', $vf));
+            }
+
+            array_unshift($codec, '-c:v libx264 -preset veryfast -profile:v main -pix_fmt yuv420p');
         }
 
         // إعدادات HLS.
@@ -225,6 +266,112 @@ final class FFmpegManager
             $hls,
             [escapeshellarg($playlist)]
         ));
+    }
+
+    /**
+     * بناء سلسلة فلتر العلامة المائية (overlay للصورة أو drawtext للنصّ).
+     *
+     * @param array<string,mixed> $wm      إعدادات العلامة.
+     * @param bool                $hasLogo هل توجد صورة شعار كمُدخل ثانٍ؟
+     */
+    private function buildWatermarkFilter(array $wm, bool $hasLogo): string
+    {
+        $margin = (int) ($wm['margin'] ?? 24);
+        $opacity = (float) ($wm['opacity'] ?? 0.85);
+        $position = (string) ($wm['position'] ?? 'top-right');
+
+        if (($wm['type'] ?? 'image') === 'image' && $hasLogo) {
+            // موضع overlay بدلالة أبعاد الفيديو (W,H) والشعار (w,h).
+            $pos = match ($position) {
+                'top-left'     => "{$margin}:{$margin}",
+                'bottom-left'  => "{$margin}:H-h-{$margin}",
+                'bottom-right' => "W-w-{$margin}:H-h-{$margin}",
+                'center'       => '(W-w)/2:(H-h)/2',
+                default        => "W-w-{$margin}:{$margin}", // top-right
+            };
+            $w = (int) ($wm['size'] ?? 120);
+            // نقيس الشعار، نطبّق الشفافية، ثم ندمجه.
+            return "[1:v]scale={$w}:-1,format=rgba,colorchannelmixer=aa={$opacity}[wm];[0:v][wm]overlay={$pos}";
+        }
+
+        // نصّ عبر drawtext.
+        $text = str_replace([':', "'", '\\'], ['\\:', "\u{2019}", ''], (string) ($wm['text'] ?? ''));
+        $size = (int) ($wm['size'] ?? 28);
+        $color = (string) ($wm['color'] ?? 'ffffff');
+        $font = $this->findFont();
+        $fontOpt = $font ? "fontfile='{$font}':" : '';
+        $pos = match ($position) {
+            'top-left'     => "x={$margin}:y={$margin}",
+            'bottom-left'  => "x={$margin}:y=h-th-{$margin}",
+            'bottom-right' => "x=w-tw-{$margin}:y=h-th-{$margin}",
+            'center'       => 'x=(w-tw)/2:y=(h-th)/2',
+            default        => "x=w-tw-{$margin}:y={$margin}", // top-right
+        };
+        return "drawtext={$fontOpt}text='{$text}':fontcolor=0x{$color}@{$opacity}:fontsize={$size}"
+            . ":box=1:boxcolor=black@0.4:boxborderw=8:{$pos}";
+    }
+
+    /**
+     * تجهيز مسار محلّي لصورة الشعار: يعتمد الملفّ المحلّي إن وُجد، أو يُنزّل
+     * الصورة من رابط خارجي إلى storage/watermarks/.
+     */
+    private function resolveLogo(array $channel): ?string
+    {
+        $wm = $channel['watermark'] ?? [];
+        $image = trim((string) ($wm['image'] ?? ''));
+        if ($image === '') {
+            return null;
+        }
+
+        // 1) رابط يخصّ أصولنا المحلّية -> نحوّله لمسار في نظام الملفّات.
+        $base = Config::baseUrl();
+        if (str_starts_with($image, $base . '/')) {
+            $rel = ltrim(substr($image, strlen($base)), '/');
+            $local = Config::get('paths.root') . '/' . $rel;
+            if (is_file($local)) {
+                return $local;
+            }
+        }
+
+        // 2) مسار محلّي مباشر موجود.
+        if (is_file($image)) {
+            return $image;
+        }
+
+        // 3) رابط خارجي -> تنزيل إلى storage/watermarks/{channelId}.
+        if (preg_match('#^https?://#i', $image)) {
+            $dir = Config::get('paths.storage') . '/watermarks';
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            $ext = pathinfo((string) parse_url($image, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'png';
+            $dest = $dir . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $channel['id']) . '.' . $ext;
+            $data = @file_get_contents($image);
+            if ($data !== false && $data !== '') {
+                @file_put_contents($dest, $data);
+                return $dest;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * إيجاد ملفّ خطّ متاح على النظام لاستخدامه مع drawtext.
+     */
+    private function findFont(): ?string
+    {
+        foreach ([
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/System/Library/Fonts/Supplemental/Arial.ttf',
+        ] as $f) {
+            if (is_file($f)) {
+                return $f;
+            }
+        }
+        return null;
     }
 
     // -------------------------------------------------------------------------

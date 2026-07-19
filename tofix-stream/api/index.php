@@ -216,6 +216,48 @@ try {
             Response::json(Security::signToken($id));
             break;
 
+        // ---------------------------------------------------------------
+        // رفع صورة (شعار العلامة المائية)
+        // ---------------------------------------------------------------
+        case 'upload':
+            if ($method !== 'POST') {
+                Response::error('استخدم POST لرفع الصورة.', 405);
+            }
+            if (!Security::checkApiKey()) {
+                Response::error('مفتاح API مطلوب أو غير صحيح.', 401);
+            }
+            if (empty($_FILES['file']['tmp_name']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
+                Response::error('لم يتمّ استلام أي ملفّ.', 400);
+            }
+
+            $tmp = $_FILES['file']['tmp_name'];
+            $info = @getimagesize($tmp);
+            $allowed = [
+                IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg',
+                IMAGETYPE_GIF => 'gif', IMAGETYPE_WEBP => 'webp',
+            ];
+            if ($info === false || !isset($allowed[$info[2]])) {
+                Response::error('صيغة الصورة غير مدعومة (المسموح: PNG, JPG, GIF, WEBP).', 422);
+            }
+            if (($_FILES['file']['size'] ?? 0) > 3 * 1024 * 1024) {
+                Response::error('حجم الصورة يتجاوز 3 ميغابايت.', 422);
+            }
+
+            $dir = Config::get('paths.root') . '/assets/watermarks';
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            $fname = 'wm_' . bin2hex(random_bytes(6)) . '.' . $allowed[$info[2]];
+            if (!@move_uploaded_file($tmp, $dir . '/' . $fname)) {
+                Response::error('تعذّر حفظ الصورة على الخادم.', 500);
+            }
+
+            Response::json([
+                'url'  => Config::baseUrl() . '/assets/watermarks/' . $fname,
+                'name' => $fname,
+            ], 201);
+            break;
+
         default:
             Response::error('المورد المطلوب غير موجود.', 404);
     }

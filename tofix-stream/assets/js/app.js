@@ -256,18 +256,83 @@ function openModal(ch = null) {
   $('#modalTitle').innerHTML = ch
     ? `<i class="bi bi-pencil-square"></i> تعديل القناة`
     : `<i class="bi bi-plus-circle"></i> إضافة قناة جديدة`;
+  $('#wmPreview').innerHTML = '';
+  $('#wmImageUrl').value = '';
   if (ch) {
     ['name', 'logo', 'source_url', 'source_type', 'mode', 'category', 'quality', 'country', 'audio_lang', 'description', 'status']
       .forEach((k) => { if (form[k] != null && ch[k] != null) form[k].value = ch[k]; });
+    // تعبئة إعدادات العلامة المائية عند التعديل.
+    const wm = ch.watermark || {};
+    $('#wmEnabled').checked = !!wm.enabled;
+    if (form.watermark_type) form.watermark_type.value = wm.type || 'image';
+    if (form.watermark_position) form.watermark_position.value = wm.position || 'top-right';
+    if (form.watermark_text) form.watermark_text.value = wm.text || '';
+    if (form.watermark_size) form.watermark_size.value = wm.size || 120;
+    if (form.watermark_opacity) form.watermark_opacity.value = wm.opacity ?? 0.85;
+    if (form.watermark_color) form.watermark_color.value = '#' + (wm.color || 'ffffff');
+    if (wm.image) {
+      $('#wmImageUrl').value = wm.image;
+      $('#wmPreview').innerHTML = `<img src="${esc(wm.image)}" alt="logo">`;
+    }
   }
+  syncWatermarkUI();
   modal.classList.add('show');
 }
+
+/* إظهار/إخفاء حقول العلامة المائية حسب الحالة والنوع. */
+function syncWatermarkUI() {
+  const on = $('#wmEnabled').checked;
+  $('#wmFields').style.display = on ? '' : 'none';
+  const isText = $('#wmType').value === 'text';
+  $('#wmImageFields').style.display = isText ? 'none' : '';
+  $('#wmTextFields').style.display = isText ? '' : 'none';
+  // القيمة الافتراضية للحجم تختلف بين الصورة (بكسل عرض) والنصّ (حجم خط).
+  const sizeEl = $('#wmSize');
+  if (isText && Number(sizeEl.value) > 200) sizeEl.value = 28;
+  // العلامة المائية تتطلّب وضع FFmpeg.
+  if (on && form.mode) form.mode.value = 'ffmpeg';
+}
 function closeModal() { modal.classList.remove('show'); }
+
+/* أحداث واجهة العلامة المائية. */
+$('#wmEnabled').addEventListener('change', syncWatermarkUI);
+$('#wmType').addEventListener('change', syncWatermarkUI);
+// رابط صورة يدوي.
+$('#wmImageManual').addEventListener('input', (e) => {
+  const url = e.target.value.trim();
+  $('#wmImageUrl').value = url;
+  $('#wmPreview').innerHTML = url ? `<img src="${esc(url)}" alt="logo">` : '';
+});
+// رفع صورة الشعار إلى الخادم.
+$('#wmFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    toast('جارٍ رفع الشعار…');
+    const url = new URL(apiBase, location.href);
+    url.searchParams.set('resource', 'upload');
+    const res = await fetch(url, { method: 'POST', headers: { 'X-API-Key': apiKey }, body: fd });
+    const json = await res.json();
+    if (!res.ok || json.success === false) throw new Error(json.error || 'فشل الرفع');
+    $('#wmImageUrl').value = json.data.url;
+    $('#wmPreview').innerHTML = `<img src="${esc(json.data.url)}" alt="logo">`;
+    toast('تم رفع الشعار');
+  } catch (err) { toast(err.message, 'err'); }
+});
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(form).entries());
   const id = data.id; delete data.id;
+  // مصدر صورة العلامة: المرفوع/الرابط اليدوي.
+  if (!data.watermark_image && data.watermark_image_url_alt) {
+    data.watermark_image = data.watermark_image_url_alt;
+  }
+  delete data.watermark_image_url_alt;
+  // Checkbox غير المحدّد لا يُرسَل — نضبطه صراحة.
+  data.watermark_enabled = $('#wmEnabled').checked ? '1' : '0';
   try {
     if (id) {
       await api.updateCh(id, data); toast('تم تحديث القناة');
