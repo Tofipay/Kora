@@ -102,10 +102,27 @@ final class MatchCenter
         // The HTML differs for the app User-Agent, so caches must key on it.
         header('Vary: User-Agent');
 
-        header('Cache-Control: public, max-age=' . ($state['live'] ? 30 : 600));
+        // Fingerprint of EVERYTHING the admin can change about this match's
+        // watch experience (stream servers, channel library matches, app
+        // links, app channel library). Any add/edit/delete flips the ETag,
+        // so the page re-renders instantly instead of serving a stale
+        // "watch now" button from the browser cache.
+        $watchCfg = sha1(json_encode([
+            Streams::forMatch($id),
+            ChannelLib::serversForMatch($id),
+            \TofiXTv\Core\AppLinks::allForMatch($id),
+            \TofiXTv\Core\AppChannels::urlsForMatch($id),
+        ], JSON_UNESCAPED_UNICODE));
+
+        // Always revalidate (cheap 304 when nothing changed — the validators
+        // below make that the common case) so admin link changes appear on
+        // the very next page load. Page speed is unaffected: unchanged pages
+        // answer with an empty 304, changed ones render from the disk cache.
+        header('Cache-Control: public, max-age=0, must-revalidate');
         http_cache_validate($mtime, 'match-' . $id . '|' . ($state['key'] ?? '')
             . '|' . (int)($info['home_scores'] ?? 0) . '-' . (int)($info['away_scores'] ?? 0)
             . '|' . (string)($info['match_status'] ?? '')
+            . '|w:' . $watchCfg
             . ($isApp ? '|app|' . sha1($appWatchUrl) : ''));
 
         // Dynamic, state-aware SEO strings derived purely from live match data

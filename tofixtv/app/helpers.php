@@ -1283,10 +1283,10 @@ function is_tofix_app(): bool
 
 /**
  * Android intent:// deep link that opens a stored stream URL in the
- * external player app (scheme xmtv, package com.tofi.player):
- *   intent://{stored URL}#Intent;scheme=xmtv;package=com.tofi.player;end
+ * official app (scheme xmtv, package com.tofixtv.app):
+ *   intent://{stored URL}#Intent;scheme=xmtv;package=com.tofixtv.app;end
  */
 function app_intent_url(string $url): string
 {
-    return 'intent://' . $url . '#Intent;scheme=xmtv;package=com.tofi.player;end';
+    return 'intent://' . $url . '#Intent;scheme=xmtv;package=com.tofixtv.app;end';
 }
