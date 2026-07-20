@@ -121,6 +121,7 @@ APP_URL="http://localhost:8080" php -S 127.0.0.1:8080
 | `POST` | `/api/index.php?resource=stream&action=restart&id=ID` | إعادة تشغيل |
 | `GET` | `/api/index.php?resource=stream&action=status&id=ID` | حالة البثّ |
 | `GET` | `/api/index.php?resource=stream&action=monitor&id=ID` | مقاييس ffprobe |
+| `GET` | `/api/index.php?resource=stream&action=test&id=ID` | اختبار المصدر (حيّ؟ رمز HTTP؟ مانيفست صالح؟) |
 | `GET` | `/api/index.php?resource=stats` | إحصائيات اللوحة |
 | `GET` | `/api/index.php?resource=system` | مؤشّرات الخادم |
 

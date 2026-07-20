@@ -88,6 +88,60 @@ final class HlsProxy
     }
 
     // -------------------------------------------------------------------------
+    // اختبار المصدر (تشخيص من الخادم)
+    // -------------------------------------------------------------------------
+
+    /**
+     * فحص رابط مصدر من الخادم مباشرة وإرجاع تشخيص مفصّل:
+     * هل هو حيّ؟ رمز HTTP، نوع المحتوى، هل مانيفست صالح، عدد الجودات/المقاطع،
+     * زمن الاستجابة، ومقتطف. يُستخدم من زرّ "اختبار المصدر" في اللوحة.
+     *
+     * @param string $url رابط المصدر (m3u8/mpd/...).
+     * @return array<string,mixed>
+     */
+    public function testSource(string $url): array
+    {
+        $start = microtime(true);
+        $res = $this->fetch($url);
+        $latency = (int) round((microtime(true) - $start) * 1000);
+
+        if ($res === null) {
+            return [
+                'ok'         => false,
+                'reachable'  => false,
+                'latency_ms' => $latency,
+                'message'    => 'تعذّر الاتصال بالمصدر (لا استجابة / مهلة / محجوب). قد يكون الرابط متوقّفًا.',
+            ];
+        }
+
+        [$body, $ct, $code] = $res;
+        $isManifest = $this->isManifest($url, $ct)
+            || str_contains($body, '#EXTM3U') || str_contains($body, '<MPD');
+        $variants = preg_match_all('/#EXT-X-STREAM-INF/i', $body);
+        $segments = preg_match_all('/\.(ts|m4s)(\?|\s|$)/im', $body);
+        $success = $code >= 200 && $code < 400;
+
+        $message = match (true) {
+            !$success              => "المصدر ردّ برمز HTTP {$code} (غير متاح).",
+            $success && $isManifest => 'المصدر يعمل ويحتوي مانيفست HLS/DASH صالح ✅',
+            default                => 'المصدر استجاب لكنه ليس مانيفستًا صالحًا — تحقّق من الرابط.',
+        };
+
+        return [
+            'ok'           => $success && $isManifest,
+            'reachable'    => true,
+            'http_code'    => $code,
+            'content_type' => $ct,
+            'is_manifest'  => $isManifest,
+            'variants'     => $variants,      // عدد الجودات (master playlist)
+            'segments'     => $segments,      // عدد المقاطع (media playlist)
+            'latency_ms'   => $latency,
+            'snippet'      => mb_substr(trim($body), 0, 280),
+            'message'      => $message,
+        ];
+    }
+
+    // -------------------------------------------------------------------------
     // التعامل مع الطلبات
     // -------------------------------------------------------------------------
 

@@ -31,7 +31,7 @@ const api = {
   updateCh:    (id, d)   => api.request({ resource: 'channels', id }, { method: 'PUT', body: d }),
   deleteCh:    (id)      => api.request({ resource: 'channels', id }, { method: 'DELETE' }),
   duplicateCh: (id)      => api.request({ resource: 'channels', action: 'duplicate', id }, { method: 'POST' }),
-  stream:      (act, id) => api.request({ resource: 'stream', action: act, id }, { method: act === 'status' || act === 'monitor' ? 'GET' : 'POST' }),
+  stream:      (act, id) => api.request({ resource: 'stream', action: act, id }, { method: ['status', 'monitor', 'test'].includes(act) ? 'GET' : 'POST' }),
   stats:       ()        => api.request({ resource: 'stats' }),
   system:      ()        => api.request({ resource: 'system' }),
   diagnostics: ()        => api.request({ resource: 'diagnostics' }),
@@ -83,6 +83,42 @@ function showStreamLink(ch) {
   };
   const close = () => back.remove();
   back.querySelector('#_closeLink').onclick = close;
+  back.onclick = (e) => { if (e.target === back) close(); };
+}
+
+/* نافذة نتيجة اختبار المصدر. */
+function showSourceTest(ch, r) {
+  const good = r.ok;
+  const color = good ? 'var(--accent)' : (r.reachable ? 'var(--warn)' : 'var(--danger)');
+  const icon = good ? 'check-circle-fill' : (r.reachable ? 'exclamation-triangle-fill' : 'x-circle-fill');
+  const rows = [
+    ['الحالة', r.message],
+    ['يتصل بالمصدر', r.reachable ? 'نعم' : 'لا'],
+    r.http_code != null ? ['رمز HTTP', r.http_code] : null,
+    r.content_type ? ['نوع المحتوى', r.content_type] : null,
+    r.is_manifest != null ? ['مانيفست صالح', r.is_manifest ? 'نعم' : 'لا'] : null,
+    r.variants ? ['عدد الجودات', r.variants] : null,
+    r.segments ? ['عدد المقاطع', r.segments] : null,
+    r.latency_ms != null ? ['زمن الاستجابة', r.latency_ms + ' ms'] : null,
+  ].filter(Boolean);
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop-x show';
+  back.innerHTML = `
+    <div class="modal-x glass" style="max-width:560px">
+      <h3 style="color:${color}"><i class="bi bi-${icon}"></i> اختبار المصدر — ${esc(ch.name)}</h3>
+      <table class="data" style="min-width:auto;width:100%">
+        ${rows.map(([k, v]) => `<tr><td class="muted" style="width:40%">${esc(k)}</td><td><b>${esc(v)}</b></td></tr>`).join('')}
+      </table>
+      ${r.snippet ? `<div class="field" style="margin-top:12px"><label>مقتطف من الاستجابة</label>
+        <textarea readonly rows="4" style="font-family:monospace;font-size:12px">${esc(r.snippet)}</textarea></div>` : ''}
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" id="_closeTest">تم</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('#_closeTest').onclick = close;
   back.onclick = (e) => { if (e.target === back) close(); };
 }
 
@@ -152,6 +188,7 @@ function actionButtons(ch) {
   return `
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-sm" data-act="play" data-id="${ch.id}" title="تشغيل"><i class="bi bi-play-fill"></i></button>
+      <button class="btn btn-sm" data-act="test" data-id="${ch.id}" title="اختبار المصدر"><i class="bi bi-heart-pulse"></i></button>
       <button class="btn btn-sm" data-act="start" data-id="${ch.id}" title="تشغيل FFmpeg"><i class="bi bi-broadcast"></i></button>
       <button class="btn btn-sm" data-act="stop" data-id="${ch.id}" title="إيقاف"><i class="bi bi-stop-fill"></i></button>
       <button class="btn btn-sm" data-act="restart" data-id="${ch.id}" title="إعادة تشغيل"><i class="bi bi-arrow-repeat"></i></button>
@@ -380,6 +417,16 @@ document.addEventListener('click', async (e) => {
     switch (act) {
       case 'play':
         window.open(`player.php?channel=${id}`, '_blank'); break;
+      case 'test': {
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>';
+        try {
+          const r = await api.stream('test', id);
+          showSourceTest(ch, r);
+        } finally {
+          btn.innerHTML = '<i class="bi bi-heart-pulse"></i>';
+        }
+        break;
+      }
       case 'edit':
         openModal(ch); break;
       case 'delete':

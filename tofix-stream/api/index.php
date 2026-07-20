@@ -165,6 +165,10 @@ try {
                     $metrics = $monitor->probe((string) $channel['source_url']);
                     $manager->updateMetrics($id, $metrics);
                     Response::json($metrics);
+                case 'test':
+                    // اختبار المصدر من الخادم مباشرة (يعمل حتى لو exec معطّلة).
+                    $proxy = new \ToFiXStream\HlsProxy();
+                    Response::json($proxy->testSource((string) $channel['source_url']));
                 default:
                     Response::error('إجراء غير معروف للبثّ.', 400);
             }
