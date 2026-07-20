@@ -3,7 +3,7 @@
  * -----------------------------------------------------------------------------
  * منطق واجهة لوحة التحكّم (Vanilla JS ES2025).
  *   - تحميل الإحصائيات والقنوات ومؤشّرات الخادم عبر REST API.
- *   - CRUD للقنوات + التحكّم بالبثّ (start/stop/restart) + المراقبة.
+ *   - CRUD للقنوات + اختبار المصدر + إدارة البروكسي.
  *   - التنقّل بين الأقسام، النوافذ المنبثقة، والإشعارات.
  * لا يعتمد أي إطار عمل خارجي.
  */
@@ -31,7 +31,7 @@ const api = {
   updateCh:    (id, d)   => api.request({ resource: 'channels', id }, { method: 'PUT', body: d }),
   deleteCh:    (id)      => api.request({ resource: 'channels', id }, { method: 'DELETE' }),
   duplicateCh: (id)      => api.request({ resource: 'channels', action: 'duplicate', id }, { method: 'POST' }),
-  stream:      (act, id) => api.request({ resource: 'stream', action: act, id }, { method: ['status', 'monitor', 'test'].includes(act) ? 'GET' : 'POST' }),
+  stream:      (act, id) => api.request({ resource: 'stream', action: act, id }, { method: 'GET' }),
   stats:       ()        => api.request({ resource: 'stats' }),
   system:      ()        => api.request({ resource: 'system' }),
   diagnostics: ()        => api.request({ resource: 'diagnostics' }),
@@ -99,6 +99,7 @@ function showSourceTest(ch, r) {
     r.is_manifest != null ? ['مانيفست صالح', r.is_manifest ? 'نعم' : 'لا'] : null,
     r.variants ? ['عدد الجودات', r.variants] : null,
     r.segments ? ['عدد المقاطع', r.segments] : null,
+    r.segment_test ? ['اختبار المقطع (ts)', r.segment_test.ok ? '✅ يعمل' : `❌ فشل (HTTP ${r.segment_test.code})`] : null,
     r.latency_ms != null ? ['زمن الاستجابة', r.latency_ms + ' ms'] : null,
   ].filter(Boolean);
 
@@ -134,9 +135,8 @@ function toast(msg, type = 'ok') {
 const state = { channels: [], stats: {}, system: {} };
 
 /* ============ العرض (Rendering) ============ */
-function statusBadge(status, running) {
-  if (running) return `<span class="badge online"><span class="dot"></span> LIVE</span>`;
-  if (status === 'active') return `<span class="badge idle"><span class="dot"></span> جاهزة</span>`;
+function statusBadge(status) {
+  if (status === 'active') return `<span class="badge online"><span class="dot"></span> نشطة</span>`;
   return `<span class="badge offline"><span class="dot"></span> متوقّفة</span>`;
 }
 
@@ -152,7 +152,7 @@ function renderStats() {
   const cards = [
     { icon: 'collection-play', value: s.total_channels ?? 0, label: 'إجمالي القنوات', trend: '' },
     { icon: 'broadcast-pin',   value: s.active_channels ?? 0, label: 'قنوات نشطة', trend: '' },
-    { icon: 'reception-4',     value: s.live_streams ?? 0, label: 'بثوث مباشرة (FFmpeg)', trend: '' },
+    { icon: 'hdd-network',     value: s.live_streams ?? 0, label: 'قنوات تُبثّ (Proxy)', trend: '' },
     { icon: 'people',          value: (s.total_viewers ?? 0).toLocaleString('ar'), label: 'إجمالي المشاهدين', trend: '' },
   ];
   $('#statCards').innerHTML = cards.map((c) => `
@@ -189,9 +189,6 @@ function actionButtons(ch) {
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-sm" data-act="play" data-id="${ch.id}" title="تشغيل"><i class="bi bi-play-fill"></i></button>
       <button class="btn btn-sm" data-act="test" data-id="${ch.id}" title="اختبار المصدر"><i class="bi bi-heart-pulse"></i></button>
-      <button class="btn btn-sm" data-act="start" data-id="${ch.id}" title="تشغيل FFmpeg"><i class="bi bi-broadcast"></i></button>
-      <button class="btn btn-sm" data-act="stop" data-id="${ch.id}" title="إيقاف"><i class="bi bi-stop-fill"></i></button>
-      <button class="btn btn-sm" data-act="restart" data-id="${ch.id}" title="إعادة تشغيل"><i class="bi bi-arrow-repeat"></i></button>
       <button class="btn btn-sm" data-act="edit" data-id="${ch.id}" title="تعديل"><i class="bi bi-pencil"></i></button>
       <button class="btn btn-sm" data-act="duplicate" data-id="${ch.id}" title="تكرار"><i class="bi bi-files"></i></button>
       <button class="btn btn-sm btn-danger" data-act="delete" data-id="${ch.id}" title="حذف"><i class="bi bi-trash"></i></button>
@@ -210,7 +207,7 @@ function renderChannels() {
       <td>${esc(ch.category)}</td>
       <td>${esc(ch.country || '—')}</td>
       <td>${esc(ch.quality)}</td>
-      <td>${statusBadge(ch.status, ch._running)}</td>
+      <td>${statusBadge(ch.status)}</td>
       <td>
         <div class="url-cell">
           <input readonly class="url-input" value="${esc(ch.playback?.hls || '')}" onclick="this.select()" title="${esc(ch.playback?.hls || '')}">
@@ -226,7 +223,7 @@ function renderChannels() {
       <td>${chCell(ch)}</td>
       <td>${esc(ch.category)}</td>
       <td>${esc(ch.quality)}</td>
-      <td>${statusBadge(ch.status, ch._running)}</td>
+      <td>${statusBadge(ch.status)}</td>
       <td><a class="muted" href="player.php?channel=${ch.id}" target="_blank">فتح</a></td>
       <td>${actionButtons(ch)}</td>
     </tr>`).join('') : empty.replace('colspan="8"', 'colspan="6"');
@@ -266,23 +263,21 @@ function renderServerCards() {
   renderServer(['#serverMetersFull']);
 }
 
-/* عرض شريط تشخيص قدرات الخادم (يوضّح سبب تعطّل إعادة البثّ/الشعار). */
+/* عرض شريط تشخيص قدرات البروكسي. */
 function renderDiagnostics(d) {
   const box = $('#diagBanner');
   if (!d) { box.innerHTML = ''; return; }
   const issues = [];
-  if (!d.exec_enabled) issues.push('دوال <b>exec/shell_exec</b> معطّلة في الاستضافة — لا يمكن تشغيل FFmpeg (إعادة البثّ الحقيقي والشعار داخل الفيديو). استخدم وضع <b>Proxy</b>، أو استضافة/VPS تسمح بها.');
-  else if (!d.ffmpeg) issues.push('<b>FFmpeg</b> غير مثبّت على الخادم — ثبّته لتفعيل إعادة الترميز والشعار داخل البثّ.');
-  if (d.exec_enabled && d.ffmpeg && !d.streams_writable) issues.push('مجلّد <b>streams/</b> غير قابل للكتابة — اضبط الصلاحيات (chmod 775).');
+  if (!d.curl) issues.push('إضافة <b>cURL</b> غير مفعّلة في PHP — البروكسي يحتاجها للاتصال بالمصادر. فعّلها من إعدادات الاستضافة.');
+  if (!d.cache_writable) issues.push('مجلّد <b>cache/</b> غير قابل للكتابة — اضبط الصلاحيات (chmod 775) لتفعيل الكاش والاتصال الواحد.');
 
   if (!issues.length) {
-    box.innerHTML = `<div class="diag ok"><i class="bi bi-check-circle-fill"></i> النظام جاهز: FFmpeg وإعادة البثّ والشعار داخل الفيديو مفعّلة.</div>`;
+    box.innerHTML = `<div class="diag ok"><i class="bi bi-check-circle-fill"></i> البروكسي جاهز: إعادة بثّ m3u8/ts، إخفاء المصدر، وكاش الاتصال الواحد مفعّلة.</div>`;
     return;
   }
   box.innerHTML = `<div class="diag warn">
     <i class="bi bi-exclamation-triangle-fill"></i>
-    <div><b>تنبيه القدرات:</b><ul>${issues.map((i) => `<li>${i}</li>`).join('')}</ul>
-    <small class="muted">وضع Proxy يعمل دائمًا (إعادة بثّ الرابط وإخفاء المصدر). أمّا الشعار داخل الفيديو فيتطلّب FFmpeg.</small></div>
+    <div><b>تنبيه:</b><ul>${issues.map((i) => `<li>${i}</li>`).join('')}</ul></div>
   </div>`;
 }
 
@@ -296,12 +291,6 @@ async function loadAll() {
     state.stats = stats || {};
     state.system = system || {};
     renderDiagnostics(diag);
-
-    // فحص أي القنوات تعمل عبر FFmpeg (وسم _running).
-    await Promise.all(state.channels.map(async (ch) => {
-      try { ch._running = (await api.stream('status', ch.id))?.running || false; }
-      catch { ch._running = false; }
-    }));
 
     renderStats(); renderServer(); renderChannels(); renderMonitor(); renderServerCards();
   } catch (e) { toast(e.message, 'err'); }
@@ -320,7 +309,7 @@ function openModal(ch = null) {
   $('#wmPreview').innerHTML = '';
   $('#wmImageUrl').value = '';
   if (ch) {
-    ['name', 'logo', 'source_url', 'source_type', 'mode', 'category', 'quality', 'country', 'audio_lang', 'description', 'status']
+    ['name', 'logo', 'source_url', 'source_type', 'user_agent', 'category', 'quality', 'country', 'audio_lang', 'description', 'status']
       .forEach((k) => { if (form[k] != null && ch[k] != null) form[k].value = ch[k]; });
     // تعبئة إعدادات العلامة المائية عند التعديل.
     const wm = ch.watermark || {};
@@ -350,8 +339,7 @@ function syncWatermarkUI() {
   // القيمة الافتراضية للحجم تختلف بين الصورة (بكسل عرض) والنصّ (حجم خط).
   const sizeEl = $('#wmSize');
   if (isText && Number(sizeEl.value) > 200) sizeEl.value = 28;
-  // ملاحظة: لا نفرض وضع FFmpeg — في وضع Proxy يظهر الشعار كطبقة فوق المشغّل
-  // (بدون FFmpeg)، وفي وضع FFmpeg يُحرق داخل ملف الفيديو نفسه.
+  // الشعار يظهر كطبقة فوق المشغّل و embed.
 }
 function closeModal() { modal.classList.remove('show'); }
 
@@ -439,20 +427,20 @@ document.addEventListener('click', async (e) => {
         (await copyText(link)) ? toast('تم نسخ رابط البثّ') : toast('تعذّر النسخ', 'err');
         break;
       }
-      case 'start': {
-        const r = await api.stream('start', id); toast(r.message, r.ok ? 'ok' : 'err'); loadAll(); break;
-      }
-      case 'stop': {
-        const r = await api.stream('stop', id); toast(r.message, r.ok ? 'ok' : 'err'); loadAll(); break;
-      }
-      case 'restart': {
-        const r = await api.stream('restart', id); toast(r.message, r.ok ? 'ok' : 'err'); loadAll(); break;
-      }
       case 'probe': {
         btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i>';
-        const m = await api.stream('monitor', id);
-        ch.metrics = m; renderMonitor();
-        toast(`الحالة: ${m.status}`); break;
+        try {
+          const r = await api.stream('test', id);
+          ch.metrics = {
+            status: r.ok ? 'online' : (r.reachable ? 'issue' : 'offline'),
+            resolution: r.is_manifest ? 'HLS' : '—',
+            video_codec: r.segment_test ? (r.segment_test.ok ? 'ts ok' : 'ts fail') : '—',
+            bitrate: r.latency_ms != null ? r.latency_ms + ' ms' : '—',
+          };
+          renderMonitor();
+          toast(r.message, r.ok ? 'ok' : 'err');
+        } finally { btn.innerHTML = '<i class="bi bi-search"></i>'; }
+        break;
       }
     }
   } catch (err) { toast(err.message, 'err'); }

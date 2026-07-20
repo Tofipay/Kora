@@ -17,19 +17,15 @@ namespace ToFiXStream;
 
 final class Channel
 {
-    /** أنواع مصادر البثّ المدعومة. */
-    public const SOURCE_TYPES = ['m3u8', 'mpd', 'mp4', 'rtmp', 'udp', 'http', 'https'];
+    /** أنواع مصادر البثّ المدعومة (بروكسي خالص). */
+    public const SOURCE_TYPES = ['m3u8', 'ts', 'mpd', 'mp4', 'http', 'https'];
 
     /** حالات القناة. */
     public const STATUS_ACTIVE   = 'active';
     public const STATUS_INACTIVE = 'inactive';
     public const STATUS_OFFLINE  = 'offline';
 
-    /** أوضاع إعادة البث. */
-    public const MODE_PROXY  = 'proxy';   // إعادة كتابة المانيفست فقط (خفيف)
-    public const MODE_FFMPEG = 'ffmpeg';  // إعادة ترميز/نسخ عبر FFmpeg
-
-    /** مواضع العلامة المائية داخل الفيديو. */
+    /** مواضع العلامة المائية (طبقة فوق المشغّل). */
     public const WM_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'];
 
     /**
@@ -59,9 +55,10 @@ final class Channel
             // مصدر البثّ
             'source_type'   => strtolower((string) ($data['source_type'] ?? 'm3u8')),
             'source_url'    => trim((string) ($data['source_url'] ?? '')),
-            // وضع إعادة البثّ
-            'mode'          => $data['mode'] ?? self::MODE_PROXY,
-            // مقاييس المراقبة الحيّة (تُحدَّث من FFprobe/FFmpeg)
+            // User-Agent مخصّص لهذه القناة (اختياري) — مفيد لسيرفرات IPTV
+            // التي تقبل مشغّلًا معيّنًا فقط. فارغ = يُستخدم الافتراضي (VLC).
+            'user_agent'    => trim((string) ($data['user_agent'] ?? '')),
+            // مقاييس آخر اختبار للمصدر.
             'metrics'       => $data['metrics'] ?? [],
             // عدّاد المشاهدين التقريبي
             'viewers'       => (int) ($data['viewers'] ?? 0),
@@ -145,12 +142,8 @@ final class Channel
         if (!in_array($a['status'], [self::STATUS_ACTIVE, self::STATUS_INACTIVE, self::STATUS_OFFLINE], true)) {
             $errors[] = 'حالة القناة غير صحيحة.';
         }
-        if (!in_array($a['mode'], [self::MODE_PROXY, self::MODE_FFMPEG], true)) {
-            $errors[] = 'وضع إعادة البثّ غير صحيح.';
-        }
-        // التحقّق السطحي من صيغة الرابط لأنواع http.
-        if (in_array($a['source_type'], ['m3u8', 'mpd', 'mp4', 'http', 'https'], true)
-            && !preg_match('#^https?://#i', $a['source_url'])) {
+        // التحقّق السطحي من صيغة الرابط.
+        if (!preg_match('#^https?://#i', $a['source_url'])) {
             $errors[] = 'رابط المصدر يجب أن يبدأ بـ http:// أو https://';
         }
 

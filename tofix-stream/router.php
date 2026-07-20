@@ -18,8 +18,8 @@ declare(strict_types=1);
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
-// رابط البثّ النظيف -> البروكسي.
-if (preg_match('#^/stream/([A-Za-z0-9_-]+)(?:/index)?\.m3u8$#', $uri, $m)) {
+// رابط البثّ النظيف (m3u8 أو ts) -> البروكسي.
+if (preg_match('#^/stream/([A-Za-z0-9_-]+)(?:/index)?\.(m3u8|ts)$#', $uri, $m)) {
     $_GET['channel'] = $m[1];
     require __DIR__ . '/proxy/index.php';
     return true;

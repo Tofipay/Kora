@@ -17,11 +17,11 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
-  # الرابط الرئيسي للقناة (المانيفست).
-  RewriteRule ^stream/([A-Za-z0-9_-]+)/index\.m3u8$ proxy/index.php?channel=$1 [L,QSA]
+  # الرابط الرئيسي للقناة (m3u8 أو ts).
+  RewriteRule ^stream/([A-Za-z0-9_-]+)/index\.(m3u8|ts)$ proxy/index.php?channel=$1 [L,QSA]
 
   # مسار بديل قصير بنفس المعنى.
-  RewriteRule ^stream/([A-Za-z0-9_-]+)\.m3u8$ proxy/index.php?channel=$1 [L,QSA]
+  RewriteRule ^stream/([A-Za-z0-9_-]+)\.(m3u8|ts)$ proxy/index.php?channel=$1 [L,QSA]
 </IfModule>
 
 # ضغط المخرجات (Compression) لتحميل أسرع.

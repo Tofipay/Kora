@@ -25,9 +25,9 @@ if (!$channel) {
 }
 $streamUrl = $channel['playback']['hls'];
 
-// طبقة الشعار فوق الفيديو (وضع Proxy، بدون FFmpeg).
+// طبقة الشعار فوق الفيديو.
 $wm = is_array($channel['watermark'] ?? null) ? $channel['watermark'] : [];
-$showOverlay = !empty($wm['enabled']) && ($channel['mode'] ?? 'proxy') !== 'ffmpeg';
+$showOverlay = !empty($wm['enabled']);
 $m = (int) ($wm['margin'] ?? 24) . 'px';
 $wmPos = match ($wm['position'] ?? 'top-right') {
     'top-left'     => "top:$m;left:$m",

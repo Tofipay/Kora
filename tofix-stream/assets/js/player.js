@@ -7,8 +7,26 @@
 
 'use strict';
 
-const { engine, src, isDash } = window.PLAYER;
+const { engine, src, isDash, isTs } = window.PLAYER;
 const video = document.getElementById('player');
+
+/* بثّ ts مباشر: يُشغَّل عبر mpegts.js (hls.js لا يدعم TS المستمرّ). */
+function initMpegTs() {
+  if (window.mpegts && mpegts.isSupported()) {
+    const player = mpegts.createPlayer(
+      { type: 'mpegts', isLive: true, url: src },
+      { enableStashBuffer: false, liveBufferLatencyChasing: true }
+    );
+    player.attachMediaElement(video);
+    player.load();
+    player.play().catch(() => {});
+    player.on(mpegts.Events.ERROR, () =>
+      showError('تعذّر تشغيل بثّ TS المباشر. تأكّد أن الرابط يعمل (زرّ اختبار المصدر).'));
+    window._mpegts = player;
+  } else {
+    showError('متصفّحك لا يدعم تشغيل بثّ TS المباشر.');
+  }
+}
 
 /* ---------------- تهيئة المحرّك ---------------- */
 function initVideoJs() {
@@ -102,10 +120,15 @@ async function initShaka() {
   window._shaka = player;
 }
 
-switch (engine) {
-  case 'hlsjs': initHlsJs(); break;
-  case 'shaka': initShaka(); break;
-  default: initVideoJs();
+// بثّ ts المباشر يتجاوز اختيار المحرّك ويستخدم mpegts.js دائمًا.
+if (isTs) {
+  initMpegTs();
+} else {
+  switch (engine) {
+    case 'hlsjs': initHlsJs(); break;
+    case 'shaka': initShaka(); break;
+    default: initVideoJs();
+  }
 }
 
 /* ---------------- أزرار التحكّم ---------------- */

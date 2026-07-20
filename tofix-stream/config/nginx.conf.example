@@ -20,9 +20,9 @@ server {
         return 403;
     }
 
-    # روابط البثّ النظيفة: /stream/CHANNEL_ID/index.m3u8 -> proxy
-    location ~ ^/stream/([A-Za-z0-9_-]+)/index\.m3u8$ {
-        rewrite ^/stream/([A-Za-z0-9_-]+)/index\.m3u8$ /proxy/index.php?channel=$1 last;
+    # روابط البثّ النظيفة: /stream/CHANNEL_ID/index.m3u8 (أو .ts) -> proxy
+    location ~ ^/stream/([A-Za-z0-9_-]+)/index\.(m3u8|ts)$ {
+        rewrite ^/stream/([A-Za-z0-9_-]+)/index\.(m3u8|ts)$ /proxy/index.php?channel=$1 last;
     }
 
     # مقاطع HLS المُنتَجة محليًا عبر FFmpeg (كاش قصير).

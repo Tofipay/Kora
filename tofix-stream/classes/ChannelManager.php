@@ -127,7 +127,7 @@ final class ChannelManager
     }
 
     /**
-     * تحديث مقاييس المراقبة الحيّة لقناة (يُستدعى من StreamMonitor).
+     * تحديث مقاييس آخر اختبار للمصدر.
      *
      * @param array<string,mixed> $metrics
      */
@@ -147,12 +147,17 @@ final class ChannelManager
         $base = Config::baseUrl();
         $id = $row['id'] ?? '';
 
+        // امتداد الرابط النظيف حسب نوع المصدر (ts مباشر أو m3u8).
+        $type = strtolower((string) ($row['source_type'] ?? 'm3u8'));
+        $ext = ($type === 'ts' || str_ends_with(strtolower((string) ($row['source_url'] ?? '')), '.ts'))
+            ? 'index.ts' : 'index.m3u8';
+
         // الرابط الجديد الذي يظهر للمستخدم بدل الرابط الأصلي.
         $row['playback'] = [
-            // ★ الرابط النظيف الجاهز — ينتهي بـ .m3u8 ويعمل في أي مشغّل/تطبيق IPTV.
-            //   مثال: https://test.tofi-xtv.com/stream/ID/index.m3u8
-            'hls'     => "{$base}/stream/{$id}/index.m3u8",
-            // الرابط المباشر للبروكسي (احتياطي إن لم يكن إعادة الكتابة مفعّلة).
+            // ★ الرابط النظيف الجاهز — يعمل في أي مشغّل/تطبيق IPTV.
+            //   مثال: https://test.tofi-xtv.com/stream/ID/index.m3u8 (أو index.ts)
+            'hls'     => "{$base}/stream/{$id}/{$ext}",
+            // الرابط المباشر للبروكسي (احتياطي إن لم تكن إعادة الكتابة مفعّلة).
             'hls_raw' => "{$base}/proxy/index.php?channel={$id}",
             // رابط صفحة المشغّل الجاهزة.
             'player'  => "{$base}/public/player.php?channel={$id}",

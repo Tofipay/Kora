@@ -63,7 +63,7 @@ return [
         'config'   => $root . '/config',
         'classes'  => $root . '/classes',
         'storage'  => $root . '/storage',   // ملفات JSON للتخزين
-        'streams'  => $root . '/streams',   // مخرجات FFmpeg (HLS)
+        'streams'  => $root . '/streams',   // (غير مستخدم — أُبقي للتوافق)
         'cache'    => $root . '/cache',      // كاش البروكسي والمانيفست
         'logs'     => $root . '/logs',       // ملفات السجلّات
         'assets'   => $root . '/assets',
@@ -91,42 +91,17 @@ return [
         'cache_enabled'  => $env('PROXY_CACHE', true),
         // مدّة بقاء المقطع في كاش القرص (يخدم كل المشاهدين من نسخة واحدة).
         'segment_cache_ttl' => (int) $env('PROXY_SEGMENT_CACHE_TTL', 120),
-        // User-Agent يُرسل للمصدر الأصلي لإخفاء هويّة الزائر الحقيقية.
-        'upstream_ua'    => $env('PROXY_UA', 'Mozilla/5.0 (compatible; ToFiXStream/1.0)'),
+        // User-Agent يُرسل للمصدر الأصلي. الافتراضي VLC لأنّ أغلب سيرفرات IPTV
+        // تقبل مشغّلات معروفة فقط وترفض الوكلاء المجهولين.
+        'upstream_ua'    => $env('PROXY_UA', 'VLC/3.0.20 LibVLC/3.0.20'),
         // مهلة الاتصال بالمصدر الأصلي.
-        'timeout'        => (int) $env('PROXY_TIMEOUT', 15),
+        'timeout'        => (int) $env('PROXY_TIMEOUT', 20),
         'connect_timeout'=> (int) $env('PROXY_CONNECT_TIMEOUT', 8),
-        // السماح بتمرير رأس Referer مزوّر للمصادر التي تتطلّبه.
-        'spoof_referer'  => $env('PROXY_SPOOF_REFERER', true),
+        // انتحال Referer/Origin — يُعطّل افتراضيًا لأنّ بعض سيرفرات IPTV ترفض
+        // الطلبات التي تحمل Referer. فعّله فقط للمصادر التي تتطلّبه.
+        'spoof_referer'  => $env('PROXY_SPOOF_REFERER', false),
         'follow_redirects' => true,
         'max_redirects'  => 5,
-    ],
-
-    // ---------------------------------------------------------------------
-    // إعدادات FFmpeg لإعادة البث والترميز
-    // ---------------------------------------------------------------------
-    'ffmpeg' => [
-        'binary'         => $env('FFMPEG_BIN', 'ffmpeg'),
-        'ffprobe'        => $env('FFPROBE_BIN', 'ffprobe'),
-        // مجلّد إخراج مقاطع HLS لكل قناة.
-        'output_dir'     => $root . '/streams',
-        // عدد المقاطع في نافذة التشغيل المباشر.
-        'hls_list_size'  => (int) $env('FFMPEG_HLS_LIST_SIZE', 6),
-        'hls_time'       => (int) $env('FFMPEG_HLS_TIME', 4),
-        // إعادة الاتصال التلقائي عند انقطاع المصدر.
-        'reconnect'      => true,
-        'reconnect_delay_max' => 5,
-        // ملف PID لكل عملية FFmpeg يُخزَّن هنا لإدارة الإيقاف/التشغيل.
-        'pid_dir'        => $root . '/storage/pids',
-        // خرائط الجودة (bitrate/resolution) المدعومة عند إعادة الترميز.
-        'qualities' => [
-            'source' => ['label' => 'Source', 'copy' => true],
-            '1080p'  => ['label' => '1080p', 'width' => 1920, 'height' => 1080, 'v_bitrate' => '5000k', 'a_bitrate' => '192k'],
-            '720p'   => ['label' => '720p',  'width' => 1280, 'height' => 720,  'v_bitrate' => '2800k', 'a_bitrate' => '128k'],
-            '480p'   => ['label' => '480p',  'width' => 854,  'height' => 480,  'v_bitrate' => '1400k', 'a_bitrate' => '128k'],
-            '360p'   => ['label' => '360p',  'width' => 640,  'height' => 360,  'v_bitrate' => '800k',  'a_bitrate' => '96k'],
-            '240p'   => ['label' => '240p',  'width' => 426,  'height' => 240,  'v_bitrate' => '400k',  'a_bitrate' => '64k'],
-        ],
     ],
 
     // ---------------------------------------------------------------------

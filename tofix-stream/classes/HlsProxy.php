@@ -41,9 +41,20 @@ final class HlsProxy
     /** نقطة نهاية هذا البروكسي (تُبنى من الإعدادات). */
     private string $endpoint;
 
+    /** User-Agent مخصّص للمصدر (يُضبط لكل قناة). فارغ = الافتراضي من الإعدادات. */
+    private string $upstreamUa = '';
+
     public function __construct()
     {
         $this->endpoint = Config::baseUrl() . '/proxy/index.php';
+    }
+
+    /**
+     * ضبط User-Agent مخصّص يُستخدم في كل طلبات المصدر لهذه الجلسة.
+     */
+    public function setUpstreamUa(string $ua): void
+    {
+        $this->upstreamUa = trim($ua);
     }
 
     // -------------------------------------------------------------------------
@@ -52,39 +63,68 @@ final class HlsProxy
 
     /**
      * بناء رابط بروكسي موقّع لعنوان أصلي (يُستخدم عند إعادة كتابة المانيفست).
+     * يُضمّن الـ User-Agent المخصّص (إن وُجد) داخل الرابط الموقّع حتى تستخدمه
+     * المقاطع أيضًا — مهمّ لسيرفرات IPTV التي تربط التوكن بالمشغّل.
      *
      * @param string $originalUrl الرابط الأصلي الكامل.
      */
     public function proxifiedUrl(string $originalUrl): string
     {
-        $encoded = rtrim(strtr(base64_encode($originalUrl), '+/', '-_'), '=');
-        $sig = $this->signUrl($encoded);
-        return $this->endpoint . '?u=' . $encoded . '&s=' . $sig;
+        $encoded = $this->b64urlEncode($originalUrl);
+        $params = 'u=' . $encoded;
+        if ($this->upstreamUa !== '') {
+            $params .= '&ua=' . $this->b64urlEncode($this->upstreamUa);
+        }
+        return $this->endpoint . '?' . $params . '&s=' . $this->signParams($params);
     }
 
     /**
-     * توقيع الرابط المرمّز لمنع حقن روابط خارجية (SSRF).
+     * توقيع سلسلة الباراميترات لمنع حقن روابط خارجية (SSRF) والعبث بالـ UA.
      */
-    private function signUrl(string $encoded): string
+    private function signParams(string $params): string
     {
         $key = (string) Config::get('security.secret_key');
-        return substr(hash_hmac('sha256', $encoded, $key), 0, 24);
+        return substr(hash_hmac('sha256', $params, $key), 0, 24);
     }
 
     /**
-     * فكّ وتحقّق من رابط مرمّز؛ يُعيد الرابط الأصلي أو null إن كان التوقيع خاطئًا.
+     * التحقّق من رابط داخلي موقّع وفكّه.
+     *
+     * @param string $u   قيمة الباراميتر u (رابط مرمّز).
+     * @param string $ua  قيمة الباراميتر ua (User-Agent مرمّز، قد يكون فارغًا).
+     * @param string $sig التوقيع.
+     * @return array{0:string,1:string}|null [originalUrl, userAgent] أو null.
      */
-    public function resolveUrl(string $encoded, string $signature): ?string
+    public function verifyAndResolve(string $u, string $ua, string $sig): ?array
     {
-        if (!hash_equals($this->signUrl($encoded), $signature)) {
+        // نعيد بناء نفس سلسلة الباراميترات التي وُقّعت.
+        $params = 'u=' . $u . ($ua !== '' ? '&ua=' . $ua : '');
+        if (!hash_equals($this->signParams($params), $sig)) {
             return null;
         }
-        $padded = str_pad($encoded, strlen($encoded) % 4 === 0 ? strlen($encoded) : strlen($encoded) + 4 - (strlen($encoded) % 4), '=');
-        $decoded = base64_decode(strtr($padded, '-_', '+/'), true);
-        if ($decoded === false || !preg_match('#^https?://#i', $decoded)) {
+        $url = $this->b64urlDecode($u);
+        if ($url === null || !preg_match('#^https?://#i', $url)) {
             return null;
         }
-        return $decoded;
+        $agent = $ua !== '' ? ($this->b64urlDecode($ua) ?? '') : '';
+        return [$url, $agent];
+    }
+
+    /** ترميز base64url آمن للعناوين. */
+    private function b64urlEncode(string $s): string
+    {
+        return rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+    }
+
+    /** فكّ ترميز base64url. */
+    private function b64urlDecode(string $s): ?string
+    {
+        $pad = strlen($s) % 4;
+        if ($pad) {
+            $s .= str_repeat('=', 4 - $pad);
+        }
+        $decoded = base64_decode(strtr($s, '-_', '+/'), true);
+        return $decoded === false ? null : $decoded;
     }
 
     // -------------------------------------------------------------------------
@@ -118,27 +158,70 @@ final class HlsProxy
         $isManifest = $this->isManifest($url, $ct)
             || str_contains($body, '#EXTM3U') || str_contains($body, '<MPD');
         $variants = preg_match_all('/#EXT-X-STREAM-INF/i', $body);
-        $segments = preg_match_all('/\.(ts|m4s)(\?|\s|$)/im', $body);
+        $segments = preg_match_all('/^[^#\r\n].*\.(ts|m4s)/im', $body);
         $success = $code >= 200 && $code < 400;
 
+        // إن كان مانيفست HLS يحتوي مقاطع، نختبر أوّل مقطع فعليًا — هذا يكشف
+        // مشكلة IPTV الشائعة: المانيفست يعمل لكن المقاطع محجوبة (User-Agent/توكن).
+        $segTest = null;
+        if ($success && $isManifest && $segments > 0) {
+            $firstSeg = $this->firstSegmentUrl($body, $url);
+            if ($firstSeg !== null) {
+                $segRes = $this->fetch($firstSeg);
+                if ($segRes === null) {
+                    $segTest = ['ok' => false, 'code' => 0, 'message' => 'تعذّر جلب المقطع من المصدر.'];
+                } else {
+                    $sOk = $segRes[2] >= 200 && $segRes[2] < 400 && strlen($segRes[0]) > 100;
+                    $segTest = [
+                        'ok'      => $sOk,
+                        'code'    => $segRes[2],
+                        'bytes'   => strlen($segRes[0]),
+                        'message' => $sOk
+                            ? 'المقطع (ts) يعمل ✅'
+                            : "المقطع فشل (HTTP {$segRes[2]}) — المصدر يحجب المقاطع (جرّب تغيير User-Agent).",
+                    ];
+                }
+            }
+        }
+
+        $ok = $success && $isManifest && ($segTest === null || $segTest['ok']);
         $message = match (true) {
-            !$success              => "المصدر ردّ برمز HTTP {$code} (غير متاح).",
-            $success && $isManifest => 'المصدر يعمل ويحتوي مانيفست HLS/DASH صالح ✅',
-            default                => 'المصدر استجاب لكنه ليس مانيفستًا صالحًا — تحقّق من الرابط.',
+            !$success                    => "المصدر ردّ برمز HTTP {$code} (غير متاح).",
+            $isManifest && $segTest && !$segTest['ok'] => 'المانيفست يعمل لكن المقاطع محجوبة — ' . $segTest['message'],
+            $isManifest && $ok           => 'المصدر والمقاطع تعمل بالكامل ✅',
+            $isManifest                  => 'المصدر يعمل ويحتوي مانيفست HLS/DASH صالح ✅',
+            default                      => 'المصدر استجاب لكنه ليس مانيفستًا صالحًا — تحقّق من الرابط.',
         };
 
         return [
-            'ok'           => $success && $isManifest,
+            'ok'           => $ok,
             'reachable'    => true,
             'http_code'    => $code,
             'content_type' => $ct,
             'is_manifest'  => $isManifest,
-            'variants'     => $variants,      // عدد الجودات (master playlist)
-            'segments'     => $segments,      // عدد المقاطع (media playlist)
+            'variants'     => $variants,
+            'segments'     => $segments,
+            'segment_test' => $segTest,
             'latency_ms'   => $latency,
             'snippet'      => mb_substr(trim($body), 0, 280),
             'message'      => $message,
         ];
+    }
+
+    /**
+     * استخراج رابط أوّل مقطع مطلق من مانيفست HLS.
+     */
+    private function firstSegmentUrl(string $body, string $baseUrl): ?string
+    {
+        foreach (preg_split('/\r\n|\r|\n/', $body) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            // أوّل سطر رابط = مقطع أو بلاي-ليست فرعية.
+            return $this->absolutize($line, $baseUrl);
+        }
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -348,44 +431,8 @@ final class HlsProxy
             return null;
         }
 
-        $host = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
-        $headers = [
-            'Accept: */*',
-            'Connection: keep-alive',
-        ];
-        // انتحال Referer/Origin للمصادر التي تحمي روابطها بذلك.
-        if (Config::get('proxy.spoof_referer', true)) {
-            $headers[] = 'Referer: ' . $host . '/';
-            $headers[] = 'Origin: ' . $host;
-        }
-
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => false,
-            CURLOPT_FOLLOWLOCATION => (bool) Config::get('proxy.follow_redirects', true),
-            CURLOPT_MAXREDIRS      => (int) Config::get('proxy.max_redirects', 5),
-            CURLOPT_USERAGENT      => (string) Config::get('proxy.upstream_ua'),
-            CURLOPT_TIMEOUT        => (int) Config::get('proxy.timeout', 15),
-            CURLOPT_CONNECTTIMEOUT => (int) Config::get('proxy.connect_timeout', 8),
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_ENCODING       => '', // دعم gzip تلقائيًا.
-        ]);
-
-        // احترام بروكسي الخروج القياسي إن وُجد في البيئة (بيئات محجوبة/حاويات).
-        $envProxy = getenv('HTTPS_PROXY') ?: getenv('https_proxy') ?: '';
-        if ($envProxy !== '') {
-            curl_setopt($ch, CURLOPT_PROXY, $envProxy);
-            // تجاوز البروكسي للمضيفين المحلّيين/الداخليين (NO_PROXY) — مهمّ
-            // لمصادر localhost/الشبكة الداخلية أو مخرجات FFmpeg المحلّية.
-            $noProxy = getenv('NO_PROXY') ?: getenv('no_proxy') ?: 'localhost,127.0.0.1,::1';
-            curl_setopt($ch, CURLOPT_NOPROXY, $noProxy);
-        }
-        // استخدام حزمة الشهادات المخصّصة إن كانت معرّفة في البيئة.
-        $caBundle = getenv('CURL_CA_BUNDLE') ?: '';
-        if ($caBundle !== '' && is_file($caBundle)) {
-            curl_setopt($ch, CURLOPT_CAINFO, $caBundle);
-        }
+        $this->applyCurlOptions($ch, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
         $body = curl_exec($ch);
         if ($body === false) {
@@ -398,6 +445,102 @@ final class HlsProxy
         curl_close($ch);
 
         return [(string) $body, $contentType, $httpCode];
+    }
+
+    /**
+     * ضبط خيارات cURL المشتركة (User-Agent، الهيدرات، البروكسي، الشهادات).
+     */
+    private function applyCurlOptions(\CurlHandle $ch, string $url): void
+    {
+        $ua = $this->upstreamUa !== '' ? $this->upstreamUa : (string) Config::get('proxy.upstream_ua');
+        $headers = ['Accept: */*', 'Connection: keep-alive'];
+
+        // تمرير رأس Range من العميل (لدعم التقديم/الاستئناف في المقاطع الكبيرة).
+        if (!empty($_SERVER['HTTP_RANGE'])) {
+            $headers[] = 'Range: ' . $_SERVER['HTTP_RANGE'];
+        }
+
+        // انتحال Referer/Origin — اختياري (معطّل افتراضيًا لتوافق IPTV).
+        if (Config::get('proxy.spoof_referer', false)) {
+            $host = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
+            $headers[] = 'Referer: ' . $host . '/';
+            $headers[] = 'Origin: ' . $host;
+        }
+
+        curl_setopt_array($ch, [
+            CURLOPT_HEADER         => false,
+            CURLOPT_FOLLOWLOCATION => (bool) Config::get('proxy.follow_redirects', true),
+            CURLOPT_MAXREDIRS      => (int) Config::get('proxy.max_redirects', 5),
+            CURLOPT_USERAGENT      => $ua,
+            CURLOPT_TIMEOUT        => (int) Config::get('proxy.timeout', 20),
+            CURLOPT_CONNECTTIMEOUT => (int) Config::get('proxy.connect_timeout', 8),
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_ENCODING       => '',
+        ]);
+
+        // احترام بروكسي الخروج القياسي إن وُجد (بيئات محجوبة/حاويات).
+        $envProxy = getenv('HTTPS_PROXY') ?: getenv('https_proxy') ?: '';
+        if ($envProxy !== '') {
+            curl_setopt($ch, CURLOPT_PROXY, $envProxy);
+            $noProxy = getenv('NO_PROXY') ?: getenv('no_proxy') ?: 'localhost,127.0.0.1,::1';
+            curl_setopt($ch, CURLOPT_NOPROXY, $noProxy);
+        }
+        $caBundle = getenv('CURL_CA_BUNDLE') ?: '';
+        if ($caBundle !== '' && is_file($caBundle)) {
+            curl_setopt($ch, CURLOPT_CAINFO, $caBundle);
+        }
+    }
+
+    /**
+     * بثّ تمريري مباشر لرابط مستمرّ (.ts أو أي تدفّق حيّ) دون تخزين كامل في
+     * الذاكرة — يكتب البايتات إلى العميل فور وصولها. مناسب لروابط IPTV المباشرة.
+     */
+    public function streamDirect(string $url): void
+    {
+        $ch = curl_init($url);
+        if ($ch === false) {
+            $this->badGateway($url);
+            return;
+        }
+
+        $this->applyCurlOptions($ch, $url);
+
+        $headerSent = false;
+        // تمرير نوع المحتوى من المصدر عند وصول الهيدر.
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($c, $line) use (&$headerSent): int {
+            if (stripos($line, 'content-type:') === 0 && !$headerSent) {
+                $ct = trim(substr($line, strlen('content-type:')));
+                if ($ct !== '' && !headers_sent()) {
+                    header('Content-Type: ' . $ct);
+                    $headerSent = true;
+                }
+            }
+            return strlen($line);
+        });
+        // كتابة كل قطعة إلى العميل مباشرةً مع تفريغ المخزّن.
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($c, $chunk): int {
+            echo $chunk;
+            @ob_flush();
+            @flush();
+            return strlen($chunk);
+        });
+
+        // للبثّ المستمرّ لا نضع مهلة إجمالية (يبقى مفتوحًا).
+        curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
+
+        $this->emitCommonHeaders();
+        if (!headers_sent()) {
+            header('Content-Type: video/mp2t');
+            header('Cache-Control: no-cache, no-store');
+        }
+
+        curl_exec($ch);
+        if (curl_errno($ch)) {
+            Logger::warning('خطأ بثّ تمريري مباشر', ['url' => $url, 'err' => curl_error($ch)]);
+        }
+        curl_close($ch);
     }
 
     // -------------------------------------------------------------------------

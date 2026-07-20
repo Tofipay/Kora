@@ -17,15 +17,13 @@
  *   DELETE ?resource=channels&id=XXX          حذف قناة
  *   POST   ?resource=channels&action=duplicate&id=XXX   تكرار
  *
- *   POST   ?resource=stream&action=start&id=XXX    تشغيل FFmpeg
- *   POST   ?resource=stream&action=stop&id=XXX     إيقاف
- *   POST   ?resource=stream&action=restart&id=XXX  إعادة تشغيل
- *   GET    ?resource=stream&action=status&id=XXX   حالة البثّ
- *   GET    ?resource=stream&action=monitor&id=XXX  مقاييس ffprobe
+ *   GET    ?resource=stream&action=test&id=XXX     اختبار المصدر (مانيفست + مقطع)
  *
  *   GET    ?resource=stats                     إحصائيات اللوحة
  *   GET    ?resource=system                    مؤشّرات الخادم
+ *   GET    ?resource=diagnostics               تشخيص قدرات البروكسي
  *   GET    ?resource=token&id=XXX              توليد توكن موقّع للقناة
+ *   POST   ?resource=upload                    رفع صورة شعار
  *
  * @package ToFiXStream\Api
  */
@@ -36,8 +34,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 
 use ToFiXStream\Config;
 use ToFiXStream\ChannelManager;
-use ToFiXStream\FFmpegManager;
-use ToFiXStream\StreamMonitor;
+use ToFiXStream\HlsProxy;
 use ToFiXStream\SystemStats;
 use ToFiXStream\Security;
 use ToFiXStream\Response;
@@ -137,40 +134,28 @@ try {
             break;
 
         // ---------------------------------------------------------------
-        // التحكّم بالبثّ (FFmpeg)
+        // اختبار المصدر
         // ---------------------------------------------------------------
         case 'stream':
             $manager = new ChannelManager();
-            $ff = new FFmpegManager();
-
             if ($id === '') {
                 Response::error('مُعرّف القناة مطلوب.', 400);
             }
             $channel = $manager->get($id);
-            if (!$channel && !in_array($action, ['status'], true)) {
+            if (!$channel) {
                 Response::error('القناة غير موجودة.', 404);
             }
 
             switch ($action) {
-                case 'start':
-                    Response::json($ff->start($channel));
-                case 'stop':
-                    Response::json($ff->stop($id));
-                case 'restart':
-                    Response::json($ff->restart($channel));
-                case 'status':
-                    Response::json($ff->status($id));
-                case 'monitor':
-                    $monitor = new StreamMonitor();
-                    $metrics = $monitor->probe((string) $channel['source_url']);
-                    $manager->updateMetrics($id, $metrics);
-                    Response::json($metrics);
                 case 'test':
-                    // اختبار المصدر من الخادم مباشرة (يعمل حتى لو exec معطّلة).
-                    $proxy = new \ToFiXStream\HlsProxy();
+                    // اختبار المصدر من الخادم مباشرة (مانيفست + أوّل مقطع).
+                    $proxy = new HlsProxy();
+                    if (!empty($channel['user_agent'])) {
+                        $proxy->setUpstreamUa((string) $channel['user_agent']);
+                    }
                     Response::json($proxy->testSource((string) $channel['source_url']));
                 default:
-                    Response::error('إجراء غير معروف للبثّ.', 400);
+                    Response::error('إجراء غير معروف. المتاح: test', 400);
             }
             break;
 
@@ -180,25 +165,20 @@ try {
         case 'stats':
             $manager = new ChannelManager();
             $channels = $manager->list();
-            $ff = new FFmpegManager();
 
             $active = 0;
             $viewers = 0;
-            $live = 0;
             foreach ($channels as $c) {
                 if (($c['status'] ?? '') === 'active') {
                     $active++;
                 }
                 $viewers += (int) ($c['viewers'] ?? 0);
-                if ($ff->isRunning((string) $c['id'])) {
-                    $live++; // القنوات التي تعمل عبر FFmpeg تُعدّ بثوثًا نشطة.
-                }
             }
 
             Response::json([
                 'total_channels'  => count($channels),
                 'active_channels' => $active,
-                'live_streams'    => $live,
+                'live_streams'    => $active,   // القنوات النشطة تُبثّ عبر البروكسي.
                 'total_viewers'   => $viewers,
             ]);
             break;
@@ -211,20 +191,17 @@ try {
             break;
 
         // ---------------------------------------------------------------
-        // تشخيص القدرات (لماذا لا يعمل إعادة البثّ/الشعار؟)
+        // تشخيص قدرات البروكسي
         // ---------------------------------------------------------------
         case 'diagnostics':
-            $ff = new FFmpegManager();
-            $streamsDir = Config::get('paths.streams');
+            $cacheDir = Config::get('paths.cache');
             Response::json([
-                'exec_enabled'     => FFmpegManager::execEnabled(),
-                'ffmpeg'           => $ff->isAvailable(),
-                'ffprobe'          => (new StreamMonitor())->isAvailable(),
-                'imagick'          => extension_loaded('imagick'),
-                'streams_writable' => is_dir($streamsDir) && is_writable($streamsDir),
-                'notes'            => [
-                    'exec' => 'مطلوب لتشغيل FFmpeg وإعادة البثّ الحقيقي. إن كان معطّلًا استخدم وضع Proxy.',
-                    'svg'  => 'شعار SVG يُحوَّل تلقائيًا إن توفّر Imagick أو exec؛ الأفضل رفع PNG.',
+                'curl'           => function_exists('curl_init'),
+                'cache_writable' => is_dir($cacheDir) && is_writable($cacheDir),
+                'cache_enabled'  => (bool) Config::get('proxy.cache_enabled', true),
+                'gd'             => extension_loaded('gd'),
+                'notes'          => [
+                    'proxy' => 'لوحة Proxy خالصة: تعيد بثّ روابط m3u8/ts وتخفي المصدر مع كاش واتصال واحد بالمصدر.',
                 ],
             ]);
             break;

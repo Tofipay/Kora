@@ -19,7 +19,7 @@ $appName    = Config::get('app.name');
 $version    = Config::get('app.version');
 $baseUrl    = Config::get('app.base_url');
 $categories = Config::get('dashboard.categories', []);
-$qualities  = array_keys((array) Config::get('ffmpeg.qualities', []));
+$qualities  = ['source', 'auto', '1080p', '720p', '480p', '360p', '240p'];
 $sourceTypes = \ToFiXStream\Channel::SOURCE_TYPES;
 // مفتاح API يُحقن في الواجهة لأنها لوحة تحكّم محميّة على الخادم.
 $apiKey = Config::get('security.api_key');
@@ -129,30 +129,28 @@ $apiKey = Config::get('security.api_key');
         <div class="field"><label>نوع المصدر</label><select name="source_type">
           <?php foreach ($sourceTypes as $t): ?><option value="<?= $t ?>"><?= strtoupper($t) ?></option><?php endforeach; ?>
         </select></div>
-        <div class="field"><label>وضع إعادة البثّ</label><select name="mode">
-          <option value="proxy">Proxy (خفيف — إعادة كتابة المانيفست)</option>
-          <option value="ffmpeg">FFmpeg (إعادة ترميز/نسخ)</option>
-        </select></div>
-      </div>
-      <div class="grid-2">
         <div class="field"><label>التصنيف</label><select name="category">
           <?php foreach ($categories as $c): ?><option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option><?php endforeach; ?>
         </select></div>
-        <div class="field"><label>الجودة</label><select name="quality">
-          <?php foreach ($qualities as $q): ?><option value="<?= $q ?>"><?= ucfirst($q) ?></option><?php endforeach; ?>
-        </select></div>
+      </div>
+      <div class="field">
+        <label>User-Agent مخصّص (اختياري — لسيرفرات IPTV التي تتطلّب مشغّلًا معيّنًا)</label>
+        <input name="user_agent" placeholder="فارغ = الافتراضي (VLC). أمثلة: IPTVSmartersPlayer / okhttp / Lavf">
       </div>
       <div class="grid-2">
+        <div class="field"><label>الجودة (وصفية)</label><select name="quality">
+          <?php foreach ($qualities as $q): ?><option value="<?= $q ?>"><?= ucfirst($q) ?></option><?php endforeach; ?>
+        </select></div>
         <div class="field"><label>الدولة (رمز)</label><input name="country" placeholder="SA" maxlength="3"></div>
-        <div class="field"><label>لغة الصوت</label><input name="audio_lang" placeholder="ar" value="ar"></div>
       </div>
+      <div class="field"><label>لغة الصوت</label><input name="audio_lang" placeholder="ar" value="ar"></div>
       <div class="field"><label>الوصف</label><textarea name="description" rows="2" placeholder="وصف مختصر للقناة"></textarea></div>
 
-      <!-- ===== العلامة المائية داخل البثّ (شعار/نصّ محروق في الفيديو) ===== -->
+      <!-- ===== شعار / نصّ فوق المشغّل ===== -->
       <div class="wm-box glass">
         <label class="wm-toggle">
           <input type="checkbox" name="watermark_enabled" id="wmEnabled" value="1">
-          <span><i class="bi bi-badge-wc"></i> إضافة شعار / نصّ داخل البثّ نفسه</span>
+          <span><i class="bi bi-badge-wc"></i> إضافة شعار / نصّ فوق المشغّل</span>
         </label>
         <div id="wmFields" style="display:none;margin-top:12px">
           <div class="grid-2">
@@ -186,7 +184,7 @@ $apiKey = Config::get('security.api_key');
               <div class="field"><label>النصّ</label><input name="watermark_text" placeholder="TOFI X TV"></div>
               <div class="field"><label>لون النصّ</label><input type="color" name="watermark_color" value="#ffffff" style="height:44px;padding:4px"></div>
             </div>
-            <small class="muted">ملاحظة: FFmpeg لا يشكّل الحروف العربية جيّدًا في النصّ — للشعار العربي استخدم "صورة".</small>
+            <small class="muted">النصّ العربي مدعوم بالكامل هنا (HTML).</small>
           </div>
 
           <div class="grid-2" style="margin-top:6px">
@@ -194,8 +192,7 @@ $apiKey = Config::get('security.api_key');
             <div class="field"><label>الشفافية (0.1 - 1)</label><input type="number" step="0.05" min="0.1" max="1" name="watermark_opacity" value="0.85"></div>
           </div>
           <small class="muted"><i class="bi bi-info-circle"></i>
-            <b>وضع Proxy</b> (بدون FFmpeg): يظهر الشعار كطبقة فوق مشغّل ToFi و embed — يعمل على أي استضافة ويدعم SVG والعربية.
-            <b>وضع FFmpeg</b>: يُحرق الشعار داخل ملف الفيديو نفسه فيظهر في كل المشغّلات وتطبيقات IPTV (يتطلّب FFmpeg + exec وتشغيل البثّ <i class="bi bi-broadcast"></i>).</small>
+            يظهر الشعار كطبقة فوق مشغّل ToFi و embed (يدعم SVG والعربية). لا يظهر داخل تطبيقات IPTV الخارجية.</small>
         </div>
       </div>
 

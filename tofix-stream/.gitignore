@@ -4,12 +4,13 @@
 # ملفّات وقت التشغيل (تُنشأ تلقائيًا)
 logs/*.log
 cache/*
-streams/*
 storage/pids/*
-storage/stats.json
+storage/watermarks/*
+assets/watermarks/wm_*
+assets/watermarks/*_raster.png
 
-# لا نتجاهل مجلّدات البنية نفسها
+# إبقاء مجلّدات البنية
 !logs/.gitkeep
 !cache/.gitkeep
-!streams/.gitkeep
 !storage/pids/.gitkeep
+!assets/watermarks/.gitkeep

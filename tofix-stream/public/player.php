@@ -36,10 +36,13 @@ $streamUrl = $channel['playback']['hls'];
 $name = htmlspecialchars((string) $channel['name']);
 $logo = htmlspecialchars((string) ($channel['logo'] ?? ''));
 
-// العلامة المائية: في وضع FFmpeg تُحرق داخل الفيديو، أمّا في وضع Proxy فنعرضها
-// كطبقة فوق المشغّل (تعمل بدون FFmpeg، وتدعم SVG والعربية بشكل مثالي).
+// طبقة الشعار/النصّ فوق المشغّل (تدعم SVG والعربية).
 $wm = is_array($channel['watermark'] ?? null) ? $channel['watermark'] : [];
-$showOverlay = !empty($wm['enabled']) && ($channel['mode'] ?? 'proxy') !== 'ffmpeg';
+$showOverlay = !empty($wm['enabled']);
+
+// هل المصدر بثّ ts مباشر؟ (يحتاج mpegts.js بدل hls.js).
+$sourceType = strtolower((string) ($channel['source_type'] ?? ''));
+$isTs = $sourceType === 'ts' || str_ends_with(strtolower($streamUrl), '.ts');
 
 /**
  * ترجمة موضع العلامة إلى أنماط CSS للطبقة فوق المشغّل.
@@ -133,11 +136,13 @@ $wmStyle = static function (array $wm): string {
   <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.13.2/dist/videojs-http-streaming.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.11.6/dist/shaka-player.compiled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.js"></script>
   <script>
     window.PLAYER = {
       engine: <?= json_encode($engine) ?>,
       src: <?= json_encode($streamUrl) ?>,
       isDash: false,
+      isTs: <?= $isTs ? 'true' : 'false' ?>,
     };
   </script>
   <script src="../assets/js/player.js?v=<?= (int) @filemtime(dirname(__DIR__) . '/assets/js/player.js') ?>"></script>

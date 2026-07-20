@@ -54,10 +54,18 @@ $proxy = new HlsProxy();
 
 // --- الحالة 2: رابط داخلي موقّع (مقطع / بلاي-ليست فرعية) ---
 if (isset($_GET['u'], $_GET['s'])) {
-    $original = $proxy->resolveUrl((string) $_GET['u'], (string) $_GET['s']);
-    if ($original === null) {
+    $resolved = $proxy->verifyAndResolve(
+        (string) $_GET['u'],
+        (string) ($_GET['ua'] ?? ''),
+        (string) $_GET['s']
+    );
+    if ($resolved === null) {
         http_response_code(403);
         exit('Invalid signature.');
+    }
+    [$original, $ua] = $resolved;
+    if ($ua !== '') {
+        $proxy->setUpstreamUa($ua);   // نفس مشغّل المانيفست للمقاطع.
     }
     $proxy->handle($original);
     exit;
@@ -76,6 +84,10 @@ if (!$channel) {
     http_response_code(404);
     exit('Channel not found.');
 }
+if (($channel['status'] ?? '') === 'inactive') {
+    http_response_code(403);
+    exit('Channel is inactive.');
+}
 
 // إن كانت الروابط الموقّعة مفعّلة، تحقّق من التوكن.
 if (Config::get('security.hotlink_protection', false) && !empty($_GET['token'])) {
@@ -85,15 +97,21 @@ if (Config::get('security.hotlink_protection', false) && !empty($_GET['token']))
     }
 }
 
-// إن كانت القناة تعمل عبر FFmpeg محليًا، أعِد توجيه البثّ من الملف المحلّي؛
-// وإلا استخدم البروكسي المباشر على الرابط الأصلي.
-$sourceUrl = (string) $channel['source_url'];
-if (($channel['mode'] ?? 'proxy') === 'ffmpeg') {
-    $localPlaylist = Config::get('ffmpeg.output_dir') . '/' . $channelId . '/index.m3u8';
-    if (is_file($localPlaylist)) {
-        // نمرّر البلاي-ليست المحلّي عبر نفس منطق إعادة الكتابة ليصبح المسار مطلقًا.
-        $sourceUrl = Config::baseUrl() . '/streams/' . $channelId . '/index.m3u8';
-    }
+// User-Agent مخصّص للقناة (لسيرفرات IPTV التي تتطلّب مشغّلًا معيّنًا).
+$channelUa = (string) ($channel['user_agent'] ?? '');
+if ($channelUa !== '') {
+    $proxy->setUpstreamUa($channelUa);
 }
 
+$sourceUrl = (string) $channel['source_url'];
+$sourceType = strtolower((string) ($channel['source_type'] ?? ''));
+$path = strtolower((string) (parse_url($sourceUrl, PHP_URL_PATH) ?? ''));
+
+// رابط مباشر مستمرّ (.ts أو نوع ts): بثّ تمريري حيّ دون تخزين.
+if ($sourceType === 'ts' || str_ends_with($path, '.ts')) {
+    $proxy->streamDirect($sourceUrl);
+    exit;
+}
+
+// خلاف ذلك: مانيفست HLS/DASH (إعادة كتابة + كاش + دمج الطلبات).
 $proxy->handle($sourceUrl);
