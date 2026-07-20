@@ -99,39 +99,183 @@ final class HlsProxy
      */
     public function handle(string $originalUrl): void
     {
-        // 1) جلب الرأس ونوع المحتوى أولًا بطلب خفيف نحدّده لاحقًا.
-        $result = $this->fetch($originalUrl);
-        if ($result === null) {
-            http_response_code(502);
-            header('Content-Type: text/plain; charset=utf-8');
-            echo 'Bad Gateway: تعذّر الوصول إلى المصدر.';
-            Logger::warning('فشل البروكسي في جلب المصدر', ['url' => $originalUrl]);
+        // نميّز المانيفست عن المقاطع بالامتداد لتوجيهها لطبقة الكاش المناسبة.
+        $path = strtolower((string) (parse_url($originalUrl, PHP_URL_PATH) ?? ''));
+        $isManifestUrl = str_ends_with($path, '.m3u8') || str_ends_with($path, '.mpd');
+
+        if ($isManifestUrl) {
+            $this->handleManifest($originalUrl);
+        } else {
+            $this->handleSegment($originalUrl);
+        }
+    }
+
+    /**
+     * خدمة المانيفست مع كاش قصير + دمج الطلبات:
+     * كل المشاهدين خلال نافذة الـ TTL يحصلون على نفس المانيفست من الكاش،
+     * فلا يُجلب المصدر إلا **مرّة واحدة** لكل نافذة مهما كان عدد المشاهدين.
+     */
+    private function handleManifest(string $originalUrl): void
+    {
+        $ttl = max(1, (int) Config::get('proxy.manifest_ttl', 2));
+        $key = sha1('manifest:' . $originalUrl);
+        $isDash = str_ends_with(strtolower((string) (parse_url($originalUrl, PHP_URL_PATH) ?? '')), '.mpd');
+        $outType = $isDash ? 'application/dash+xml' : 'application/vnd.apple.mpegurl';
+
+        // نُخزّن المانيفست **بعد** إعادة الكتابة مباشرةً (جاهزًا للإرسال).
+        $rewritten = $this->cached($key, 'manifests', $ttl, function () use ($originalUrl): ?array {
+            $res = $this->fetch($originalUrl);
+            if ($res === null) {
+                return null;
+            }
+            return [$this->rewriteManifest($res[0], $originalUrl), $res[1]];
+        });
+
+        if ($rewritten === null) {
+            $this->badGateway($originalUrl);
             return;
         }
 
-        [$body, $contentType, $httpCode] = $result;
-
-        // 2) هل هو مانيفست؟ (بالاعتماد على نوع المحتوى أو امتداد الرابط).
-        if ($this->isManifest($originalUrl, $contentType)) {
-            $rewritten = $this->rewriteManifest($body, $originalUrl);
-            $isDash = str_contains(strtolower($contentType), 'dash') || str_ends_with(strtolower(parse_url($originalUrl, PHP_URL_PATH) ?? ''), '.mpd');
-            $outType = $isDash ? 'application/dash+xml' : 'application/vnd.apple.mpegurl';
-
-            $this->emitCommonHeaders();
-            header('Content-Type: ' . $outType);
-            // البثّ المباشر لا يُكاش طويلًا.
-            header('Cache-Control: no-cache, no-store, must-revalidate');
-            http_response_code($httpCode ?: 200);
-            echo $rewritten;
-            return;
-        }
-
-        // 3) محتوى ثنائي (segment/key/init): مرّره كما هو.
         $this->emitCommonHeaders();
-        header('Content-Type: ' . ($contentType ?: 'application/octet-stream'));
-        header('Cache-Control: public, max-age=' . (int) Config::get('proxy.segment_ttl', 10));
-        http_response_code($httpCode ?: 200);
-        echo $body;
+        header('Content-Type: ' . $outType);
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        echo $rewritten[0];
+    }
+
+    /**
+     * خدمة مقطع (ts/m4s/mp4/key/init) مع كاش على القرص + دمج الطلبات:
+     * أوّل مشاهد يطلب المقطع يجلبه من المصدر مرّة واحدة ويُخزّنه، وبقيّة
+     * المشاهدين (100 أو أكثر) يُخدَّمون من القرص دون أي اتصال جديد بالمصدر.
+     */
+    private function handleSegment(string $originalUrl): void
+    {
+        $ttl = max(10, (int) Config::get('proxy.segment_cache_ttl', 120));
+        $key = sha1('seg:' . $originalUrl);
+
+        $data = $this->cached($key, 'segments', $ttl, function () use ($originalUrl): ?array {
+            $res = $this->fetch($originalUrl);
+            if ($res === null) {
+                return null;
+            }
+            return [$res[0], $res[1] ?: 'video/mp2t'];
+        });
+
+        if ($data === null) {
+            $this->badGateway($originalUrl);
+            return;
+        }
+
+        $this->emitCommonHeaders();
+        header('Content-Type: ' . ($data[1] ?: 'application/octet-stream'));
+        // المقاطع ثابتة المحتوى: نسمح للمتصفّح/CDN بتخزينها أيضًا.
+        header('Cache-Control: public, max-age=' . $ttl);
+        header('Content-Length: ' . strlen($data[0]));
+        echo $data[0];
+    }
+
+    /**
+     * طبقة كاش عامّة مع دمج الطلبات (request coalescing) عبر قفل ملفّات.
+     *
+     * إن وُجد الكاش وكان حديثًا يُعاد فورًا؛ وإلا يأخذ أوّل طلبٍ القفلَ ويجلب
+     * من المصدر مرّة واحدة، بينما تنتظر الطلبات المتزامنة ثم تقرأ من الكاش.
+     * هكذا لا يفتح 100 مشاهد 100 اتصال بالمصدر، بل اتصال واحد فقط.
+     *
+     * @param string   $key      مفتاح فريد للمورد.
+     * @param string   $subdir   المجلّد الفرعي داخل cache/.
+     * @param int      $ttl      مدّة صلاحية الكاش بالثواني.
+     * @param callable $producer دالة تُرجع [body, contentType] أو null عند الفشل.
+     * @return array{0:string,1:string}|null
+     */
+    private function cached(string $key, string $subdir, int $ttl, callable $producer): ?array
+    {
+        if (!Config::get('proxy.cache_enabled', true)) {
+            return $producer();
+        }
+
+        $dir = Config::get('paths.cache') . '/' . $subdir;
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $file = "$dir/$key";
+        $meta = "$dir/$key.ct";
+
+        // مسار سريع: كاش حديث موجود.
+        if ($this->fresh($file, $ttl)) {
+            return [(string) @file_get_contents($file), (string) @file_get_contents($meta)];
+        }
+
+        // دمج الطلبات: نأخذ قفلًا حصريًّا على هذا المورد.
+        $lockFile = "$dir/$key.lock";
+        $lock = @fopen($lockFile, 'c');
+        if ($lock === false) {
+            // تعذّر القفل — نجلب مباشرة دون كاش.
+            return $producer();
+        }
+        flock($lock, LOCK_EX);
+
+        try {
+            // فحص مزدوج: ربّما جلبها طلبٌ آخر أثناء انتظارنا القفل.
+            if ($this->fresh($file, $ttl)) {
+                return [(string) @file_get_contents($file), (string) @file_get_contents($meta)];
+            }
+
+            $result = $producer();
+            if ($result === null) {
+                // عند فشل المصدر نُقدّم آخر نسخة مكاشة (حتى لو قديمة) إن وُجدت.
+                if (is_file($file)) {
+                    return [(string) @file_get_contents($file), (string) @file_get_contents($meta)];
+                }
+                return null;
+            }
+
+            // كتابة ذرّية إلى الكاش (write-then-rename).
+            @file_put_contents("$file.tmp", $result[0]);
+            @rename("$file.tmp", $file);
+            @file_put_contents($meta, $result[1]);
+
+            // تنظيف عشوائي خفيف للملفّات القديمة (بدون Cron).
+            $this->gc($dir, $ttl);
+
+            return $result;
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
+     * هل ملفّ الكاش موجود وحديث ضمن مدّة الصلاحية؟
+     */
+    private function fresh(string $file, int $ttl): bool
+    {
+        return is_file($file) && (time() - (int) @filemtime($file)) < $ttl;
+    }
+
+    /**
+     * تنظيف احتمالي للملفّات المنتهية في مجلّد الكاش (يعمل نحو 2% من الطلبات).
+     */
+    private function gc(string $dir, int $ttl): void
+    {
+        if (random_int(1, 50) !== 1) {
+            return;
+        }
+        $expiry = time() - max($ttl * 3, 300);
+        foreach (glob($dir . '/*') ?: [] as $f) {
+            if (is_file($f) && @filemtime($f) < $expiry) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /**
+     * إرسال استجابة 502 موحّدة عند تعذّر الوصول للمصدر.
+     */
+    private function badGateway(string $url): void
+    {
+        http_response_code(502);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Bad Gateway: تعذّر الوصول إلى المصدر.';
+        Logger::warning('فشل البروكسي في جلب المصدر', ['url' => $url]);
     }
 
     // -------------------------------------------------------------------------

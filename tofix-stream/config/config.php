@@ -87,6 +87,10 @@ return [
         // مدّة صلاحية كاش المانيفست بالثواني (البثّ المباشر يحتاج قيمة صغيرة).
         'manifest_ttl'   => (int) $env('PROXY_MANIFEST_TTL', 2),
         'segment_ttl'    => (int) $env('PROXY_SEGMENT_TTL', 10),
+        // تفعيل الكاش ودمج الطلبات: اتصال واحد بالمصدر مهما كثر المشاهدون.
+        'cache_enabled'  => $env('PROXY_CACHE', true),
+        // مدّة بقاء المقطع في كاش القرص (يخدم كل المشاهدين من نسخة واحدة).
+        'segment_cache_ttl' => (int) $env('PROXY_SEGMENT_CACHE_TTL', 120),
         // User-Agent يُرسل للمصدر الأصلي لإخفاء هويّة الزائر الحقيقية.
         'upstream_ua'    => $env('PROXY_UA', 'Mozilla/5.0 (compatible; ToFiXStream/1.0)'),
         // مهلة الاتصال بالمصدر الأصلي.
