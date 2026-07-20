@@ -158,6 +158,24 @@ window.TOFIXTV = {
 <script src="<?= e(asset_min_url('/assets/js/api-service.js')) ?>" defer></script>
 <script src="<?= e(asset_min_url('/assets/js/app.js')) ?>" defer></script>
 
+<?php if (\TofiXTv\Core\Ai::enabled()): ?>
+<!-- AI Assistant — enabled/disabled from Admin → المساعد الذكي. -->
+<script>
+window.TOFIXTV.ai = {
+  title:'<?= e(t('ai.title')) ?>', subtitle:'<?= e(t('ai.subtitle')) ?>',
+  welcome:'<?= e(t('ai.welcome')) ?>', placeholder:'<?= e(t('ai.placeholder')) ?>',
+  send:'<?= e(t('ai.send')) ?>', clear:'<?= e(t('ai.clear')) ?>',
+  error:'<?= e(t('ai.error')) ?>', rate_limited:'<?= e(t('ai.rate_limited')) ?>',
+  cta_watch_match:'<?= e(t('ai.cta_watch_match')) ?>', cta_watch_movie:'<?= e(t('ai.cta_watch_movie')) ?>',
+  cta_watch_series:'<?= e(t('ai.cta_watch_series')) ?>', cta_open_channel:'<?= e(t('ai.cta_open_channel')) ?>',
+  cta_details:'<?= e(t('ai.cta_details')) ?>',
+  seasons:'<?= e(t('cinema.seasons')) ?>', episodes:'<?= e(t('cinema.episodes')) ?>',
+  suggestions: <?= json_encode(\TofiXTv\Core\Ai::suggestions(), JSON_UNESCAPED_UNICODE) ?>
+};
+</script>
+<script src="<?= e(asset_min_url('/assets/js/ai-chat.js')) ?>" defer></script>
+<?php endif; ?>
+
 <!-- Google AdSense — Auto Ads. Consent-gated (marketing category) AND loaded
      on the FIRST user interaction with a 6s fallback timer, so it can never
      affect first paint, LCP, TBT or the Lighthouse trace. When the visitor

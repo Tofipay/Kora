@@ -407,6 +407,21 @@ return [
     'more.support'     => 'Support',
     'more.telegram'    => 'Telegram Channel',
 
+    // AI Assistant
+    'ai.title'       => 'ToFi X Tv Assistant',
+    'ai.subtitle'    => 'Matches · Movies · Series · News',
+    'ai.welcome'     => "Hi! I'm the ToFi X Tv smart assistant 👋 Ask me about any match, movie, series or news and I'll answer straight from the site's data.",
+    'ai.placeholder' => 'Type your question… e.g. France vs Argentina',
+    'ai.send'        => 'Send',
+    'ai.clear'       => 'New chat',
+    'ai.error'       => 'Something went wrong — try again.',
+    'ai.rate_limited'=> 'Too many messages — wait a moment and try again.',
+    'ai.cta_watch_match'  => 'Watch match',
+    'ai.cta_watch_movie'  => 'Watch now',
+    'ai.cta_watch_series' => 'Watch series',
+    'ai.cta_open_channel' => 'Open channel',
+    'ai.cta_details'      => 'View details',
+
     // Telegram join dialog
     'tg.title' => 'Join ToFi X Tv Telegram Channel',
     'tg.desc'  => 'Get the latest news, matches and updates directly from our official Telegram channel.',

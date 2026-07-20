@@ -112,6 +112,8 @@ $router->get('/api/live-scores', [ApiJson::class, 'liveScores']);
 $router->get('/api/videos', [ApiJson::class, 'videos']);
 $router->get('/api/match/{id:\d+}', fn($a) => ApiJson::match((int)$a['id']));
 $router->post('/api/newsletter', [ApiJson::class, 'newsletter']);
+/* AI Assistant (site-data-first chat). Additive route only. */
+$router->any('/api/ai-chat', [ApiJson::class, 'aiChat']);
 // any(): POST (JSON body), GET (query fallback — survives host-canonical
 // 301s that flip POST→GET on some hosting setups) and OPTIONS (preflight).
 $router->any('/api/push-subscribe', [ApiJson::class, 'pushSubscribe']);

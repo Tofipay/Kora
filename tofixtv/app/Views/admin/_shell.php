@@ -19,6 +19,7 @@ function admin_top(string $title, string $active = ''): void
         'cinema-movies' => ['cinema/movies', 'إدارة الأفلام',    'M2 4h20v16H2zM2 9h20M7 4l2.5 5M12 4l2.5 5M17 4l2.5 5'],
         'cinema-series' => ['cinema/series', 'إدارة المسلسلات',  'M2 7h20v13H2zM8 2l4 4 4-4M9.5 11l5 3-5 3z'],
         'channels'      => ['channels',      'مكتبة القنوات',    'M4 5h16v14H4zM8 5v14M16 5v14'],
+        'ai'            => ['ai',            'المساعد الذكي',    'M12 3l1.7 3.8 3.8 1.7-3.8 1.7L12 14l-1.7-3.8L6.5 8.5l3.8-1.7zM18.5 13.5l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9z'],
         'app'           => ['app',           'التطبيق',          'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10 19h4'],
         'newsletter'    => ['newsletter',    'النشرة البريدية',  'M3 5h18v14H3zM3 7l9 6 9-6'],
         'security'      => ['security',      'الأمان',           'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z'],

@@ -52,6 +52,8 @@ final class Admin
             // Cinema managers: enable/disable, app-only access, age ratings.
             $action === 'cinema' || $action === 'cinema/movies' => self::cinemaManager('movie'),
             $action === 'cinema/series' => self::cinemaManager('tv'),
+            // AI Assistant control (enable/disable + provider settings).
+            $action === 'ai'            => self::aiSettings(),
             $action === 'security'      => self::security(),
             default => View::notFound(),
         };
@@ -146,6 +148,47 @@ final class Admin
         self::render('app-channels', [
             'items' => \TofiXTv\Core\AppChannels::all(),
             'msg'   => $msg,
+        ]);
+    }
+
+    /* ---------------- AI Assistant ---------------- */
+
+    private static function aiSettings(): void
+    {
+        $msg = null;
+        $testResult = null;
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+            if (isset($_POST['save_ai'])) {
+                $cur = Settings::get('ai', []);
+                if (!is_array($cur)) $cur = [];
+                Settings::set('ai', array_merge($cur, [
+                    'enabled'  => isset($_POST['enabled']),
+                    'base_url' => trim((string)($_POST['base_url'] ?? '')),
+                    // Empty field keeps the built-in default key.
+                    'api_key'  => trim((string)($_POST['api_key'] ?? '')),
+                    'model'    => trim((string)($_POST['model'] ?? '')),
+                ]));
+                $msg = 'تم الحفظ';
+            }
+            if (isset($_POST['test_ai'])) {
+                $t0 = microtime(true);
+                $out = \TofiXTv\Core\Ai::llm([
+                    ['role' => 'system', 'content' => 'Reply with exactly: OK'],
+                    ['role' => 'user', 'content' => 'ping'],
+                ], 10);
+                $ms = (int)round((microtime(true) - $t0) * 1000);
+                $testResult = $out !== null
+                    ? "نجح الاتصال بالمزوّد ({$ms}ms) — الرد: " . mb_substr($out, 0, 60)
+                    : 'فشل الاتصال بالمزوّد — تحقق من الرابط والمفتاح والموديل.';
+            }
+        }
+        $s = Settings::get('ai', []);
+        if (!is_array($s)) $s = [];
+        self::render('ai', [
+            'msg'  => $msg,
+            'test' => $testResult,
+            's'    => $s,
+            'cfg'  => \TofiXTv\Core\Ai::config(),
         ]);
     }
 

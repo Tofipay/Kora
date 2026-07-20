@@ -95,6 +95,42 @@ final class ApiJson
         ]);
     }
 
+    /**
+     * AI Assistant endpoint. POST {message, history?} → {ok, text, cards,
+     * suggestions}. Same-origin only, rate limited per IP, all input
+     * sanitized server-side; cards are built exclusively from site data.
+     */
+    public static function aiChat(): void
+    {
+        header('Cache-Control: no-store');
+        if (!\TofiXTv\Core\Ai::enabled()) View::json(['ok' => false, 'error' => 'disabled'], 403);
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') View::json(['ok' => false, 'error' => 'method'], 405);
+
+        // CSRF/same-origin guard: browsers always send Origin on cross-site
+        // POSTs — reject any that doesn't match our host.
+        $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
+        if ($origin !== '') {
+            $oh = strtolower((string)(parse_url($origin, PHP_URL_HOST) ?: ''));
+            $sh = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+            $sh = preg_replace('/:\d+$/', '', $sh);
+            $oh = preg_replace('/:\d+$/', '', $oh);
+            if ($oh !== '' && $sh !== '' && $oh !== $sh) View::json(['ok' => false, 'error' => 'origin'], 403);
+        }
+
+        if (\TofiXTv\Core\Ai::rateLimited()) View::json(['ok' => false, 'error' => 'rate_limited'], 429);
+
+        $raw = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($raw)) $raw = [];
+        $message = (string)($raw['message'] ?? '');
+        $history = [];
+        foreach (array_slice(is_array($raw['history'] ?? null) ? $raw['history'] : [], -8) as $h) {
+            if (is_array($h)) $history[] = ['role' => (string)($h['role'] ?? 'user'), 'content' => (string)($h['content'] ?? '')];
+        }
+
+        $res = \TofiXTv\Core\Ai::handle($message, $history);
+        View::json(['ok' => true] + $res);
+    }
+
     /** Newsletter signup — stored locally, exportable from the admin panel. */
     public static function newsletter(): void
     {
