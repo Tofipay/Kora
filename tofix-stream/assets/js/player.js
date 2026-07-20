@@ -28,14 +28,67 @@ function initVideoJs() {
 function initHlsJs() {
   if (isDash) return initShaka(); // Hls.js لا يدعم DASH.
   if (window.Hls && Hls.isSupported()) {
-    const hls = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
+    const hls = new Hls({
+      lowLatencyMode: false,       // أكثر استقرارًا لبثّ IPTV.
+      backBufferLength: 30,
+      manifestLoadingTimeOut: 20000,
+      manifestLoadingMaxRetry: 4,
+      levelLoadingMaxRetry: 4,
+      fragLoadingMaxRetry: 6,      // مقاطع IPTV قد تتأخّر — نعيد المحاولة.
+      fragLoadingTimeOut: 30000,
+    });
+    window._hls = hls;
     hls.loadSource(src);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+
+    // استرداد تلقائي محدود المحاولات (حتى لا يُرهق المصدر عند خطأ دائم).
+    let netRetry = 0, mediaRetry = 0;
+    hls.on(Hls.Events.ERROR, (_evt, data) => {
+      if (!data.fatal) return;
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          if (netRetry++ < 4) {
+            console.warn('HLS network error — retrying…', data.details);
+            setTimeout(() => hls.startLoad(), 1000);   // تمهّل قبل إعادة المحاولة.
+          } else {
+            showError('تعذّر تحميل البثّ من المصدر. تأكّد أن الرابط يعمل (زرّ اختبار المصدر).');
+            hls.destroy();
+          }
+          break;
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          if (mediaRetry++ < 3) {
+            console.warn('HLS media error — recovering…', data.details);
+            hls.recoverMediaError();
+          } else {
+            showError('تعذّر فكّ ترميز الفيديو في هذا المتصفّح (قد يكون الترميز غير مدعوم). جرّب متصفّحًا آخر.');
+            hls.destroy();
+          }
+          break;
+        default:
+          showError('تعذّر تشغيل البثّ. تأكّد أن رابط المصدر يعمل (استخدم زرّ اختبار المصدر في اللوحة).');
+          hls.destroy();
+      }
+    });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = src; // Safari الأصلي.
+    video.src = src; // Safari/iOS يشغّل HLS أصلًا.
     video.play().catch(() => {});
+  } else {
+    showError('متصفّحك لا يدعم HLS.');
   }
+}
+
+/* عرض رسالة خطأ واضحة فوق الفيديو. */
+function showError(msg) {
+  let el = document.getElementById('playerError');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'playerError';
+    el.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+      + 'text-align:center;padding:24px;color:#fff;background:rgba(0,0,0,.75);font-family:sans-serif;z-index:9';
+    document.querySelector('.video-frame')?.appendChild(el);
+  }
+  el.textContent = msg;
 }
 
 async function initShaka() {

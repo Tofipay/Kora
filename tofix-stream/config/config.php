@@ -144,9 +144,10 @@ return [
         // قائمة عناوين IP المسموح لها (فارغة = الجميع).
         'ip_allowlist'    => array_filter(explode(',', (string) $env('IP_ALLOWLIST', ''))),
         // تحديد معدّل الطلبات (Rate Limit) لكل IP في نافذة زمنية.
+        // القيمة مرتفعة لأن مشاهد HLS الواحد يجلب المانيفست + عدّة مقاطع كل دقيقة.
         'rate_limit'      => [
             'enabled'  => $env('RATE_LIMIT', true),
-            'max'      => (int) $env('RATE_LIMIT_MAX', 120),   // عدد الطلبات
+            'max'      => (int) $env('RATE_LIMIT_MAX', 600),   // عدد الطلبات لكل IP
             'window'   => (int) $env('RATE_LIMIT_WINDOW', 60), // خلال كم ثانية
         ],
         // مفتاح API للوصول إلى نقاط النهاية الإدارية.

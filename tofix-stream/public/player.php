@@ -19,7 +19,8 @@ use ToFiXStream\Config;
 use ToFiXStream\ChannelManager;
 
 $channelId = (string) ($_GET['channel'] ?? '');
-$engine    = in_array($_GET['engine'] ?? '', ['videojs', 'hlsjs', 'shaka'], true) ? $_GET['engine'] : 'videojs';
+// hls.js هو الافتراضي لأنه الأكثر موثوقية مع بثّ IPTV الحيّ (TS).
+$engine    = in_array($_GET['engine'] ?? '', ['videojs', 'hlsjs', 'shaka'], true) ? $_GET['engine'] : 'hlsjs';
 
 $manager = new ChannelManager();
 $channel = $channelId !== '' ? $manager->get($channelId) : null;
