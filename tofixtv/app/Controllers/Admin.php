@@ -177,9 +177,11 @@ final class Admin
                     ['role' => 'user', 'content' => 'ping'],
                 ], 10);
                 $ms = (int)round((microtime(true) - $t0) * 1000);
+                $err = \TofiXTv\Core\Ai::lastError();
                 $testResult = $out !== null
                     ? "نجح الاتصال بالمزوّد ({$ms}ms) — الرد: " . mb_substr($out, 0, 60)
-                    : 'فشل الاتصال بالمزوّد — تحقق من الرابط والمفتاح والموديل.';
+                    : 'فشل الاتصال بالمزوّد' . ($err !== '' ? ' — السبب: ' . $err : '')
+                      . ' — تحقق من الرابط والمفتاح والموديل، ومن سماح الخادم بالاتصالات الخارجية (cURL outbound).';
             }
         }
         $s = Settings::get('ai', []);

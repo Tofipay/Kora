@@ -26,8 +26,16 @@ final class Ai
 {
     /* Provider defaults — overridable at runtime from Admin → المساعد الذكي. */
     private const DEFAULT_BASE_URL = 'https://api.bluesminds.com/v1';
-    private const DEFAULT_API_KEY  = 'sk-u29IjaYVANsQ5UQa73CAZ3WRfYVDx3Ngoux0ClKse8eRL25D';
+    private const DEFAULT_API_KEY  = 'sk-hs43RAsxJtjtUWranWrnvf3iFV4EdtHWLIimGV4HPO7xsJ9N';
     private const DEFAULT_MODEL    = 'gpt-5.2-chat';
+
+    /** Last provider-call failure detail (for the admin connection test). */
+    private static string $lastError = '';
+
+    public static function lastError(): string
+    {
+        return self::$lastError;
+    }
 
     private const MAX_MSG_LEN  = 600;
     private const MAX_HISTORY  = 8;
@@ -488,11 +496,15 @@ final class Ai
         return $out;
     }
 
-    /** Raw chat-completions call. Returns assistant text or null. */
+    /** Raw chat-completions call. Returns assistant text or null (see lastError). */
     public static function llm(array $messages, int $maxTokens = 600): ?string
     {
+        self::$lastError = '';
         $cfg = self::config();
-        if ($cfg['api_key'] === '') return null;
+        if ($cfg['api_key'] === '') {
+            self::$lastError = 'missing api_key';
+            return null;
+        }
         $ch = curl_init($cfg['base_url'] . '/chat/completions');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -510,13 +522,27 @@ final class Ai
                 'temperature' => 0.4,
             ], JSON_UNESCAPED_UNICODE),
         ]);
-        $body = curl_exec($ch);
-        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $body    = curl_exec($ch);
+        $code    = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
         curl_close($ch);
-        if (!is_string($body) || $code < 200 || $code >= 300) return null;
+
+        if (!is_string($body) || $code < 200 || $code >= 300) {
+            // Keep the REAL reason for the admin connection test: transport
+            // error (DNS/TLS/firewall) vs an HTTP error body from the provider.
+            self::$lastError = $curlErr !== ''
+                ? 'cURL: ' . $curlErr
+                : 'HTTP ' . $code . (is_string($body) && $body !== ''
+                    ? ' — ' . mb_substr(trim(strip_tags($body)), 0, 220) : '');
+            return null;
+        }
         $data = json_decode($body, true);
         $text = trim((string)($data['choices'][0]['message']['content'] ?? ''));
-        return $text !== '' ? $text : null;
+        if ($text === '') {
+            self::$lastError = 'empty completion — ' . mb_substr((string)$body, 0, 220);
+            return null;
+        }
+        return $text;
     }
 
     /* ==================== Copy + suggestions ==================== */
