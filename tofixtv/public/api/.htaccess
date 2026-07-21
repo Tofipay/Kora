@@ -1,0 +1,5 @@
+# JSON proxy endpoints. Block the shared bootstrap from direct access.
+Options -Indexes
+<Files "_boot.php">
+  Require all denied
+</Files>

@@ -1,0 +1,37 @@
+{
+    "total": 37,
+    "days": {
+        "2026-07-14": {
+            "total": 37,
+            "home": 12,
+            "movies": 11,
+            "series": 2,
+            "matches": 6,
+            "news": 1,
+            "leagues": 1,
+            "standings": 1,
+            "videos": 1,
+            "live": 1,
+            "league": 1
+        }
+    },
+    "sources": {
+        "direct": 37
+    },
+    "devices": {
+        "other": 25,
+        "linux": 12
+    },
+    "browsers": {
+        "other": 25,
+        "chrome": 12
+    },
+    "online": {
+        "0545aaeef5": 1784045829
+    },
+    "top": {
+        "videos": {
+            "الكل": 1
+        }
+    }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "توفي إكس تيفي — ToFi X Tv",
+  "short_name": "ToFi X Tv",
+  "description": "بث مباشر للمباريات، أخبار كرة القدم، وأحدث الأفلام والمسلسلات في منصة واحدة",
+  "id": "/",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["sports", "news", "entertainment"],
+  "icons": [
+    { "src": "/assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "المباريات المباشرة",
+      "short_name": "مباشر",
+      "url": "/live",
+      "icons": [{ "src": "/assets/brand/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "مباريات اليوم",
+      "short_name": "اليوم",
+      "url": "/today",
+      "icons": [{ "src": "/assets/brand/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "الأفلام",
+      "short_name": "أفلام",
+      "url": "/movies",
+      "icons": [{ "src": "/assets/brand/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "المسلسلات",
+      "short_name": "مسلسلات",
+      "url": "/series",
+      "icons": [{ "src": "/assets/brand/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "الأخبار",
+      "short_name": "أخبار",
+      "url": "/news",
+      "icons": [{ "src": "/assets/brand/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
