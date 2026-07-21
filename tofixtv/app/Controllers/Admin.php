@@ -162,11 +162,16 @@ final class Admin
                 $cur = Settings::get('ai', []);
                 if (!is_array($cur)) $cur = [];
                 Settings::set('ai', array_merge($cur, [
-                    'enabled'  => isset($_POST['enabled']),
-                    'base_url' => trim((string)($_POST['base_url'] ?? '')),
-                    // Empty field keeps the built-in default key.
-                    'api_key'  => trim((string)($_POST['api_key'] ?? '')),
-                    'model'    => trim((string)($_POST['model'] ?? '')),
+                    'enabled'      => isset($_POST['enabled']),
+                    'provider'     => in_array($_POST['provider'] ?? '', ['gemini', 'openai'], true)
+                        ? (string)$_POST['provider'] : 'gemini',
+                    // Empty fields keep the built-in defaults.
+                    'gemini_base'  => trim((string)($_POST['gemini_base'] ?? '')),
+                    'gemini_key'   => trim((string)($_POST['gemini_key'] ?? '')),
+                    'gemini_model' => trim((string)($_POST['gemini_model'] ?? '')),
+                    'base_url'     => trim((string)($_POST['base_url'] ?? '')),
+                    'api_key'      => trim((string)($_POST['api_key'] ?? '')),
+                    'model'        => trim((string)($_POST['model'] ?? '')),
                 ]));
                 $msg = 'تم الحفظ';
             }

@@ -126,8 +126,10 @@ final class ApiJson
         foreach (array_slice(is_array($raw['history'] ?? null) ? $raw['history'] : [], -8) as $h) {
             if (is_array($h)) $history[] = ['role' => (string)($h['role'] ?? 'user'), 'content' => (string)($h['content'] ?? '')];
         }
+        // Context Engine: the page the visitor is currently viewing.
+        $page = is_array($raw['page'] ?? null) ? $raw['page'] : [];
 
-        $res = \TofiXTv\Core\Ai::handle($message, $history);
+        $res = \TofiXTv\Core\Ai::handle($message, $history, $page);
         View::json(['ok' => true] + $res);
     }
 

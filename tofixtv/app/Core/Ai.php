@@ -4,30 +4,48 @@ declare(strict_types=1);
 namespace TofiXTv\Core;
 
 /**
- * ToFi X Tv AI Assistant — site-data-first answer engine.
+ * ToFi X Tv AI Assistant v2 — AI UI Generator (site-data-first).
  *
- * Design (anti-hallucination by construction):
- *   1. Every question is first resolved against the SITE's own data —
- *      matches feed, teams/players search, TMDB cinema catalogue, news,
- *      channel libraries. When entities are found, the interactive cards
- *      (match/movie/series/news/channel/team/player/league) are built
- *      SERVER-SIDE from real payloads with real site URLs; the language
- *      model never invents a score, a date or a link.
- *   2. Only general/conversational questions reach the LLM, with a strict
- *      system prompt (answer from provided context, admit uncertainty,
- *      never guess results) and a compact context of today's fixtures.
- *   3. Everything is cached: entity resolutions ride the existing disk
- *      cache; single-turn LLM answers are cached for an hour.
+ * Architecture:
+ *   1. SITE KNOWLEDGE SYSTEM — the assistant always knows the site name,
+ *      every section URL, the contact email, Telegram, and app links,
+ *      extracted from the site's own config/lang files (never invented).
+ *   2. CONTEXT ENGINE — the page the visitor is currently on (title,
+ *      description, path) is sent with each question and enriched
+ *      server-side with the REAL entity payload behind that page
+ *      (match / team / league / movie / series / news).
+ *   3. PROMPT BUILDER — Site Information / Current Page / Data / User
+ *      Question sections, assembled automatically per request.
+ *   4. ANSWERS ARE ALWAYS HTML — data intents (matches, cinema, news,
+ *      contact, telegram, email, about…) render professional HTML cards
+ *      LOCALLY from real API payloads (instant + hallucination-free);
+ *      general questions go to the LLM (Gemini native API by default)
+ *      which must reply {"type":"html","html":"…"}; every byte of model
+ *      HTML passes an allowlist sanitizer before reaching the browser.
+ *   5. FALLBACK SYSTEM — whenever the model fails or returns unusable
+ *      output, a local HTML template is generated instead. The visitor
+ *      never sees markdown, raw text errors or an empty reply.
  *
- * Admin control: Settings group "ai" — enabled flag + provider overrides
- * (base_url / api_key / model). Disabling hides the whole widget.
+ * Admin control (Settings group "ai"): enabled flag, provider selection
+ * (gemini | openai-compatible) and credentials/model overrides.
  */
 final class Ai
 {
     /* Provider defaults — overridable at runtime from Admin → المساعد الذكي. */
-    private const DEFAULT_BASE_URL = 'https://api.bluesminds.com/v1';
-    private const DEFAULT_API_KEY  = 'sk-hs43RAsxJtjtUWranWrnvf3iFV4EdtHWLIimGV4HPO7xsJ9N';
-    private const DEFAULT_MODEL    = 'gpt-5.2-chat';
+    private const DEFAULT_PROVIDER        = 'gemini';
+    private const DEFAULT_GEMINI_BASE     = 'https://generativelanguage.googleapis.com/v1beta';
+    private const DEFAULT_GEMINI_KEY      = 'AIzaSyCwivDrU7gkTIpc6LJFAgBgVWTIWxjlBEo';
+    private const DEFAULT_GEMINI_MODEL    = 'models/gemini-3.1-flash-lite';
+    private const DEFAULT_OPENAI_BASE     = 'https://api.bluesminds.com/v1';
+    private const DEFAULT_OPENAI_KEY      = 'sk-hs43RAsxJtjtUWranWrnvf3iFV4EdtHWLIimGV4HPO7xsJ9N';
+    private const DEFAULT_OPENAI_MODEL    = 'gpt-5.2-chat';
+
+    private const MAX_MSG_LEN  = 600;
+    private const MAX_HISTORY  = 8;
+    private const RATE_LIMIT   = 14;    // requests per RATE_WINDOW per IP
+    private const RATE_WINDOW  = 60;    // seconds
+    private const TELEGRAM_URL = 'https://t.me/tofi_tv';
+    private const APK_URL      = 'https://apk.tofi-xtv.com';
 
     /** Last provider-call failure detail (for the admin connection test). */
     private static string $lastError = '';
@@ -37,20 +55,21 @@ final class Ai
         return self::$lastError;
     }
 
-    private const MAX_MSG_LEN  = 600;
-    private const MAX_HISTORY  = 8;
-    private const RATE_LIMIT   = 14;    // requests per RATE_WINDOW per IP
-    private const RATE_WINDOW  = 60;    // seconds
-
     public static function config(): array
     {
         $s = Settings::get('ai', []);
         if (!is_array($s)) $s = [];
+        $provider = in_array($s['provider'] ?? '', ['gemini', 'openai'], true)
+            ? $s['provider'] : self::DEFAULT_PROVIDER;
         return [
-            'enabled'  => !array_key_exists('enabled', $s) || !empty($s['enabled']),
-            'base_url' => rtrim((string)($s['base_url'] ?? '') ?: self::DEFAULT_BASE_URL, '/'),
-            'api_key'  => (string)($s['api_key'] ?? '') ?: self::DEFAULT_API_KEY,
-            'model'    => (string)($s['model'] ?? '') ?: self::DEFAULT_MODEL,
+            'enabled'      => !array_key_exists('enabled', $s) || !empty($s['enabled']),
+            'provider'     => $provider,
+            'gemini_base'  => rtrim((string)($s['gemini_base'] ?? '') ?: self::DEFAULT_GEMINI_BASE, '/'),
+            'gemini_key'   => (string)($s['gemini_key'] ?? '') ?: self::DEFAULT_GEMINI_KEY,
+            'gemini_model' => (string)($s['gemini_model'] ?? '') ?: self::DEFAULT_GEMINI_MODEL,
+            'base_url'     => rtrim((string)($s['base_url'] ?? '') ?: self::DEFAULT_OPENAI_BASE, '/'),
+            'api_key'      => (string)($s['api_key'] ?? '') ?: self::DEFAULT_OPENAI_KEY,
+            'model'        => (string)($s['model'] ?? '') ?: self::DEFAULT_OPENAI_MODEL,
         ];
     }
 
@@ -71,115 +90,281 @@ final class Ai
         if ($n >= self::RATE_LIMIT) return true;
         if ($n === 0) Cache::set($key, ['n' => 1]);
         else {
-            // Keep the original window start (don't slide it on every hit).
             $row['n'] = $n + 1;
             @file_put_contents(Cache::path($key), json_encode($row));
         }
         return false;
     }
 
+    /* ==================== SITE KNOWLEDGE SYSTEM ==================== */
+
+    /** Everything the assistant is allowed to state about the site itself. */
+    public static function siteKnowledge(): array
+    {
+        $ar = Lang::current() === 'ar';
+        return [
+            'name'     => Lang::siteName(),
+            'slogan'   => Lang::siteSlogan(),
+            'email'    => SITE_EMAIL,
+            'telegram' => self::TELEGRAM_URL,
+            'app_apk'  => self::APK_URL,
+            'pages'    => [
+                ($ar ? 'الرئيسية' : 'Home')                 => path('/'),
+                ($ar ? 'مباريات اليوم' : "Today's matches") => path('matches'),
+                ($ar ? 'المباريات المباشرة' : 'Live')       => path('live'),
+                ($ar ? 'الأخبار' : 'News')                  => path('news'),
+                ($ar ? 'الترتيب' : 'Standings')             => path('standings'),
+                ($ar ? 'الهدافون' : 'Top scorers')          => path('top-scorers'),
+                ($ar ? 'البطولات' : 'Championships')        => path('leagues'),
+                ($ar ? 'الفيديوهات' : 'Videos')             => path('videos'),
+                ($ar ? 'الأفلام' : 'Movies')                => path('movies'),
+                ($ar ? 'المسلسلات' : 'Series')              => path('series'),
+                ($ar ? 'المفضلة' : 'Favorites')             => path('favorites'),
+                ($ar ? 'الإعدادات والمزيد' : 'Settings & More') => path('more'),
+                ($ar ? 'من نحن' : 'About us')               => path('about'),
+                ($ar ? 'اتصل بنا' : 'Contact us')           => path('contact'),
+                ($ar ? 'سياسة الخصوصية' : 'Privacy policy') => path('privacy'),
+                ($ar ? 'شروط الاستخدام' : 'Terms of use')   => path('terms'),
+                ($ar ? 'سياسة ملفات الارتباط' : 'Cookie policy') => path('cookies'),
+            ],
+        ];
+    }
+
+    private static function siteKnowledgeText(): string
+    {
+        $k = self::siteKnowledge();
+        $lines = [
+            'Site name: ' . $k['name'],
+            'Slogan: ' . $k['slogan'],
+            'Contact email: ' . $k['email'],
+            'Official Telegram channel: ' . $k['telegram'],
+            'Android app (APK) download: ' . $k['app_apk'],
+            'Internal pages (label => relative URL, always link with these):',
+        ];
+        foreach ($k['pages'] as $label => $url) $lines[] = "- {$label}: {$url}";
+        return implode("\n", $lines);
+    }
+
+    /* ==================== CONTEXT ENGINE ==================== */
+
+    /**
+     * Normalize the page info sent by the client and enrich it server-side
+     * with the REAL entity payload behind that URL.
+     * @param array $page {path?, title?, desc?}
+     */
+    public static function pageContext(array $page): array
+    {
+        $path  = (string)($page['path'] ?? '');
+        $path  = '/' . ltrim(strip_tags(mb_substr($path, 0, 200)), '/');
+        if (!preg_match('#^/[\x20-\x7E\p{Arabic}%\-_/.]*$#u', $path)) $path = '/';
+        $ctx = [
+            'path'  => $path,
+            'title' => mb_substr(strip_tags((string)($page['title'] ?? '')), 0, 200),
+            'desc'  => mb_substr(strip_tags((string)($page['desc'] ?? '')), 0, 300),
+            'data'  => '',
+        ];
+        $bare = preg_replace('#^/en(/|$)#', '/', rawurldecode($path)) ?? $path;
+
+        // Match page → live payload summary (unified status resolver).
+        if (preg_match('#^/match/.*?(\d+)$#u', $bare, $m)) {
+            $info = Api::matchInfo((int)$m[1]);
+            if (!empty($info['match_id'])) {
+                $info = Api::unifyMatchState($info);
+                $st = match_state($info);
+                $ctx['data'] = 'Match: ' . team_name(team_of($info, 'home')) . ' vs ' . team_name(team_of($info, 'away'))
+                    . ' | ' . (string)($info['championship']['title'] ?? '')
+                    . ' | status: ' . $st['key'] . ' (' . $st['label'] . ')'
+                    . ' | score: ' . (int)($info['home_scores'] ?? 0) . '-' . (int)($info['away_scores'] ?? 0)
+                    . ' | date: ' . (string)($info['match_date'] ?? '') . ' ' . format_ts_time((int)($info['match_timestamp'] ?? 0))
+                    . (!empty($info['Stadium']) ? ' | stadium: ' . (string)$info['Stadium'] : '');
+            }
+        } elseif (preg_match('#^/league/.*?(\d+)$#u', $bare, $m)) {
+            foreach (Api::allLeagues() as $lg) {
+                if ((int)$lg['url_id'] === (int)$m[1]) { $ctx['data'] = 'League: ' . (string)$lg['title']; break; }
+            }
+        } elseif (preg_match('#^/(movie|series)/.*?(\d+)$#u', $bare, $m)) {
+            $type = $m[1] === 'series' ? 'tv' : 'movie';
+            $it = $type === 'tv' ? Tmdb::tv((int)$m[2]) : Tmdb::movie((int)$m[2]);
+            if (!empty($it['id'])) {
+                $ctx['data'] = ($type === 'tv' ? 'Series: ' : 'Movie: ') . Tmdb::titleOf($it)
+                    . ' (' . Tmdb::yearOf($it) . ') | rating: ' . Tmdb::rating($it['vote_average'] ?? 0)
+                    . ' | ' . excerpt((string)($it['overview'] ?? ''), 200);
+            }
+        } elseif (preg_match('#^/news/.*?(\d+)$#u', $bare, $m)) {
+            $n = Api::findNewsItem((int)$m[1]);
+            if (!empty($n['title'])) $ctx['data'] = 'Article: ' . (string)$n['title'];
+        }
+        return $ctx;
+    }
+
+    /* ==================== PROMPT BUILDER ==================== */
+
+    private static function buildPrompt(string $q, array $ctx, string $dataBlock): string
+    {
+        $p  = "Site Information:\n" . self::siteKnowledgeText() . "\n\n";
+        $p .= "Current Page:\n"
+            . 'URL: ' . ($ctx['path'] ?? '/') . "\n"
+            . ($ctx['title'] !== '' ? 'Title: ' . $ctx['title'] . "\n" : '')
+            . ($ctx['desc'] !== '' ? 'Description: ' . $ctx['desc'] . "\n" : '');
+        if (($ctx['data'] ?? '') !== '') $p .= "Page Content:\n" . $ctx['data'] . "\n";
+        $p .= "\n";
+        if ($dataBlock !== '') $p .= "Site Data:\n" . $dataBlock . "\n\n";
+        $p .= "User Question:\n" . $q;
+        return $p;
+    }
+
+    /** Permanent system instruction (#anti-markdown, HTML-only contract). */
+    private static function systemPrompt(): string
+    {
+        $ar = Lang::current() === 'ar';
+        return
+            "أنت مساعد ToFi X Tv الرسمي. أنت جزء من الموقع نفسه، لست روبوت محادثة خارجياً.\n"
+            . "كل البيانات المرسلة إليك في الأقسام Site Information وCurrent Page وSite Data صحيحة ومؤكدة — استخدمها مباشرة، "
+            . "وممنوع أن ترد بعبارات مثل: لا أعرف، لا أملك معلومات، لا أستطيع الوصول، غير متوفر لدي — طالما أن المعلومة موجودة في تلك الأقسام.\n"
+            . "إذا سُئلت عن معلومة غير موجودة في البيانات ولا يمكن تأكيدها، لا تخترعها أبداً: اعرض بدلاً منها واجهة توجّه المستخدم للقسم المناسب من صفحات الموقع.\n\n"
+            . "قواعد الإخراج الإلزامية:\n"
+            . "1) ممنوع الرد بنص عادي. 2) ممنوع Markdown نهائياً. 3) ممنوع استخدام * أو ## أو ### أو ``` .\n"
+            . "4) مهمتك إنشاء واجهات HTML احترافية فقط، جاهزة للعرض مباشرة داخل نافذة المحادثة.\n"
+            . "5) الرد دائماً بصيغة JSON واحدة فقط بلا أي شيء قبلها أو بعدها:\n"
+            . '{"type":"html","html":"..."}' . "\n\n"
+            . "دليل التصميم (استخدم هذه الأصناف فقط مع وسوم div/span/p/a/img/b/i/small/br/ul/li/h4):\n"
+            . "- فقرة نصية: <p class=\"ai-p\">...</p>\n"
+            . "- بطاقة عامة: <div class=\"ai-card\"><h4 class=\"aic-title\">عنوان</h4><p class=\"ai-p\">نص</p></div>\n"
+            . "- صف معلومة: <div class=\"aic-row\"><span class=\"aic-k\">التسمية</span><span class=\"aic-v\">القيمة</span></div>\n"
+            . "- زر/رابط: <a class=\"ai-cta\" href=\"/الرابط\">النص</a> — استخدم روابط الموقع الداخلية من Site Information فقط، أو mailto: للبريد أو رابط تيليجرام الرسمي.\n"
+            . "- قائمة: <ul class=\"ai-list\"><li>...</li></ul>\n"
+            . ($ar ? "أجب دائماً بلغة المستخدم (العربية إن كتب بالعربية)." : "Always answer in the user's language.")
+            . " اجعل الواجهة موجزة وأنيقة ومتوافقة مع الجوال.";
+    }
+
     /* ==================== Entry point ==================== */
 
     /**
-     * @param string $message  raw user message (sanitized here)
-     * @param array  $history  [{role:'user'|'assistant', content:string}, …]
-     * @return array{text:string, cards:array, suggestions:array}
+     * @param string $message raw user message (sanitized here)
+     * @param array  $history [{role:'user'|'assistant', content:string}, …]
+     * @param array  $page    client page info {path,title,desc}
+     * @return array{type:string, html:string, suggestions:array}
      */
-    public static function handle(string $message, array $history = []): array
+    public static function handle(string $message, array $history = [], array $page = []): array
     {
         $q = trim(strip_tags($message));
         $q = mb_substr($q, 0, self::MAX_MSG_LEN);
         if ($q === '') {
-            return ['text' => self::t('empty'), 'cards' => [], 'suggestions' => self::suggestions()];
+            return self::out('<p class="ai-p">' . e(self::t('empty')) . '</p>', self::suggestions());
         }
 
-        // 1) Site data first — deterministic cards, zero hallucination.
-        //    A resolved intent with an honest "not found" text is also final
-        //    (never hand a data question to the LLM to guess at).
+        // 1) Site data first — deterministic HTML, zero hallucination.
         $found = self::resolve($q);
-        if ($found['cards'] || $found['text'] !== '') {
-            return [
-                'text'        => $found['text'],
-                'cards'       => array_slice($found['cards'], 0, 6),
-                'suggestions' => $found['suggestions'] ?: self::suggestions(),
-            ];
+        if ($found['html'] !== '') {
+            return self::out($found['html'], $found['suggestions'] ?: self::suggestions());
         }
 
-        // 2) General questions → LLM with strict grounding.
-        $answer = self::chat($q, $history);
-        return [
-            'text'        => $answer ?? self::t('unavailable'),
-            'cards'       => [],
-            'suggestions' => self::suggestions(),
-        ];
+        // 2) General questions → LLM (Gemini) with full context; local
+        //    HTML fallback when the model fails.
+        $ctx = self::pageContext($page);
+        $html = self::generate($q, $history, $ctx);
+        if ($html === null) $html = self::fallbackHtml();
+        return self::out($html, self::suggestions());
     }
 
-    /* ==================== Intent + entity resolution ==================== */
+    private static function out(string $html, array $suggestions): array
+    {
+        return ['type' => 'html', 'html' => $html, 'suggestions' => $suggestions];
+    }
 
-    /** @return array{text:string, cards:array, suggestions:array} */
+    /* ==================== Intent + entity resolution (HTML out) ==================== */
+
+    /** @return array{html:string, suggestions:array} */
     private static function resolve(string $q): array
     {
-        $ar   = Lang::current() === 'ar';
         $norm = self::normalize($q);
-        $out  = ['text' => '', 'cards' => [], 'suggestions' => []];
+        $none = ['html' => '', 'suggestions' => []];
 
-        // ---- Fixed intents (fast keyword routes; patterns match the
-        //      NORMALIZED text: أ→ا and ة→ه) ----
+        // ---- Site-identity intents (real values from site config) ----
+        if (preg_match('/(تلي?جرام|تلغرام|telegram)/ui', $norm)) {
+            return ['html' => self::telegramHtml(), 'suggestions' => self::suggestions()];
+        }
+        if (preg_match('/(بريد|ايميل|إيميل|email|e-?mail)/ui', $norm)) {
+            return ['html' => self::emailHtml(), 'suggestions' => self::suggestions()];
+        }
+        if (preg_match('/(اتصل بنا|تواصل|راسل|contact|support|دعم)/ui', $norm)) {
+            return ['html' => self::contactHtml(), 'suggestions' => self::suggestions()];
+        }
+        if (preg_match('/^\s*(من نحن|عن الموقع|ما هو الموقع|about( us)?)\s*[؟?]?\s*$/ui', $norm)) {
+            return ['html' => self::aboutHtml(), 'suggestions' => self::suggestions()];
+        }
+        if (preg_match('/(حمل|تحميل|تنزيل).*(تطبيق|البرنامج)|download.*app|apk/ui', $norm)) {
+            return ['html' => self::appHtml(), 'suggestions' => self::suggestions()];
+        }
+
+        // ---- Fixed sports/cinema intents ----
         if (preg_match('/(مباريات اليوم|مباريات\s*$|today.?s? matches|matches today)/ui', $norm)) {
             $cards = self::matchCards(Api::matchesByDate(), 6);
-            return ['text' => $cards ? self::t('today_intro') : self::t('no_matches'),
-                    'cards' => $cards, 'suggestions' => self::suggestions('matches')];
+            return ['html' => self::answerHtml($cards ? self::t('today_intro') : self::t('no_matches'), $cards),
+                    'suggestions' => self::suggestions('matches')];
+        }
+        if (preg_match('/(مباريات (الغد|غدا)|غدا|tomorrow)/ui', $norm) && preg_match('/(مباريات|مباراه|matches?)/ui', $norm . ' مباريات')) {
+            $cards = self::matchCards(Api::matchesByDate(date('Y-m-d', strtotime('+1 day'))), 6);
+            return ['html' => self::answerHtml($cards ? self::t('tomorrow_intro') : self::t('no_matches'), $cards),
+                    'suggestions' => self::suggestions('matches')];
         }
         if (preg_match('/(مباشر|live)/ui', $norm) && !preg_match('/(فيلم|مسلسل|movie|series)/ui', $norm)) {
             $live = array_values(array_filter(Api::matchesByDate(), fn($m) => match_state($m)['key'] === 'live'));
             $cards = self::matchCards($live, 6);
-            return ['text' => $cards ? self::t('live_intro') : self::t('no_live'),
-                    'cards' => $cards, 'suggestions' => self::suggestions('matches')];
+            return ['html' => self::answerHtml($cards ? self::t('live_intro') : self::t('no_live'), $cards),
+                    'suggestions' => self::suggestions('matches')];
         }
         if (preg_match('/(احدث|جديد).*(افلام|فيلم)|latest movies|new movies/ui', $norm)) {
             $rows = CinemaPolicy::filterList(Tmdb::nowPlayingMovies()['results'] ?? [], 'movie');
             $cards = array_map([self::class, 'movieCardFrom'], array_slice($rows, 0, 4));
-            if ($cards) return ['text' => self::t('movie_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('cinema')];
+            if ($cards) return ['html' => self::answerHtml(self::t('movie_intro'), $cards), 'suggestions' => self::suggestions('cinema')];
         }
         if (preg_match('/(احدث|جديد).*(مسلسلات|مسلسل)|latest series|new series/ui', $norm)) {
             $rows = CinemaPolicy::filterList(Tmdb::onTheAirTv()['results'] ?? [], 'tv');
             $cards = array_map(fn($tv) => self::seriesCardFrom($tv, false), array_slice($rows, 0, 4));
-            if ($cards) return ['text' => self::t('series_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('cinema')];
+            if ($cards) return ['html' => self::answerHtml(self::t('series_intro'), $cards), 'suggestions' => self::suggestions('cinema')];
+        }
+        if (preg_match('/(الدوريات|البطولات|دوريات|championships|leagues)\s*$/ui', $norm)) {
+            $cards = [];
+            foreach (array_slice(Api::allLeagues(), 0, 6) as $lg) {
+                $cards[] = ['type' => 'league', 'id' => (int)$lg['url_id'], 'url' => league_url($lg),
+                            'title' => (string)$lg['title'], 'img' => league_img($lg)];
+            }
+            if ($cards) return ['html' => self::answerHtml(self::t('entity_intro'), $cards), 'suggestions' => self::suggestions('matches')];
         }
 
         // ---- Movie ----
         if (preg_match('/^\s*(?:فيلم|افلام|movie|film)\s+(.{2,})$/ui', $norm, $m)) {
             $cards = self::movieCards(trim($m[1]));
-            if ($cards) return ['text' => self::t('movie_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('cinema')];
-            return ['text' => self::t('not_found_movie'), 'cards' => [], 'suggestions' => self::suggestions('cinema')];
+            return ['html' => self::answerHtml($cards ? self::t('movie_intro') : self::t('not_found_movie'), $cards),
+                    'suggestions' => self::suggestions('cinema')];
         }
         // ---- Series ----
         if (preg_match('/^\s*(?:مسلسل|مسلسلات|series|show|anime|انمي)\s+(.{2,})$/ui', $norm, $m)) {
             $cards = self::seriesCards(trim($m[1]));
-            if ($cards) return ['text' => self::t('series_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('cinema')];
-            return ['text' => self::t('not_found_series'), 'cards' => [], 'suggestions' => self::suggestions('cinema')];
+            return ['html' => self::answerHtml($cards ? self::t('series_intro') : self::t('not_found_series'), $cards),
+                    'suggestions' => self::suggestions('cinema')];
         }
         // ---- News ----
         if (preg_match('/^\s*(?:اخبار|خبر|news(?:\s+(?:of|about))?)\s*(.*)$/ui', $norm, $m)) {
-            $topic = trim($m[1]);
-            $cards = self::newsCards($topic);
-            if ($cards) return ['text' => self::t('news_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('news')];
-            return ['text' => self::t('not_found_news'), 'cards' => [], 'suggestions' => self::suggestions('news')];
+            $cards = self::newsCards(trim($m[1]));
+            return ['html' => self::answerHtml($cards ? self::t('news_intro') : self::t('not_found_news'), $cards),
+                    'suggestions' => self::suggestions('news')];
         }
         // ---- Channel ----
         if (preg_match('/^\s*(?:قناه|قنوات|channel)\s*(.*)$/ui', $norm, $m)) {
             $cards = self::channelCards(trim($m[1]));
-            if ($cards) return ['text' => self::t('channel_intro'), 'cards' => $cards, 'suggestions' => self::suggestions('matches')];
+            if ($cards) return ['html' => self::answerHtml(self::t('channel_intro'), $cards), 'suggestions' => self::suggestions('matches')];
         }
 
         // ---- Match: "فرنسا والأرجنتين" / "france vs argentina" / "مباراة X" ----
         $matchQuery = preg_replace('/^\s*(?:مباراه|ماتش|match)\s+/ui', '', $norm);
         $pairCards = self::findMatchCards($matchQuery);
         if ($pairCards) {
-            return ['text' => self::t('match_intro'), 'cards' => $pairCards, 'suggestions' => self::suggestions('matches')];
+            return ['html' => self::answerHtml(self::t('match_intro'), $pairCards), 'suggestions' => self::suggestions('matches')];
         }
 
-        // ---- General search: teams/players → cinema → news headline ----
+        // ---- General search: teams/players → cinema → league ----
         if (mb_strlen($norm) >= 2) {
             $sr = Api::search($norm);
             $cards = [];
@@ -191,25 +376,23 @@ final class Ai
                 $pl = is_array($p['name'] ?? null) ? $p['name'] : $p;
                 if (!empty($pl['row_id'])) $cards[] = self::playerCard($pl);
             }
-            // A single strong team hit → also surface its next/last matches.
             if (count($cards) === 1 && ($cards[0]['type'] ?? '') === 'team') {
                 $cards = array_merge($cards, self::teamMatchCards((int)$cards[0]['id'], 2));
             }
             if ($cards) {
-                return ['text' => self::t('entity_intro'), 'cards' => array_values(array_filter($cards)), 'suggestions' => self::suggestions()];
+                return ['html' => self::answerHtml(self::t('entity_intro'), array_values(array_filter($cards))),
+                        'suggestions' => self::suggestions()];
             }
-            // Cinema fallback (bare titles like "Avatar" / "Squid Game")
             $cine = self::cinemaMultiCards($norm);
-            if ($cine) return ['text' => self::t('cinema_intro'), 'cards' => $cine, 'suggestions' => self::suggestions('cinema')];
-            // League name?
+            if ($cine) return ['html' => self::answerHtml(self::t('cinema_intro'), $cine), 'suggestions' => self::suggestions('cinema')];
             $lg = self::leagueCard($norm);
-            if ($lg) return ['text' => self::t('entity_intro'), 'cards' => [$lg], 'suggestions' => self::suggestions('matches')];
+            if ($lg) return ['html' => self::answerHtml(self::t('entity_intro'), [$lg]), 'suggestions' => self::suggestions('matches')];
         }
 
-        return $out;
+        return $none;
     }
 
-    /* ==================== Card builders (real site data + real URLs) ==================== */
+    /* ==================== Card data builders (real payloads) ==================== */
 
     private static function matchCards(array $matches, int $max): array
     {
@@ -240,12 +423,10 @@ final class Ai
     /** Match by team names in a ±3-day window ("فرنسا والأرجنتين", "X vs Y"). */
     private static function findMatchCards(string $q): array
     {
-        // Split "A و B" / "A والب" (attached waw) / "A vs B" / "A ضد B" / "A × B".
         $tokens = preg_split('/\s+(?:ضد|مع|vs\.?|versus|and|x)\s+|\s+و(?=\S)\s*|\s*[×–]\s*|\s+-\s+/ui', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $tokens = array_values(array_filter(array_map('trim', $tokens), fn($t) => mb_strlen($t) >= 2));
         if (!$tokens) $tokens = [trim($q)];
         if (mb_strlen($tokens[0]) < 2) return [];
-        // Compare against NORMALIZED team names (hamza/ta-marbuta tolerant).
         $tokens = array_map(fn($t) => mb_strtolower(self::normalize($t)), array_slice($tokens, 0, 3));
 
         $best = [];
@@ -264,7 +445,6 @@ final class Ai
         }
         if (!$best) return [];
         usort($best, fn($a, $b) => [$b['hits'], -$a['i']] <=> [$a['hits'], -$b['i']]);
-        // Require both teams when the user named two; single-token queries pass.
         if (count($tokens) >= 2 && $best[0]['hits'] < 2) return [];
         return self::matchCards(array_column(array_slice($best, 0, 3), 'm'), 3);
     }
@@ -294,7 +474,7 @@ final class Ai
     private static function seriesCardFrom(array $tv, bool $enrich): array
     {
         $seasons = $episodes = 0;
-        if ($enrich) { // season/episode counts live on the (cached) detail payload
+        if ($enrich) {
             $full = Tmdb::tv((int)($tv['id'] ?? 0));
             $seasons  = (int)($full['number_of_seasons'] ?? 0);
             $episodes = (int)($full['number_of_episodes'] ?? 0);
@@ -356,7 +536,6 @@ final class Ai
     private static function newsCards(string $topic, int $max = 4): array
     {
         $topic = trim($topic);
-        // Team-scoped news ("أخبار ريال مدريد") via the real team-news endpoint.
         if ($topic !== '' && mb_strlen($topic) >= 2) {
             $sr = Api::search($topic);
             $team = $sr['teams'][0]['name'] ?? null;
@@ -364,7 +543,6 @@ final class Ai
                 $items = Api::teamNews((int)$team['row_id']);
                 if ($items) return self::newsItemCards($items, $max);
             }
-            // Headline keyword match across the latest feeds.
             $pool = array_merge(Api::newsPage(1)['items'], Api::allNewsPage()['last_news']);
             $hits = array_values(array_filter($pool, fn($n) =>
                 mb_stripos((string)($n['title'] ?? ''), $topic) !== false));
@@ -410,24 +588,14 @@ final class Ai
 
     private static function teamCard(array $team): array
     {
-        return [
-            'type'  => 'team',
-            'id'    => (int)($team['row_id'] ?? 0),
-            'url'   => team_url($team),
-            'title' => team_name($team),
-            'img'   => team_img($team),
-        ];
+        return ['type' => 'team', 'id' => (int)($team['row_id'] ?? 0), 'url' => team_url($team),
+                'title' => team_name($team), 'img' => team_img($team)];
     }
 
     private static function playerCard(array $p): array
     {
-        return [
-            'type'  => 'player',
-            'id'    => (int)($p['row_id'] ?? 0),
-            'url'   => player_url($p),
-            'title' => player_label($p),
-            'img'   => player_img($p),
-        ];
+        return ['type' => 'player', 'id' => (int)($p['row_id'] ?? 0), 'url' => player_url($p),
+                'title' => player_label($p), 'img' => player_img($p)];
     }
 
     private static function leagueCard(string $q): ?array
@@ -435,114 +603,435 @@ final class Ai
         foreach (Api::allLeagues() as $lg) {
             $title = (string)($lg['title'] ?? '');
             if ($title !== '' && mb_stripos($title, $q) !== false) {
-                return [
-                    'type'  => 'league',
-                    'id'    => (int)$lg['url_id'],
-                    'url'   => league_url($lg),
-                    'title' => $title,
-                    'img'   => league_img($lg),
-                ];
+                return ['type' => 'league', 'id' => (int)$lg['url_id'], 'url' => league_url($lg),
+                        'title' => $title, 'img' => league_img($lg)];
             }
         }
         return null;
     }
 
-    /* ==================== LLM (general questions only) ==================== */
+    /* ==================== LOCAL HTML RENDERER (fallback + data intents) ==================== */
 
-    private static function chat(string $q, array $history): ?string
+    /** Intro paragraph + card stack → ready-to-render HTML. */
+    private static function answerHtml(string $intro, array $cards): string
     {
-        // Single-turn answers are cacheable for an hour.
-        $cacheKey = 'ai-chat|' . Lang::current() . '|' . md5($q);
-        if (!$history) {
+        $html = '<p class="ai-p">' . e($intro) . '</p>';
+        if ($cards) {
+            $html .= '<div class="ai-cards">';
+            foreach (array_slice($cards, 0, 6) as $c) $html .= self::cardHtml($c);
+            $html .= '</div>';
+        }
+        return $html;
+    }
+
+    private static function cardHtml(array $c): string
+    {
+        $cta = fn(string $label): string => '<span class="ai-cta">' . e($label) . '</span>';
+        switch ($c['type'] ?? '') {
+            case 'match':
+                $stateCls = $c['state'] === 'live' ? 'is-live' : ($c['state'] === 'finished' ? 'is-ft' : 'is-soon');
+                $mid = ($c['score'] !== '' ? '<b class="acm-score">' . e($c['score']) . '</b>' : '')
+                     . '<span class="acm-state ' . $stateCls . '">' . e($c['label']) . '</span>';
+                $meta = [];
+                if ($c['league'] !== '') $meta[] = $c['league'];
+                if ($c['state'] === 'upcoming' && $c['time'] !== '') $meta[] = ($c['date'] !== '' ? $c['date'] . ' · ' : '') . $c['time'];
+                return '<a class="ai-card ai-card-match" href="' . e($c['url']) . '">'
+                    . '<div class="acm-row">'
+                    . '<span class="acm-team"><img class="acm-logo" src="' . e($c['home']['img']) . '" alt="" loading="lazy"><b>' . e($c['home']['name']) . '</b></span>'
+                    . '<span class="acm-mid">' . $mid . '</span>'
+                    . '<span class="acm-team"><img class="acm-logo" src="' . e($c['away']['img']) . '" alt="" loading="lazy"><b>' . e($c['away']['name']) . '</b></span>'
+                    . '</div>'
+                    . ($meta ? '<div class="acm-meta">' . e(implode(' — ', $meta)) . '</div>' : '')
+                    . $cta($c['state'] === 'live' ? t('ai.cta_watch_match') : t('ai.cta_details'))
+                    . '</a>';
+            case 'movie':
+            case 'series':
+                $chips = '';
+                if ($c['rating'] !== '') $chips .= '<span class="acp-chip acp-rate">⭐ ' . e($c['rating']) . '</span>';
+                if (!in_array($c['age'], ['عام', 'G'], true)) $chips .= '<span class="acp-chip acp-age">' . e($c['age']) . '</span>';
+                if ($c['type'] === 'series' && ($c['seasons'] ?? 0) > 0) {
+                    $chips .= '<span class="acp-chip">' . (int)$c['seasons'] . ' ' . e(t('cinema.seasons'))
+                        . (($c['episodes'] ?? 0) > 0 ? ' · ' . (int)$c['episodes'] . ' ' . e(t('cinema.episodes')) : '') . '</span>';
+                }
+                return '<a class="ai-card ai-card-poster" href="' . e($c['url']) . '">'
+                    . '<img class="acp-poster" src="' . e($c['poster']) . '" alt="" loading="lazy">'
+                    . '<div class="acp-info"><b class="acp-title">' . e($c['title'] . ($c['year'] !== '' ? ' (' . $c['year'] . ')' : '')) . '</b>'
+                    . ($chips !== '' ? '<div class="acp-chips">' . $chips . '</div>' : '')
+                    . ($c['overview'] !== '' ? '<p class="acp-ov">' . e($c['overview']) . '</p>' : '')
+                    . $cta($c['type'] === 'series' ? t('ai.cta_watch_series') : t('ai.cta_watch_movie'))
+                    . '</div></a>';
+            case 'news':
+                return '<a class="ai-card ai-card-news" href="' . e($c['url']) . '">'
+                    . '<img class="acn-img" src="' . e($c['img']) . '" alt="" loading="lazy">'
+                    . '<div class="acn-info"><b class="acn-title">' . e($c['title']) . '</b>'
+                    . ($c['time'] !== '' ? '<small class="acn-time">' . e($c['time']) . '</small>' : '')
+                    . $cta(t('ai.cta_details')) . '</div></a>';
+            case 'team':
+            case 'player':
+            case 'league':
+                return '<a class="ai-card ai-card-entity" href="' . e($c['url']) . '">'
+                    . '<img class="ace-img" src="' . e($c['img']) . '" alt="" loading="lazy">'
+                    . '<b class="ace-title">' . e($c['title']) . '</b>' . $cta(t('ai.cta_details')) . '</a>';
+            case 'channel':
+                return '<a class="ai-card ai-card-entity" href="' . e($c['url']) . '">'
+                    . '<span class="ace-img ace-tv"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="13" rx="3"/><path d="m8 2 4 4 4-4"/></svg></span>'
+                    . '<b class="ace-title">' . e($c['name']) . '</b>' . $cta(t('ai.cta_open_channel')) . '</a>';
+        }
+        return '';
+    }
+
+    /* ---- Site-identity HTML templates (values from the site itself) ---- */
+
+    private static function infoRow(string $k, string $v, string $href = ''): string
+    {
+        $val = $href !== ''
+            ? '<a class="aic-v aic-link" href="' . e($href) . '"' . (str_starts_with($href, 'http') ? ' target="_blank" rel="noopener"' : '') . '>' . e($v) . '</a>'
+            : '<span class="aic-v">' . e($v) . '</span>';
+        return '<div class="aic-row"><span class="aic-k">' . e($k) . '</span>' . $val . '</div>';
+    }
+
+    private static function contactHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        return '<div class="ai-card"><h4 class="aic-title">' . e($ar ? 'تواصل مع ' . $k['name'] : 'Contact ' . $k['name']) . '</h4>'
+            . self::infoRow($ar ? 'البريد الإلكتروني' : 'Email', $k['email'], 'mailto:' . $k['email'])
+            . self::infoRow($ar ? 'قناة تيليجرام' : 'Telegram', '@tofi_tv', $k['telegram'])
+            . self::infoRow($ar ? 'صفحة التواصل' : 'Contact page', $ar ? 'اتصل بنا' : 'Contact us', path('contact'))
+            . '<a class="ai-cta" href="' . e(path('contact')) . '">' . e($ar ? 'فتح صفحة اتصل بنا' : 'Open contact page') . '</a>'
+            . '</div>';
+    }
+
+    private static function emailHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        return '<div class="ai-card"><h4 class="aic-title">' . e($ar ? 'البريد الإلكتروني الرسمي' : 'Official email') . '</h4>'
+            . '<p class="ai-p">' . e($ar ? 'يمكنك مراسلتنا مباشرة على:' : 'You can reach us directly at:') . '</p>'
+            . self::infoRow($ar ? 'البريد' : 'Email', $k['email'], 'mailto:' . $k['email'])
+            . '<a class="ai-cta" href="mailto:' . e($k['email']) . '">' . e($ar ? 'إرسال بريد الآن' : 'Send an email') . '</a>'
+            . '</div>';
+    }
+
+    private static function telegramHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        return '<div class="ai-card"><h4 class="aic-title">' . e($ar ? 'قناة تيليجرام الرسمية' : 'Official Telegram channel') . '</h4>'
+            . '<p class="ai-p">' . e($ar ? 'تابع آخر الأخبار والمباريات والتحديثات مباشرة عبر قناتنا الرسمية.' : 'Get the latest news, matches and updates on our official channel.') . '</p>'
+            . self::infoRow('Telegram', '@tofi_tv', $k['telegram'])
+            . '<a class="ai-cta" href="' . e($k['telegram']) . '" target="_blank" rel="noopener">' . e($ar ? 'الانضمام الآن' : 'Join now') . '</a>'
+            . '</div>';
+    }
+
+    private static function aboutHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        return '<div class="ai-card"><h4 class="aic-title">' . e($k['name']) . '</h4>'
+            . '<p class="ai-p">' . e($k['slogan']) . '</p>'
+            . '<ul class="ai-list">'
+            . '<li>' . e($ar ? 'مباريات مباشرة ونتائج لحظة بلحظة وجداول ترتيب وهدافون' : 'Live matches, instant scores, standings and top scorers') . '</li>'
+            . '<li>' . e($ar ? 'أخبار رياضية متجددة على مدار الساعة' : 'Round-the-clock sports news') . '</li>'
+            . '<li>' . e($ar ? 'مكتبة أفلام ومسلسلات ضخمة بجودة عالية' : 'A huge movies & series library in HD') . '</li>'
+            . '</ul>'
+            . '<a class="ai-cta" href="' . e(path('about')) . '">' . e($ar ? 'صفحة من نحن كاملة' : 'Full about page') . '</a>'
+            . '</div>';
+    }
+
+    private static function appHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        return '<div class="ai-card"><h4 class="aic-title">' . e($ar ? 'تطبيق ' . $k['name'] . ' للأندرويد' : $k['name'] . ' Android app') . '</h4>'
+            . '<p class="ai-p">' . e($ar ? 'حمّل التطبيق الرسمي وشاهد المحتوى بجودة عالية وتجربة أسرع.' : 'Download the official app for HD playback and a faster experience.') . '</p>'
+            . '<a class="ai-cta" href="' . e($k['app_apk']) . '" target="_blank" rel="noopener nofollow">' . e($ar ? 'تحميل التطبيق (APK)' : 'Download the app (APK)') . '</a>'
+            . '</div>';
+    }
+
+    /** Local fallback UI whenever the model fails (#Fallback System). */
+    private static function fallbackHtml(): string
+    {
+        $ar = Lang::current() === 'ar';
+        $k = self::siteKnowledge();
+        $html = '<p class="ai-p">' . e($ar
+            ? 'لم أتمكن من توليد إجابة الآن — إليك أقسام الموقع الرئيسية للوصول السريع:'
+            : "I couldn't generate an answer right now — here are the main sections for quick access:") . '</p>';
+        $html .= '<div class="ai-cards">';
+        $quick = $ar
+            ? ['مباريات اليوم' => path('matches'), 'المباريات المباشرة' => path('live'), 'الأخبار' => path('news'), 'الأفلام' => path('movies'), 'المسلسلات' => path('series')]
+            : ["Today's matches" => path('matches'), 'Live' => path('live'), 'News' => path('news'), 'Movies' => path('movies'), 'Series' => path('series')];
+        $html .= '<div class="ai-card">';
+        foreach ($quick as $label => $url) {
+            $html .= self::infoRow($label, $ar ? 'فتح' : 'Open', $url);
+        }
+        $html .= '</div></div>';
+        return $html;
+    }
+
+    /* ==================== LLM (Gemini native / OpenAI-compatible) ==================== */
+
+    /** General question → sanitized HTML (or null → caller falls back). */
+    private static function generate(string $q, array $history, array $ctx): ?string
+    {
+        // Single-turn, page-agnostic questions are cacheable for an hour.
+        $cacheable = !$history && ($ctx['data'] ?? '') === '';
+        $cacheKey = 'ai-html|' . Lang::current() . '|' . md5($q);
+        if ($cacheable) {
             $hit = Cache::get($cacheKey, 3600);
             if (is_string($hit) && $hit !== '') return $hit;
         }
 
-        $ar = Lang::current() === 'ar';
-        $sys = $ar
-            ? "أنت مساعد موقع ToFi X Tv (توفي إكس تيفي) — منصة عربية للمباريات المباشرة والأخبار الرياضية والأفلام والمسلسلات."
-              . " أجب بإيجاز وبنفس لغة المستخدم. لا تخمّن أبداً نتائج المباريات أو مواعيدها أو أي معلومة غير مؤكدة؛"
-              . " إن لم تكن متأكداً قل بوضوح: لا أملك معلومة مؤكدة عن ذلك، واقترح على المستخدم تصفح القسم المناسب في الموقع."
-              . " لا تذكر مواقع منافسة ولا روابط خارجية. تاريخ اليوم: " . date('Y-m-d') . '.'
-            : "You are the assistant of ToFi X Tv — a platform for live football, sports news, movies and series."
-              . " Answer briefly in the user's language. NEVER guess match results, kickoff times or any unverified fact;"
-              . " if unsure, clearly say you don't have confirmed information and point the user to the right site section."
-              . " Never mention competitor sites or external links. Today's date: " . date('Y-m-d') . '.';
+        $turns = [];
+        foreach (array_slice($history, -self::MAX_HISTORY) as $h) {
+            $role = ($h['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
+            $content = mb_substr(trim(strip_tags((string)($h['content'] ?? ''))), 0, self::MAX_MSG_LEN);
+            if ($content !== '') $turns[] = ['role' => $role, 'content' => $content];
+        }
+        $turns[] = ['role' => 'user', 'content' => self::buildPrompt($q, $ctx, self::todayDataBlock())];
 
-        // Ground with a compact snapshot of today's fixtures (real data).
+        $raw = self::llm2(self::systemPrompt(), $turns);
+        if ($raw === null) return null;
+        $html = self::toHtml($raw);
+        if ($html === null || trim($html) === '') return null;
+        if ($cacheable) Cache::set($cacheKey, $html);
+        return $html;
+    }
+
+    /** Compact real-data snapshot injected into every prompt. */
+    private static function todayDataBlock(): string
+    {
         $lines = [];
         foreach (array_slice(Api::matchesByDate(), 0, 12) as $m) {
             $st = match_state($m);
             $lines[] = team_name(team_of($m, 'home')) . ' vs ' . team_name(team_of($m, 'away'))
                 . ' | ' . ($m['championship']['title'] ?? '')
                 . ' | ' . ($st['key'] === 'upcoming' ? format_ts_time((int)($m['match_timestamp'] ?? 0)) : $st['label'])
-                . ($st['started'] ? ' | ' . (int)($m['home_scores'] ?? 0) . '-' . (int)($m['away_scores'] ?? 0) : '');
+                . ($st['started'] ? ' | ' . (int)($m['home_scores'] ?? 0) . '-' . (int)($m['away_scores'] ?? 0) : '')
+                . ' | url: ' . match_url($m);
         }
-        if ($lines) {
-            $sys .= $ar ? "\n\nمباريات اليوم على الموقع:\n" : "\n\nToday's fixtures on the site:\n";
-            $sys .= implode("\n", $lines);
-        }
-
-        $messages = [['role' => 'system', 'content' => $sys]];
-        foreach (array_slice($history, -self::MAX_HISTORY) as $h) {
-            $role = ($h['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
-            $content = mb_substr(trim(strip_tags((string)($h['content'] ?? ''))), 0, self::MAX_MSG_LEN);
-            if ($content !== '') $messages[] = ['role' => $role, 'content' => $content];
-        }
-        $messages[] = ['role' => 'user', 'content' => $q];
-
-        $out = self::llm($messages);
-        if ($out !== null && !$history) Cache::set($cacheKey, $out);
-        return $out;
+        return $lines ? "Today's matches (" . date('Y-m-d') . "):\n" . implode("\n", $lines) : '';
     }
 
-    /** Raw chat-completions call. Returns assistant text or null (see lastError). */
+    /**
+     * Provider dispatch. $turns: [{role:'user'|'assistant', content}].
+     * Returns raw model text or null (see lastError()).
+     */
+    public static function llm2(string $system, array $turns, int $maxTokens = 2048): ?string
+    {
+        $cfg = self::config();
+        return $cfg['provider'] === 'gemini'
+            ? self::geminiCall($cfg, $system, $turns, $maxTokens)
+            : self::openaiCall($cfg, $system, $turns, $maxTokens);
+    }
+
+    /** Back-compat shim (admin test used llm(messages)). */
     public static function llm(array $messages, int $maxTokens = 600): ?string
     {
+        $system = '';
+        $turns = [];
+        foreach ($messages as $m) {
+            $role = (string)($m['role'] ?? 'user');
+            if ($role === 'system') { $system .= ($system ? "\n" : '') . (string)($m['content'] ?? ''); continue; }
+            $turns[] = ['role' => $role === 'assistant' ? 'assistant' : 'user', 'content' => (string)($m['content'] ?? '')];
+        }
+        return self::llm2($system, $turns, $maxTokens);
+    }
+
+    private static function geminiCall(array $cfg, string $system, array $turns, int $maxTokens): ?string
+    {
         self::$lastError = '';
-        $cfg = self::config();
-        if ($cfg['api_key'] === '') {
-            self::$lastError = 'missing api_key';
+        if ($cfg['gemini_key'] === '') { self::$lastError = 'missing gemini key'; return null; }
+        $model = ltrim($cfg['gemini_model'], '/');
+        if (!str_starts_with($model, 'models/')) $model = 'models/' . $model;
+        $url = $cfg['gemini_base'] . '/' . $model . ':generateContent?key=' . rawurlencode($cfg['gemini_key']);
+
+        $contents = [];
+        foreach ($turns as $t) {
+            $contents[] = [
+                'role'  => $t['role'] === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => $t['content']]],
+            ];
+        }
+        $payload = [
+            'contents'         => $contents,
+            'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => $maxTokens],
+        ];
+        if ($system !== '') $payload['system_instruction'] = ['parts' => [['text' => $system]]];
+
+        $body = self::post($url, ['Content-Type: application/json'], $payload);
+        if ($body === null) return null;
+        $data = json_decode($body, true);
+        $text = '';
+        foreach (($data['candidates'][0]['content']['parts'] ?? []) as $part) {
+            $text .= (string)($part['text'] ?? '');
+        }
+        $text = trim($text);
+        if ($text === '') {
+            self::$lastError = 'empty completion — ' . mb_substr($body, 0, 220);
             return null;
         }
-        $ch = curl_init($cfg['base_url'] . '/chat/completions');
+        return $text;
+    }
+
+    private static function openaiCall(array $cfg, string $system, array $turns, int $maxTokens): ?string
+    {
+        self::$lastError = '';
+        if ($cfg['api_key'] === '') { self::$lastError = 'missing api_key'; return null; }
+        $messages = [];
+        if ($system !== '') $messages[] = ['role' => 'system', 'content' => $system];
+        foreach ($turns as $t) $messages[] = ['role' => $t['role'] === 'assistant' ? 'assistant' : 'user', 'content' => $t['content']];
+        $body = self::post($cfg['base_url'] . '/chat/completions', [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $cfg['api_key'],
+        ], ['model' => $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4]);
+        if ($body === null) return null;
+        $data = json_decode($body, true);
+        $text = trim((string)($data['choices'][0]['message']['content'] ?? ''));
+        if ($text === '') {
+            self::$lastError = 'empty completion — ' . mb_substr($body, 0, 220);
+            return null;
+        }
+        return $text;
+    }
+
+    private static function post(string $url, array $headers, array $payload): ?string
+    {
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
             CURLOPT_CONNECTTIMEOUT => 6,
             CURLOPT_TIMEOUT        => 25,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $cfg['api_key'],
-            ],
-            CURLOPT_POSTFIELDS     => json_encode([
-                'model'       => $cfg['model'],
-                'messages'    => $messages,
-                'max_tokens'  => $maxTokens,
-                'temperature' => 0.4,
-            ], JSON_UNESCAPED_UNICODE),
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
         ]);
         $body    = curl_exec($ch);
         $code    = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr = curl_error($ch);
         curl_close($ch);
-
         if (!is_string($body) || $code < 200 || $code >= 300) {
-            // Keep the REAL reason for the admin connection test: transport
-            // error (DNS/TLS/firewall) vs an HTTP error body from the provider.
             self::$lastError = $curlErr !== ''
                 ? 'cURL: ' . $curlErr
                 : 'HTTP ' . $code . (is_string($body) && $body !== ''
                     ? ' — ' . mb_substr(trim(strip_tags($body)), 0, 220) : '');
             return null;
         }
-        $data = json_decode($body, true);
-        $text = trim((string)($data['choices'][0]['message']['content'] ?? ''));
-        if ($text === '') {
-            self::$lastError = 'empty completion — ' . mb_substr((string)$body, 0, 220);
-            return null;
+        return $body;
+    }
+
+    /* ==================== HTML RENDERER (model output → safe HTML) ==================== */
+
+    /**
+     * Model output → sanitized HTML. Accepts the {"type":"html","html":…}
+     * contract (with or without code fences); anything else is treated as
+     * text and converted to clean HTML (markdown symbols stripped).
+     */
+    public static function toHtml(string $raw): ?string
+    {
+        $raw = trim($raw);
+        // Strip code fences the model may wrap around the JSON.
+        $raw = preg_replace('/^```[a-z]*\s*|\s*```$/mi', '', $raw) ?? $raw;
+        $raw = trim($raw);
+
+        $html = null;
+        $data = json_decode($raw, true);
+        if (is_array($data) && isset($data['html'])) {
+            $html = (string)$data['html'];
+        } elseif (str_starts_with($raw, '{')) {
+            // Malformed JSON — try to pull the html field out with a regex.
+            if (preg_match('/"html"\s*:\s*"((?:[^"\\\\]|\\\\.)*)"/su', $raw, $m)) {
+                $html = json_decode('"' . $m[1] . '"') ?: null;
+            }
         }
-        return $text;
+        if ($html === null) {
+            // Plain text / markdown → convert to clean HTML (#no-markdown rule).
+            $html = self::textToHtml($raw);
+        }
+        $html = self::sanitizeHtml((string)$html);
+        return trim($html) !== '' ? $html : null;
+    }
+
+    /** Markdown-ish text → minimal safe HTML paragraphs. */
+    private static function textToHtml(string $text): string
+    {
+        $text = preg_replace('/^#{1,6}\s*/m', '', $text) ?? $text;   // headings
+        $text = str_replace('`', '', $text);
+        $out = '';
+        foreach (preg_split('/\n{2,}/', trim($text)) ?: [] as $para) {
+            $para = trim($para);
+            if ($para === '') continue;
+            $safe = e($para);
+            // **bold** → <b>, then drop any leftover stars.
+            $safe = preg_replace('/\*\*(.+?)\*\*/su', '<b>$1</b>', $safe) ?? $safe;
+            $safe = str_replace('*', '', $safe);
+            $out .= '<p class="ai-p">' . nl2br($safe) . '</p>';
+        }
+        return $out;
+    }
+
+    /**
+     * Allowlist HTML sanitizer for model output. Everything not explicitly
+     * allowed is stripped: scripts, styles, iframes, event handlers,
+     * javascript: URLs, unknown tags/attributes.
+     */
+    public static function sanitizeHtml(string $html): string
+    {
+        $html = mb_substr($html, 0, 30000);
+        $allowedTags = ['div', 'span', 'p', 'a', 'img', 'b', 'strong', 'i', 'em', 'u', 'small',
+                        'br', 'ul', 'ol', 'li', 'h3', 'h4', 'h5', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
+        $allowedAttrs = ['class', 'href', 'src', 'alt', 'title', 'dir', 'loading', 'width', 'height', 'target', 'rel'];
+
+        $doc = new \DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="UTF-8"><div id="__ai_root__">' . $html . '</div>',
+            LIBXML_NOERROR | LIBXML_NONET);
+        libxml_clear_errors();
+        $root = $doc->getElementById('__ai_root__');
+        if (!$root) return '';
+
+        $walk = function (\DOMNode $node) use (&$walk, $allowedTags, $allowedAttrs): void {
+            for ($i = $node->childNodes->length - 1; $i >= 0; $i--) {
+                $child = $node->childNodes->item($i);
+                if ($child instanceof \DOMComment) { $node->removeChild($child); continue; }
+                if (!$child instanceof \DOMElement) continue;
+                $tag = strtolower($child->tagName);
+                if (in_array($tag, ['script', 'style', 'iframe', 'object', 'embed', 'form', 'link', 'meta'], true)) {
+                    $node->removeChild($child);           // drop tag AND content
+                    continue;
+                }
+                if (!in_array($tag, $allowedTags, true)) {
+                    // Unwrap: keep children, drop the tag itself.
+                    while ($child->firstChild) $node->insertBefore($child->firstChild, $child);
+                    $node->removeChild($child);
+                    continue;
+                }
+                // Attribute allowlist + URL scheme checks.
+                for ($a = $child->attributes->length - 1; $a >= 0; $a--) {
+                    $attr = $child->attributes->item($a);
+                    $an = strtolower($attr->name);
+                    $av = trim($attr->value);
+                    $bad = !in_array($an, $allowedAttrs, true) || str_starts_with($an, 'on');
+                    if (!$bad && ($an === 'href' || $an === 'src')) {
+                        $ok = preg_match('#^(https?:)?//#i', $av)
+                            || str_starts_with($av, '/')
+                            || str_starts_with($av, '#')
+                            || ($an === 'href' && (str_starts_with($av, 'mailto:') || str_starts_with($av, 'tel:')));
+                        if (!$ok) $bad = true;
+                    }
+                    if ($bad) $child->removeAttribute($attr->name);
+                }
+                if (strtolower($child->getAttribute('target')) === '_blank') {
+                    $child->setAttribute('rel', 'noopener');
+                }
+                $walk($child);
+            }
+        };
+        $walk($root);
+
+        $out = '';
+        foreach ($root->childNodes as $child) $out .= $doc->saveHTML($child);
+        return $out;
     }
 
     /* ==================== Copy + suggestions ==================== */
@@ -550,7 +1039,6 @@ final class Ai
     private static function normalize(string $q): string
     {
         $q = preg_replace('/\s+/u', ' ', trim($q)) ?? $q;
-        // Arabic normalization: hamza/alef variants + ta marbuta (typo tolerance).
         return str_replace(['أ', 'إ', 'آ', 'ة', 'ى'], ['ا', 'ا', 'ا', 'ه', 'ي'], $q);
     }
 
@@ -560,9 +1048,10 @@ final class Ai
         $map = [
             'empty'           => [$ar ? 'اكتب سؤالك وسأساعدك فوراً 👋' : 'Type your question and I\'ll help right away 👋'],
             'today_intro'     => [$ar ? 'إليك أبرز مباريات اليوم على توفي إكس تيفي:' : "Here are today's top matches on ToFi X Tv:"],
+            'tomorrow_intro'  => [$ar ? 'مباريات الغد على توفي إكس تيفي:' : "Tomorrow's matches on ToFi X Tv:"],
             'live_intro'      => [$ar ? 'هذه المباريات الجارية الآن:' : 'These matches are live right now:'],
-            'no_live'         => [$ar ? 'لا توجد مباريات مباشرة في هذه اللحظة. تفقد مباريات اليوم:' : 'No matches are live at this moment. Check today\'s fixtures:'],
-            'no_matches'      => [$ar ? 'لا توجد مباريات مسجلة اليوم.' : 'No matches are scheduled today.'],
+            'no_live'         => [$ar ? 'لا توجد مباريات مباشرة في هذه اللحظة. تفقد مباريات اليوم من قسم المباريات.' : 'No matches are live at this moment — check today\'s fixtures in the matches section.'],
+            'no_matches'      => [$ar ? 'لا توجد مباريات مسجلة في هذا اليوم.' : 'No matches are scheduled for that day.'],
             'match_intro'     => [$ar ? 'وجدت هذه المباراة لك:' : 'I found this match for you:'],
             'movie_intro'     => [$ar ? 'إليك ما وجدته في الأفلام:' : 'Here\'s what I found in movies:'],
             'series_intro'    => [$ar ? 'إليك ما وجدته في المسلسلات:' : 'Here\'s what I found in series:'],
@@ -573,7 +1062,6 @@ final class Ai
             'not_found_movie' => [$ar ? 'لم أجد هذا الفيلم في مكتبة الموقع. جرّب اسماً آخر أو تصفح قسم الأفلام.' : 'I couldn\'t find that movie in the site library. Try another title or browse the movies section.'],
             'not_found_series'=> [$ar ? 'لم أجد هذا المسلسل في مكتبة الموقع. جرّب اسماً آخر أو تصفح قسم المسلسلات.' : 'I couldn\'t find that series. Try another title or browse the series section.'],
             'not_found_news'  => [$ar ? 'لم أجد أخباراً مطابقة الآن. تصفح قسم الأخبار لآخر المستجدات.' : 'No matching news right now. Browse the news section for the latest.'],
-            'unavailable'     => [$ar ? 'تعذر الوصول للمساعد الذكي حالياً — حاول مرة أخرى بعد قليل، أو استخدم البحث في الموقع.' : 'The assistant is temporarily unavailable — try again shortly, or use the site search.'],
         ];
         return $map[$key][0] ?? '';
     }
@@ -588,6 +1076,7 @@ final class Ai
             'movies'  => $ar ? 'أحدث الأفلام' : 'Latest movies',
             'series'  => $ar ? 'أحدث المسلسلات' : 'Latest series',
             'news'    => $ar ? 'الأخبار الرياضية' : 'Sports news',
+            'contact' => $ar ? 'اتصل بنا' : 'Contact us',
         ];
         $q = [
             'matches' => $ar ? 'مباريات اليوم' : 'today matches',
@@ -595,12 +1084,13 @@ final class Ai
             'movies'  => $ar ? 'أحدث الأفلام' : 'latest movies',
             'series'  => $ar ? 'أحدث المسلسلات' : 'latest series',
             'news'    => $ar ? 'أخبار' : 'news',
+            'contact' => $ar ? 'اتصل بنا' : 'contact',
         ];
         $order = match ($ctx) {
             'matches' => ['live', 'matches', 'news', 'movies'],
             'cinema'  => ['movies', 'series', 'matches', 'live'],
             'news'    => ['news', 'matches', 'live', 'movies'],
-            default   => ['matches', 'live', 'movies', 'series', 'news'],
+            default   => ['matches', 'live', 'movies', 'series', 'news', 'contact'],
         };
         $out = [];
         foreach ($order as $k) $out[] = ['label' => $all[$k], 'q' => $q[$k]];

@@ -143,6 +143,19 @@
     return b;
   }
 
+  /* Assistant answers are ready-to-render HTML UIs, sanitized SERVER-SIDE
+   * (allowlist: no scripts/handlers/iframes can survive the backend). */
+  function addHtml(html) {
+    var b = el('div', 'ai-msg ai-assistant');
+    var box = el('div', 'ai-html');
+    box.innerHTML = String(html || '');
+    b.appendChild(box);
+    body.appendChild(b);
+    scrollBottom();
+    return b;
+  }
+
+  /* (legacy card renderer kept for history entries saved by older builds) */
   function stateClass(s) { return s === 'live' ? 'is-live' : (s === 'finished' ? 'is-ft' : 'is-soon'); }
 
   function ctaBtn(url, label) {
@@ -255,11 +268,25 @@
     addBubble('assistant', A.welcome || '');
     if (hist.length) {
       hist.forEach(function (m) {
+        if (m.role === 'assistant' && m.html) { addHtml(m.html); return; }
         addBubble(m.role, m.content);
         if (m.cards) renderCards(m.cards);
       });
     }
     renderSuggestions(A.suggestions || []);
+  }
+
+  /* Context Engine payload: what page the visitor is on right now. */
+  function pageInfo() {
+    var desc = '';
+    var md = document.querySelector('meta[name="description"]');
+    if (md) desc = md.getAttribute('content') || '';
+    return { path: location.pathname, title: document.title || '', desc: desc };
+  }
+  function htmlToText(html) {
+    var d = el('div');
+    d.innerHTML = String(html || '');
+    return (d.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   }
 
   /* ---------------- send flow ---------------- */
@@ -288,6 +315,7 @@
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         message: text,
+        page: pageInfo(),
         history: hist.slice(-8).map(function (m) { return { role: m.role, content: m.content }; })
       })
     }).then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
@@ -298,6 +326,11 @@
           addBubble('assistant', A.rate_limited || '');
         } else if (!j.ok) {
           addBubble('assistant', A.error || '');
+        } else if (j.type === 'html' && j.html) {
+          // AI UI Generator contract: every answer is a ready HTML interface.
+          addHtml(j.html);
+          hist.push({ role: 'assistant', content: htmlToText(j.html), html: j.html });
+          renderSuggestions(j.suggestions);
         } else {
           addBubble('assistant', j.text || '');
           hist.push({ role: 'assistant', content: j.text || '', cards: j.cards && j.cards.length ? j.cards : undefined });
