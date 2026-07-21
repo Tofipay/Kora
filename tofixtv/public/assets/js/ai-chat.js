@@ -36,6 +36,12 @@
   }
   var hist = loadHist(); // [{role, content, cards?, suggestions?}]
 
+  /* Conversation memory — last entity the assistant resolved (match/series/…). */
+  var MKEY = 'q_ai_mem_v1';
+  function loadMemory() { try { return JSON.parse(sessionStorage.getItem(MKEY)) || {}; } catch (e) { return {}; } }
+  function saveMemory(m) { try { sessionStorage.setItem(MKEY, JSON.stringify(m || {})); } catch (e) {} }
+  var memory = loadMemory();
+
   /* ---------------- FAB + panel shell ---------------- */
   var fab = el('button', 'ai-fab');
   fab.type = 'button';
@@ -119,6 +125,8 @@
   clearBtn.addEventListener('click', function () {
     hist = [];
     saveHist(hist);
+    memory = {};
+    saveMemory(memory);
     body.textContent = '';
     renderIntro();
   });
@@ -316,12 +324,17 @@
       body: JSON.stringify({
         message: text,
         page: pageInfo(),
+        lang: (document.documentElement.lang || 'ar').indexOf('en') === 0 ? 'en' : 'ar',
+        memory: memory,
         history: hist.slice(-8).map(function (m) { return { role: m.role, content: m.content }; })
       })
     }).then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
       .then(function (res) {
         typing.remove();
         var j = res.j || {};
+        // Conversation memory: remember the last entity the backend resolved
+        // so a bare follow-up ("who scored?") keeps its referent.
+        if (j.memory && typeof j.memory === 'object') { memory = j.memory; saveMemory(memory); }
         if (res.s === 429) {
           addBubble('assistant', A.rate_limited || '');
         } else if (!j.ok) {

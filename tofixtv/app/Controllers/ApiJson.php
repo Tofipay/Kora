@@ -126,10 +126,14 @@ final class ApiJson
         foreach (array_slice(is_array($raw['history'] ?? null) ? $raw['history'] : [], -8) as $h) {
             if (is_array($h)) $history[] = ['role' => (string)($h['role'] ?? 'user'), 'content' => (string)($h['content'] ?? '')];
         }
-        // Context Engine: the page the visitor is currently viewing.
+        // Context Engine: the page the visitor is currently viewing (hint only).
         $page = is_array($raw['page'] ?? null) ? $raw['page'] : [];
+        // Conversation memory: last entity discussed, echoed by the client.
+        $memory = is_array($raw['memory'] ?? null) ? $raw['memory'] : [];
+        // Language hint from the widget (site language of the current page).
+        $langHint = in_array($raw['lang'] ?? '', ['ar', 'en'], true) ? (string)$raw['lang'] : '';
 
-        $res = \TofiXTv\Core\Ai::handle($message, $history, $page);
+        $res = \TofiXTv\Core\Ai::handle($message, $history, $page, $memory, $langHint);
         View::json(['ok' => true] + $res);
     }
 
