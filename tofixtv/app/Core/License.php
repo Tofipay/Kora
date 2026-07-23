@@ -38,8 +38,13 @@ final class License
     /** Re-check cadence (seconds): slower while healthy, faster while locked. */
     private const INTERVAL_ACTIVE = 600;             // 10 minutes
     private const INTERVAL_LOCKED = 120;             // 2 minutes
-    /** Keep serving on transient network failure until the last OK is this old. */
-    private const GRACE_SECONDS   = 3 * 24 * 3600;   // 3 days
+    /**
+     * Max time the site may keep running on the LOCAL cache without a fresh
+     * remote confirmation. After this window a successful remote check is
+     * mandatory — so blocking/removing the license host cannot keep a site
+     * alive indefinitely. Also bounds any local-cache tampering.
+     */
+    private const GRACE_SECONDS   = 12 * 3600;       // 12 hours
 
     private static ?array $data = null;
 
@@ -76,7 +81,16 @@ final class License
     {
         $d = self::load();
         if (empty($d['activated'])) return 'unactivated';
-        return (($d['state'] ?? 'active') === 'active') ? 'active' : 'locked';
+        if (($d['state'] ?? 'active') !== 'active') return 'locked';
+        // Defense in depth: never report "active" off a cache that was never
+        // remotely confirmed, is confirmed in the (impossible) future, or is
+        // older than the grace window — the remote must confirm within GRACE.
+        $now    = time();
+        $lastOk = (int)($d['last_ok'] ?? 0);
+        if ($lastOk <= 0 || $lastOk > $now || ($now - $lastOk) >= self::GRACE_SECONDS) {
+            return 'locked';
+        }
+        return 'active';
     }
 
     /* ---------------- domain helpers ---------------- */
@@ -246,33 +260,59 @@ final class License
 
     /* ---------------- periodic background re-check ---------------- */
 
-    /** Re-verify at most once per interval; otherwise reuse the cached decision. */
+    /**
+     * Re-verify against the REMOTE authority at most once per interval; between
+     * checks the local cache is used only for speed — it is never trusted as the
+     * source of on/off. The Blogspot page is always authoritative:
+     *   - Timestamps in the future are rejected (a tampered license.json cannot
+     *     push the next check away to keep a disabled site alive).
+     *   - A successful remote "active" confirmation is required at least once per
+     *     GRACE window, so blocking/removing the license host, or editing the
+     *     local state to "active", can keep the site up for at most that window
+     *     — after which a real remote check is forced.
+     */
     public static function refresh(bool $force = false): void
     {
         if (PHP_SAPI === 'cli') return;             // no reliable request host on CLI
         $d = self::load();
         if (empty($d['activated'])) return;         // nothing to recheck before first activation
 
-        $now      = time();
-        $state    = $d['state'] ?? 'active';
+        $now   = time();
+        $state = ($d['state'] ?? 'active') === 'active' ? 'active' : 'locked';
+
+        // Anti-tamper: a future timestamp is impossible on an honest server; treat
+        // any future last_check / last_ok as "never happened".
+        $lastCheck = (int)($d['last_check'] ?? 0);
+        $lastOk    = (int)($d['last_ok'] ?? 0);
+        if ($lastCheck > $now) $lastCheck = 0;
+        if ($lastOk    > $now) $lastOk    = 0;
+
         $interval = $state === 'active' ? self::INTERVAL_ACTIVE : self::INTERVAL_LOCKED;
-        if (!$force && ($now - (int)($d['last_check'] ?? 0)) < $interval) return;
+        $due = $force
+            || ($now - $lastCheck) >= $interval          // normal cadence
+            || $lastOk <= 0                               // never really confirmed
+            || ($now - $lastOk) >= self::GRACE_SECONDS;   // must reconfirm within grace
+        if (!$due) return;                                // still inside the trusted window
 
         $licenses = self::fetchRemote();
         $d['last_check'] = $now;
+        $d['last_ok']    = $lastOk;                       // persist the sanitized value
 
         if ($licenses === null) {
-            // Transient failure: keep the last decision within the grace window so a
-            // brief outage of the license host never takes a paying site offline.
-            $lastOk = (int)($d['last_ok'] ?? 0);
-            if ($state === 'active' && $lastOk > 0 && ($now - $lastOk) > self::GRACE_SECONDS) {
+            // Transient failure: keep serving ONLY while a real confirmation is
+            // still within the grace window; otherwise lock (can't be verified).
+            if ($state === 'active' && $lastOk > 0 && ($now - $lastOk) < self::GRACE_SECONDS) {
+                $d['state']  = 'active';
+                $d['reason'] = 'cached';
+            } else {
                 $d['state']  = 'locked';
-                $d['reason'] = 'unreachable';
+                $d['reason'] = $lastOk > 0 ? 'unreachable' : 'unverified';
             }
             self::store($d);
             return;
         }
 
+        // Remote reachable → its verdict is final for this cycle.
         $r = self::evaluate($licenses, (string)($d['code'] ?? ''), self::currentDomain());
         $d['last_ok'] = $now;
         $d['state']   = $r['ok'] ? 'active' : 'locked';
