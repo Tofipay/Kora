@@ -77,11 +77,11 @@ html.dark {
      vanish on the navy background. Every rule that paints TEXT or ACCENTS
      with var(--primary) in dark mode (scores, kickoff times, stats, points,
      ratings, icons…) therefore resolves to the brand BLUE here, while light
-     mode keeps the requested navy #1b0761. */
-  --primary: #4c0ecd;
-  --primary-600: #7c4dff;
-  --primary-700: #b39dff;
-  --primary-soft: rgba(124, 77, 255, .16);
+     mode keeps the requested deep purple #1b0761. */
+  --primary: #7c4dff;
+  --primary-600: #9b7bff;
+  --primary-700: #c4b5fd;
+  --primary-soft: rgba(124, 77, 255, .18);
 }
 
 /* ---------- Reset ---------- */
