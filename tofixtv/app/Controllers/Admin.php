@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TofiXTv\Controllers;
 
 use TofiXTv\Core\Cache;
+use TofiXTv\Core\License;
 use TofiXTv\Core\Seo;
 use TofiXTv\Core\Settings;
 use TofiXTv\Core\View;
@@ -21,6 +22,11 @@ final class Admin
         tofixtv_session_start();
         header('X-Robots-Tag: noindex, nofollow');
 
+        // License hard-lock: a revoked/expired/domain-mismatched license stops
+        // the entire panel (shows only the deactivation page). An un-activated
+        // site falls through so the owner can reach the activation screen below.
+        License::gate('admin');
+
         if ($action === 'login') { self::login(); return; }
         if ($action === 'logout') {
             unset($_SESSION['qadmin']);
@@ -33,6 +39,22 @@ final class Admin
             $tok = (string)($_POST['_csrf'] ?? '');
             if (!hash_equals(self::csrf(), $tok)) { http_response_code(403); exit('Bad CSRF token'); }
         }
+
+        // One-time activation: until the site is activated the authenticated
+        // owner sees ONLY the activation screen; every other section is hidden.
+        // The code is verified & stored server-side and never returned to the UI.
+        if (!License::isActivated()) {
+            if ($action === 'activate' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+                $r = License::activate((string)($_POST['license_code'] ?? ''));
+                if ($r['ok']) { $_SESSION['qflash'] = $r['msg']; View::redirect('/' . ADMIN_PATH, 302); }
+                self::render('activate', ['msg' => $r['msg'], 'err' => true], false);
+                return;
+            }
+            self::render('activate', [], false);
+            return;
+        }
+        // Already activated → the activation route is retired (back to dashboard).
+        if ($action === 'activate') { View::redirect('/' . ADMIN_PATH, 302); }
 
         if ($action === 'channel-catalog/crypto') {
             self::channelCatalogCrypto();

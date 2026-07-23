@@ -15,6 +15,7 @@ spl_autoload_register(function (string $class): void {
 });
 
 use TofiXTv\Core\Lang;
+use TofiXTv\Core\License;
 use TofiXTv\Core\Router;
 use TofiXTv\Core\View;
 
@@ -110,6 +111,15 @@ require APP_DIR . '/helpers.php';
 if ($path !== '/' && str_ends_with($path, '/')) {
     $qs = (string)parse_url($uri, PHP_URL_QUERY);
     View::redirect(Lang::prefix() . rtrim($path, '/') . ($qs ? '?' . $qs : ''), 301);
+}
+
+/* ---------- License gate ----------
+ * Blocks the whole public site (and JSON APIs) unless the license is active.
+ * The admin panel manages its own activation UI (see Admin::dispatch), so it is
+ * excluded here. Uses a locally-cached decision — no external request per visit. */
+$__isAdmin = ($path === '/' . ADMIN_PATH) || str_starts_with($path, '/' . ADMIN_PATH . '/');
+if (!$__isAdmin) {
+    License::gate(str_starts_with($path, '/api/') ? 'api' : 'web');
 }
 
 /* ---------- Routes ---------- */

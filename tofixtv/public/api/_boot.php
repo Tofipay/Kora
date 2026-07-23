@@ -25,6 +25,9 @@ $__lang = (($_GET['lang'] ?? 'ar') === 'en') ? 'en' : 'ar';
 Lang::boot($__lang);
 require APP_DIR . '/helpers.php';
 
+/* License gate: JSON APIs are blocked unless the site license is active. */
+\TofiXTv\Core\License::gate('api');
+
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Access-Control-Allow-Origin: ' . SITE_URL);

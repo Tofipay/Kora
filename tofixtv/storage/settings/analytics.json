@@ -1,5 +1,5 @@
 {
-    "total": 37,
+    "total": 40,
     "days": {
         "2026-07-14": {
             "total": 37,
@@ -13,25 +13,39 @@
             "videos": 1,
             "live": 1,
             "league": 1
+        },
+        "2026-07-24": {
+            "total": 3,
+            "home": 3,
+            "uv_seen": {
+                "0545aaeef5": 1
+            },
+            "uv": 1
         }
     },
     "sources": {
-        "direct": 37
+        "direct": 40
     },
     "devices": {
-        "other": 25,
+        "other": 28,
         "linux": 12
     },
     "browsers": {
-        "other": 25,
+        "other": 28,
         "chrome": 12
     },
     "online": {
-        "0545aaeef5": 1784045829
+        "0545aaeef5": 1784847361
     },
     "top": {
         "videos": {
             "الكل": 1
         }
+    },
+    "countries": {
+        "other": 3
+    },
+    "pages": {
+        "\/": 3
     }
 }
