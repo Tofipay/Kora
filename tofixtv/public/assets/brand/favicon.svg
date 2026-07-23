@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">ALOKA app icon</title>
+  <desc id="desc">Rounded purple app icon with a white A monogram and play symbol cutout.</desc>
+  <defs>
+    <linearGradient id="alokaBackground" x1="80" y1="40" x2="930" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5B12E7"/>
+      <stop offset="0.45" stop-color="#340996"/>
+      <stop offset="1" stop-color="#1B0761"/>
+    </linearGradient>
+    <radialGradient id="alokaGlow" cx="0" cy="0" r="1" gradientTransform="translate(244 180) rotate(42) scale(760)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7B2CFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7B2CFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#alokaBackground)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#alokaGlow)"/>
+  <g transform="translate(143 122) scale(.72)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M512 96c-45 0-81 28-100 72L118 866c-13 31 10 62 43 62h143c19 0 36-11 43-29l71-179h188l71 179c7 18 24 29 43 29h143c33 0 56-31 43-62L612 168c-19-44-55-72-100-72Zm-67 296c0-21 23-34 41-23l165 105c17 11 17 37 0 48L486 627c-18 11-41-2-41-23V392Zm10 328h114l-57 145-57-145Z"/>
+  </g>
+</svg>

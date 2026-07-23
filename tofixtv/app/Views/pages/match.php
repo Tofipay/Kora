@@ -1,0 +1,583 @@
+<?php
+use TofiXTv\Core\View;
+
+$mid = (int)$m['match_id'];
+$hs = (int)($m['home_scores'] ?? 0);
+$as = (int)($m['away_scores'] ?? 0);
+$homeId = (int)($home['row_id'] ?? 0);
+$awayId = (int)($away['row_id'] ?? 0);
+$ts = (int)($m['match_timestamp'] ?? 0);
+$videoLinks = is_array($m['video_links'] ?? null) ? $m['video_links'] : [];
+
+/* Video helpers: provider from host, YouTube thumbnail from the video id */
+$vidProvider = static function (string $u): string {
+    $h = strtolower((string)(parse_url($u, PHP_URL_HOST) ?: ''));
+    if (str_contains($h, 'youtu')) return 'YouTube';
+    if (str_contains($h, 'fifa'))  return 'FIFA+';
+    if (str_contains($h, 'x.com') || str_contains($h, 'twitter')) return 'X';
+    if (str_contains($h, 'dailymotion')) return 'Dailymotion';
+    return preg_replace('/^www\./', '', $h) ?: '';
+};
+$ytThumb = static function (string $u): string {
+    if (preg_match('#(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{6,20})#i', $u, $mm)) {
+        return 'https://i.ytimg.com/vi/' . $mm[1] . '/hqdefault.jpg';
+    }
+    return '';
+};
+
+/* Extra time & penalty shootout (see match_periods / penalty_shootout) */
+$periods  = is_array($periods ?? null) ? $periods : match_periods($m);
+$shootout = is_array($shootout ?? null) ? $shootout : penalty_shootout($m, $homeId, $awayId);
+$pens     = $periods['pens'] ?? ($shootout['score'] ?? null);   // [home, away] shootout totals
+$penWinner = $pens ? ($pens[0] > $pens[1] ? 'home' : ($pens[1] > $pens[0] ? 'away' : null)) : null;
+$penWinnerName = $penWinner === 'home' ? team_name($home) : ($penWinner === 'away' ? team_name($away) : '');
+/* Two-legged tie aggregate (cup rounds) — flat pair or preformatted string */
+$aggPair = is_array($m['agg_result'] ?? null) ? score_pair($m['agg_result']) : null;
+$aggText = $aggPair ? ($aggPair[0] . ' - ' . $aggPair[1])
+         : (is_string($m['agg_result'] ?? null) && trim((string)$m['agg_result']) !== '' ? trim((string)$m['agg_result']) : '');
+
+/* Key events = everything except period markers & subs & yellows */
+$keyEvents = array_values(array_filter($events, function ($ev) {
+    $k = event_type($ev)['key'];
+    return !in_array($k, ['sub', 'yellow', 'other'], true);
+}));
+$mainReferee = null;
+foreach ($referees as $r) { if ((int)($r['referee_type'] ?? 0) === 1 || $mainReferee === null) { $mainReferee = $r; if ((int)($r['referee_type'] ?? 0) === 1) break; } }
+
+$statLabels = [
+    'ball_possession','expected_goals','total_shots','shots_on_goal','shots_off_goal','blocked_shots',
+    'shots_insidebox','shots_outsidebox','corner_kicks','offsides','fouls','yellow_cards','red_cards',
+    'goalkeeper_saves','total_passes','passes_percentage','freekick','cross_ball','throwin','goalkick','goal_attempt',
+];
+$statsByTeam = [];
+foreach ($stats as $srow) { if (isset($srow['team_id'])) $statsByTeam[(int)$srow['team_id']] = $srow; }
+$hStats = $statsByTeam[$homeId] ?? [];
+$aStats = $statsByTeam[$awayId] ?? [];
+?>
+<section class="match-hero" data-match-page="<?= $mid ?>">
+  <div class="mh-bg" aria-hidden="true"></div>
+  <div class="container mh-inner">
+    <?php
+      // Visually-hidden semantic headings for search engines. They carry the
+      // same match facts already shown on the page — no layout change.
+      $seoH1 = $seoH1 ?? '';
+      $seoH2 = is_array($seoH2 ?? null) ? $seoH2 : [];
+    ?>
+    <?php if ($seoH1 !== ''): ?><h1 class="seo-only"><?= e($seoH1) ?></h1><?php endif; ?>
+    <?php foreach ($seoH2 as $seoHead): ?><h2 class="seo-only"><?= e($seoHead) ?></h2><?php endforeach; ?>
+    <a class="mh-league" href="<?= e(league_url($m['championship'] ?? [])) ?>">
+      <img src="<?= e(league_img($m['championship'] ?? [])) ?>" alt="" width="20" height="20">
+      <span><?= e($m['championship']['title'] ?? '') ?></span>
+    </a>
+    <div class="mh-teams">
+      <a class="mh-team" href="<?= e(team_url($home)) ?>">
+        <img src="<?= e(team_img($home, '128')) ?>" alt="<?= e(team_name($home)) ?>" width="76" height="76">
+        <b><?= e(team_name($home)) ?></b>
+        <?php if (!empty($home['world_ranking'])): ?><small class="mh-rank" title="<?= e(t('match.fifa_rank')) ?>">FIFA #<?= (int)$home['world_ranking'] ?></small><?php endif; ?>
+      </a>
+      <div class="mh-center">
+        <?php if ($state['started']): ?>
+          <?php /* Reference layout: home number · status pill (or live ring)
+                   in the middle · away number. Numbers follow the page
+                   direction so each sits on its own team's side. */ ?>
+          <div class="mh-score">
+            <span data-hs><?= $hs ?></span>
+            <span class="mh-mid">
+            <?php if ($state['live'] && !empty($state['clock'])): $clk = $state['clock'];
+                $R = 30; $CIRC = round(2 * M_PI * $R, 2); ?>
+              <div class="live-ring" role="timer" aria-label="<?= e($clk['label']) ?>">
+                <svg viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
+                  <circle class="ring-bg" cx="36" cy="36" r="<?= $R ?>"/>
+                  <circle class="ring-fg" cx="36" cy="36" r="<?= $R ?>"
+                          stroke-dasharray="<?= $CIRC ?>"
+                          stroke-dashoffset="<?= round($CIRC * (1 - $clk['progress']), 2) ?>"
+                          data-ring="<?= $CIRC ?>"/>
+                </svg>
+                <b class="ring-min" data-status<?= live_clock_attrs($state) ?>><?= e($clk['label']) ?></b>
+                <i class="ring-pulse" aria-hidden="true"></i>
+              </div>
+            <?php else: ?>
+              <span class="mh-status is-ft" data-status><?= e($state['label']) ?></span>
+            <?php endif; ?>
+            </span>
+            <span data-as><?= $as ?></span>
+          </div>
+          <?php if ($state['live'] && !empty($state['clock'])): ?>
+          <span class="mh-status is-live"><?= e(t('status.live')) ?></span>
+          <?php endif; ?>
+          <?php if ($pens): ?>
+          <div class="mh-pens" aria-label="<?= e(t('match.penalties')) ?>">
+            <b class="<?= $penWinner === 'home' ? 'is-win' : '' ?>"><?= (int)$pens[0] ?></b>
+            <span class="mh-pens-label"><?= e(t('match.penalties')) ?></span>
+            <b class="<?= $penWinner === 'away' ? 'is-win' : '' ?>"><?= (int)$pens[1] ?></b>
+          </div>
+          <?php if ($penWinnerName !== ''): ?><small class="mh-pens-note"><?= e(t('match.won_pens', ['team' => $penWinnerName])) ?></small><?php endif; ?>
+          <?php elseif (!empty($periods['has_et'])): ?>
+          <small class="mh-pens-note"><?= e(t('match.after_et')) ?></small>
+          <?php endif; ?>
+          <?php if ($aggPair): ?>
+          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <span class="agg-pair"><span><?= (int)$aggPair[0] ?></span>-<span><?= (int)$aggPair[1] ?></span></span></small>
+          <?php elseif ($aggText !== ''): ?>
+          <small class="mh-pens-note mh-agg"><?= e(t('match.agg')) ?>: <?= e($aggText) ?></small>
+          <?php endif; ?>
+        <?php else: ?>
+          <div class="mh-time" data-ts="<?= $ts ?>"><?= e(format_ts_time($ts)) ?></div>
+          <div class="countdown" data-countdown="<?= $ts ?>" aria-label="<?= e(t('match.kickoff_in')) ?>">
+            <span data-cd="d">--</span><i>:</i><span data-cd="h">--</span><i>:</i><span data-cd="m">--</span><i>:</i><span data-cd="s">--</span>
+          </div>
+        <?php endif; ?>
+      </div>
+      <a class="mh-team" href="<?= e(team_url($away)) ?>">
+        <img src="<?= e(team_img($away, '128')) ?>" alt="<?= e(team_name($away)) ?>" width="76" height="76">
+        <b><?= e(team_name($away)) ?></b>
+        <?php if (!empty($away['world_ranking'])): ?><small class="mh-rank" title="<?= e(t('match.fifa_rank')) ?>">FIFA #<?= (int)$away['world_ranking'] ?></small><?php endif; ?>
+      </a>
+    </div>
+    <?php // Compact meta row: venue · kickoff date/time · round ?>
+    <?php if ($stadium !== '' || $ts || $roundLabel !== ''): ?>
+    <div class="mh-meta">
+      <?php if ($stadium !== ''): ?>
+      <span class="mh-meta-item">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+        <?= e($stadium) ?>
+      </span>
+      <?php endif; ?>
+      <?php if ($ts): ?>
+      <span class="mh-meta-item">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4m8-4v4M3 10h18"/></svg>
+        <?= e(format_date_short($ts)) ?> · <?= e(format_ts_time($ts)) ?>
+      </span>
+      <?php endif; ?>
+      <?php if ($roundLabel !== ''): ?>
+      <span class="mh-meta-item"><?= e($roundLabel) ?></span>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if (!empty($isApp)): ?>
+    <?php /* Android app (User-Agent: com.aloka.live.app) ONLY: the site's orange
+             button is hidden and a BLUE app button takes its place whenever a
+             value exists (direct match link OR app channel library, a normal
+             URL or an encrypted token) — shown even before kickoff, no live
+             requirement. Normal visitors never reach this branch. */ ?>
+    <?php if (!empty($appWatchUrl)): ?>
+    <style>.watch-cta.watch-cta-app{background:linear-gradient(120deg,#3a0ba0,#4c0ecd);box-shadow:0 10px 26px rgba(76, 14, 205,.4)}.watch-cta.watch-cta-app:hover{box-shadow:0 14px 32px rgba(76, 14, 205,.5)}</style>
+    <div class="mh-watch">
+      <a class="watch-cta watch-cta-app" href="<?= e(app_intent_url($appWatchUrl)) ?>">
+        <span class="live-dot"></span>شاهد المباراة الآن
+      </a>
+    </div>
+    <?php endif; ?>
+    <?php else: ?>
+    <?php /* "Watch now" appears ONLY while the match is live — hidden before
+             kickoff and after it ends. */ ?>
+    <?php if (!empty($watchable) && !empty($state['live'])): ?>
+    <div class="mh-watch">
+      <a class="watch-cta" href="<?= e($watchUrl) ?>" target="<?= e($watchTarget) ?>"<?= $watchTarget === '_blank' ? ' rel="noopener"' : '' ?>>
+        <span class="live-dot"></span><?= e(\TofiXTv\Core\Lang::current() === 'ar' ? 'شاهد المباراة الآن' : t('player.watch')) ?>
+      </a>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
+    <div class="mh-actions">
+      <button class="icon-btn" onclick="QShare()" aria-label="<?= e(t('misc.share')) ?>">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6m-7.6 6 7.6 3.6"/></svg>
+      </button>
+      <button class="fav-btn standalone" data-fav="match" data-id="<?= $mid ?>" data-title="<?= e(team_name($home) . ' - ' . team_name($away)) ?>" data-url="<?= e(match_url($m)) ?>" onclick="QF.toggle(this)" aria-label="<?= e(t('fav.add')) ?>">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 2.9 5.8 6.1.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.1-.9z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="container">
+    <nav class="tabs glass-soft" role="tablist">
+      <button class="tab active" data-tab="overview"><?= e(t('match.overview')) ?></button>
+      <button class="tab" data-tab="events"><?= e(t('match.events')) ?></button>
+      <?php if (!empty($videoLinks) && $state['started']): ?>
+      <button class="tab" data-tab="videos"><?= e(t('match.videos')) ?></button>
+      <?php endif; ?>
+      <button class="tab" data-tab="lineups"><?= e(t('match.lineups')) ?></button>
+      <button class="tab" data-tab="stats"><?= e(t('match.stats')) ?></button>
+      <button class="tab" data-tab="news"><?= e(t('match.news')) ?></button>
+      <button class="tab" data-tab="standings"><?= e(t('match.standings')) ?></button>
+      <button class="tab" data-tab="scorers"><?= e(t('match.scorers')) ?></button>
+    </nav>
+  </div>
+</section>
+
+<div class="container match-body">
+
+  <!-- ============ OVERVIEW ============ -->
+  <section class="tab-panel active" data-panel="overview">
+    <div class="two-col">
+      <div>
+        <?php
+        $breakdown = [];
+        if (!empty($periods['fh']))  $breakdown[] = [t('match.first_half'),  $periods['fh']];
+        if (!empty($periods['sh']))  $breakdown[] = [t('match.second_half'), $periods['sh']];
+        if (!empty($periods['fe']))  $breakdown[] = [t('match.et_first'),    $periods['fe']];
+        if (!empty($periods['se']))  $breakdown[] = [t('match.et_second'),   $periods['se']];
+        if ($pens)                   $breakdown[] = [t('match.penalties'),   $pens];
+        if ($state['started'] && $breakdown):
+        ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.score_breakdown')) ?></h3>
+          <div class="score-breakdown">
+            <div class="sb-head">
+              <span class="sb-team"><img src="<?= e(team_img($home)) ?>" alt="" width="22" height="22"><?= e(team_name($home)) ?></span>
+              <span class="sb-total"><b><?= $hs ?></b><i>-</i><b><?= $as ?></b></span>
+              <span class="sb-team sb-team-a"><?= e(team_name($away)) ?><img src="<?= e(team_img($away)) ?>" alt="" width="22" height="22"></span>
+            </div>
+            <ul class="sb-rows">
+              <?php foreach ($breakdown as $bd): [$lbl, $pr] = $bd; ?>
+              <li><span><?= (int)$pr[0] ?></span><em><?= e($lbl) ?></em><span><?= (int)$pr[1] ?></span></li>
+              <?php endforeach; ?>
+            </ul>
+            <?php if ($penWinnerName !== ''): ?>
+            <p class="sb-note"><?= e(t('match.won_pens', ['team' => $penWinnerName])) ?></p>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($shootout && ($shootout['home'] || $shootout['away'])): ?>
+        <div class="card glass-soft pen-shootout">
+          <h3 class="card-title"><?= e(t('match.penalties')) ?>
+            <?php if ($pens): ?><span class="ps-final"><span><?= (int)$pens[0] ?></span><i>-</i><span><?= (int)$pens[1] ?></span></span><?php endif; ?>
+          </h3>
+          <?php foreach ([['side' => 'home', 'team' => $home, 'idx' => 0], ['side' => 'away', 'team' => $away, 'idx' => 1]] as $psRow):
+              $attempts = $shootout[$psRow['side']]; if (!$attempts) continue; ?>
+          <div class="ps-team<?= $penWinner === $psRow['side'] ? ' ps-winner' : '' ?>">
+            <div class="ps-team-head">
+              <img src="<?= e(team_img($psRow['team'])) ?>" alt="" width="24" height="24">
+              <b><?= e(team_name($psRow['team'])) ?></b>
+              <?php if ($pens): ?><span class="ps-count"><?= (int)$pens[$psRow['idx']] ?>/<?= count($attempts) ?></span><?php endif; ?>
+            </div>
+            <ol class="ps-attempts">
+              <?php foreach ($attempts as $i => $at): $pl = $at['player']; ?>
+              <li class="ps-chip <?= $at['scored'] ? 'is-scored' : 'is-missed' ?>"
+                  title="<?= e(player_label($pl)) ?> — <?= e($at['scored'] ? t('match.pen_scored') : t('match.pen_missed')) ?>">
+                <span class="ps-photo">
+                  <img src="<?= e(player_img($pl, '64')) ?>" alt="" width="34" height="34" loading="lazy">
+                  <i class="ps-badge" aria-hidden="true">
+                    <?php if ($at['scored']): ?>
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m4.5 12.8 5 5L19.5 7"/></svg>
+                    <?php else: ?>
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m6.5 6.5 11 11m0-11-11 11"/></svg>
+                    <?php endif; ?>
+                  </i>
+                  <em class="ps-order"><?= $i + 1 ?></em>
+                </span>
+                <span class="ps-name"><?= e(player_label($pl)) ?></span>
+              </li>
+              <?php endforeach; ?>
+            </ol>
+          </div>
+          <?php endforeach; ?>
+          <?php if ($penWinnerName !== ''): ?>
+          <p class="sb-note"><?= e(t('match.won_pens', ['team' => $penWinnerName])) ?></p>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($videoLinks) && $state['started']): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.highlights')) ?>
+            <a class="view-all" href="#videos" data-goto-tab="videos"><?= e(t('match.videos')) ?> ›</a>
+          </h3>
+          <div class="video-links">
+            <?php $vn = 0;
+            foreach (array_slice($videoLinks, 0, 3) as $v): if (empty($v['video_link'])) continue; $vn++;
+                $prov = $vidProvider((string)$v['video_link']); ?>
+              <a class="video-link card-hover" href="<?= e($v['video_link']) ?>" target="_blank" rel="noopener nofollow">
+                <span class="hl-play"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+                <span><?= e(t('match.highlights')) ?> <?= count($videoLinks) > 1 ? $vn : '' ?></span>
+                <?php if ($prov !== ''): ?><small class="vl-provider" dir="ltr"><?= e($prov) ?></small><?php endif; ?>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($keyEvents)): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.key_events')) ?></h3>
+          <?= View::partial('event-list', ['events' => $keyEvents, 'homeId' => $homeId, 'awayId' => $awayId]) ?>
+        </div>
+        <?php endif; ?>
+
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.info')) ?></h3>
+          <dl class="info-list">
+            <div><dt><?= e(t('match.championship')) ?></dt><dd><a href="<?= e(league_url($m['championship'] ?? [])) ?>"><?= e($m['championship']['title'] ?? '—') ?></a></dd></div>
+            <?php $roundText = !empty($roundLabel) ? $roundLabel : (string)($m['rank'] ?? ''); ?>
+            <?php if ($roundText !== '' && $roundText !== '0'): ?><div><dt><?= e(t('match.round')) ?></dt><dd><?= e($roundText) ?></dd></div><?php endif; ?>
+            <?php if (!empty($stadium)): ?><div><dt><?= e(t('match.stadium')) ?></dt><dd><?= e($stadium) ?></dd></div><?php endif; ?>
+            <?php if ($mainReferee): ?><div><dt><?= e(t('match.referee')) ?></dt><dd><?= e((string)($mainReferee['title'] ?? '')) ?></dd></div><?php endif; ?>
+            <div><dt><?= e(t('match.time')) ?></dt><dd data-ts-inline="<?= $ts ?>"><?= e(format_ts_time($ts)) ?></dd></div>
+            <div><dt><?= e(t('match.date')) ?></dt><dd><?= e(format_date_long($m['match_date'] ?? '')) ?></dd></div>
+          </dl>
+        </div>
+
+        <?php if (!empty($channels)): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.channels')) ?></h3>
+          <ul class="channel-list">
+            <?php foreach ($channels as $c): ?>
+              <li>
+                <b><?= e((string)($c['channel_name'] ?? '')) ?></b>
+                <?php if (!empty($c['commentator_name'])): ?><span><?= e((string)$c['commentator_name']) ?></span><?php endif; ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <div>
+        <?php if (!empty($playedResult['home']) || !empty($playedResult['away'])): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.form')) ?></h3>
+          <div class="form-compare">
+            <?php foreach ([['side' => 'home', 'team' => $home], ['side' => 'away', 'team' => $away]] as $fc):
+                $list = array_values((array)($playedResult[$fc['side']] ?? [])); if (!$list) continue; ?>
+            <div class="form-row">
+              <span class="form-team"><img src="<?= e(team_img($fc['team'])) ?>" alt="" width="22" height="22"><?= e(team_name($fc['team'])) ?></span>
+              <span class="form-dots">
+                <?php foreach (array_slice($list, 0, 5) as $fm):
+                    $wt = (string)($fm['win_type'] ?? '');
+                    $cls = $wt === 'win' ? 'form-w' : ($wt === 'lose' ? 'form-l' : 'form-d');
+                    $tip = team_name($fm['home'] ?? []) . ' ' . (int)($fm['home_scores'] ?? 0) . '-' . (int)($fm['away_scores'] ?? 0) . ' ' . team_name($fm['away'] ?? []); ?>
+                  <i class="form-badge <?= $cls ?>" title="<?= e($tip) ?>"><?= $wt === 'win' ? '✓' : ($wt === 'lose' ? '✗' : '=') ?></i>
+                <?php endforeach; ?>
+              </span>
+            </div>
+            <?php endforeach; ?>
+            <?php if (!empty($teamWins) && (($teamWins['equal'] ?? null) !== null)):
+                $hw = 0; $aw = 0; $eq = (int)($teamWins['equal'] ?? 0);
+                foreach ($teamWins as $k => $v) {
+                    if ($k === 'equal') continue;
+                    if ((int)$k === (int)($home['row_id'] ?? -1)) $hw = (int)$v; else $aw = (int)$v;
+                } ?>
+            <div class="h2h-strip">
+              <span class="h2h-cell"><b><?= $hw ?></b><small><?= e(team_name($home)) ?></small></span>
+              <span class="h2h-cell"><b><?= $eq ?></b><small><?= e(t('standings.draw')) ?></small></span>
+              <span class="h2h-cell"><b><?= $aw ?></b><small><?= e(team_name($away)) ?></small></span>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($hStats) || !empty($aStats)): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('home.stats')) ?></h3>
+          <?= View::partial('stat-bars', ['hStats' => $hStats, 'aStats' => $aStats, 'labels' => ['ball_possession', 'total_shots', 'shots_on_goal', 'corner_kicks', 'fouls'], 'home' => $home, 'away' => $away]) ?>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($standingRows)): ?>
+        <div class="card glass-soft">
+          <h3 class="card-title"><?= e(t('match.standings')) ?></h3>
+          <?= View::partial('standings-table', ['rows' => array_slice($standingRows, 0, 8), 'compact' => true, 'highlightTeam' => 0]) ?>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EVENTS ============ -->
+  <section class="tab-panel" data-panel="events">
+    <?php if (empty($events)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('match.no_events')) ?></p></div>
+    <?php else: ?>
+      <div class="card glass-soft">
+        <div class="seg-control" role="tablist">
+          <button class="seg active" data-events-filter="key"><?= e(t('match.key_events')) ?></button>
+          <button class="seg" data-events-filter="all"><?= e(t('match.all_events')) ?></button>
+        </div>
+        <div data-events-view="key"><?= View::partial('event-list', ['events' => $keyEvents, 'homeId' => $homeId, 'awayId' => $awayId]) ?></div>
+        <div data-events-view="all" hidden><?= View::partial('event-list', ['events' => $events, 'homeId' => $homeId, 'awayId' => $awayId]) ?></div>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <!-- ============ VIDEOS ============ -->
+  <?php if (!empty($videoLinks) && $state['started']): ?>
+  <section class="tab-panel" data-panel="videos">
+    <div class="card glass-soft">
+      <h3 class="card-title"><?= e(t('match.videos')) ?></h3>
+      <div class="videos-grid" data-videos-grid>
+        <?php $vi = 0;
+        foreach ($videoLinks as $v): if (empty($v['video_link'])) continue; $vi++;
+            $u = (string)$v['video_link'];
+            $prov = $vidProvider($u);
+            $thumb = $ytThumb($u); ?>
+        <a class="vcard card-hover<?= $vi > 6 ? ' vcard-more' : '' ?>"<?= $vi > 6 ? ' hidden' : '' ?>
+           href="<?= e($u) ?>" target="_blank" rel="noopener nofollow">
+          <span class="vc-thumb">
+            <span class="vc-thumb-ph" aria-hidden="true">
+              <img src="/assets/brand/icon.svg" alt="" width="46" height="46" loading="lazy">
+            </span>
+            <?php if ($thumb !== ''): ?>
+            <img src="<?= e($thumb) ?>" alt="" loading="lazy" width="480" height="270" onerror="this.remove()">
+            <?php endif; ?>
+            <span class="vc-play" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+            <?php if ($prov !== ''): ?><span class="vc-provider" dir="ltr"><?= e($prov) ?></span><?php endif; ?>
+          </span>
+          <span class="vc-body">
+            <b><?= e(t('match.highlights')) ?> <?= count($videoLinks) > 1 ? $vi : '' ?></b>
+            <small><?= e(team_name($home)) ?> <?= e(t('match.vs')) ?> <?= e(team_name($away)) ?></small>
+          </span>
+        </a>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($vi > 6): ?>
+      <div class="show-more-wrap">
+        <button class="btn btn-ghost" type="button" data-show-more="[data-videos-grid] .vcard-more">
+          <?= e(t('misc.show_more')) ?>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+      </div>
+      <?php endif; ?>
+    </div>
+  </section>
+  <?php endif; ?>
+
+  <!-- ============ LINEUPS ============ -->
+  <section class="tab-panel" data-panel="lineups">
+    <?php if (empty($lineups)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('match.no_lineup')) ?></p></div>
+    <?php else: ?>
+      <?= View::partial('formation-pitch', [
+          'lineups' => $lineups, 'homeId' => $homeId, 'awayId' => $awayId,
+          'home' => $home, 'away' => $away,
+      ]) ?>
+      <div class="two-col">
+        <?php foreach ([$homeId => $home, $awayId => $away] as $tid => $teamObj):
+            $side = $lineups[$tid] ?? null; if (!is_array($side)) continue;
+            $starters = is_array($side['lineup'] ?? null) ? $side['lineup'] : [];
+            $benchers = is_array($side['substitutions'] ?? null) ? $side['substitutions'] : [];
+        ?>
+        <div class="card glass-soft">
+          <h3 class="card-title lineup-team">
+            <img src="<?= e(team_img($teamObj)) ?>" alt="" width="24" height="24"><?= e(team_name($teamObj)) ?>
+          </h3>
+          <ul class="lineup-list">
+            <?php foreach ($starters as $lp): $pl = $lp['player'] ?? []; ?>
+            <li>
+              <span class="lp-num"><?= (int)($pl['player_number'] ?? 0) ?></span>
+              <img src="<?= e(player_img($pl, '64')) ?>" alt="" width="30" height="30" loading="lazy">
+              <span class="lp-name">
+                <?= e(player_label($pl)) ?>
+                <?php if (!empty($lp['captain'])): ?><em class="badge-cap">C</em><?php endif; ?>
+                <?php if (!empty($pl['position'])): ?><small><?= e((string)$pl['position']) ?></small><?php endif; ?>
+              </span>
+              <span class="lp-marks">
+                <?php if (!empty($lp['goal'])): ?><i class="mark-goal" title="<?= e(t('event.goal')) ?>">⚽<?= (int)$lp['goal'] > 1 ? '×' . (int)$lp['goal'] : '' ?></i><?php endif; ?>
+                <?php if (!empty($lp['yellow'])): ?><i class="mark-card yellow"></i><?php endif; ?>
+                <?php if (!empty($lp['red'])): ?><i class="mark-card red"></i><?php endif; ?>
+                <?php if (!empty($lp['rating']) && $lp['rating'] !== '0'): ?><b class="lp-rating"><?= e((string)$lp['rating']) ?></b><?php endif; ?>
+              </span>
+            </li>
+            <?php endforeach; ?>
+          </ul>
+          <?php if (!empty($benchers)): ?>
+          <h4 class="card-subtitle"><?= e(t('match.substitutes')) ?></h4>
+          <ul class="lineup-list bench">
+            <?php foreach ($benchers as $lp): $pl = $lp['player'] ?? []; ?>
+            <li>
+              <span class="lp-num"><?= (int)($pl['player_number'] ?? 0) ?></span>
+              <img src="<?= e(player_img($pl, '64')) ?>" alt="" width="30" height="30" loading="lazy">
+              <span class="lp-name"><?= e(player_label($pl)) ?><?php if (!empty($pl['position'])): ?><small><?= e((string)$pl['position']) ?></small><?php endif; ?></span>
+              <span class="lp-marks">
+                <?php if (!empty($lp['rating']) && $lp['rating'] !== '0'): ?><b class="lp-rating"><?= e((string)$lp['rating']) ?></b><?php endif; ?>
+              </span>
+            </li>
+            <?php endforeach; ?>
+          </ul>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="tab-panel" data-panel="stats">
+    <?php if (empty($hStats) && empty($aStats)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('match.no_stats')) ?></p></div>
+    <?php else: ?>
+      <div class="card glass-soft">
+        <div class="stats-teams">
+          <span><img src="<?= e(team_img($home)) ?>" alt="" width="28" height="28"><?= e(team_name($home)) ?></span>
+          <b><?= e(t('home.stats')) ?></b>
+          <span><?= e(team_name($away)) ?><img src="<?= e(team_img($away)) ?>" alt="" width="28" height="28"></span>
+        </div>
+        <?= View::partial('stat-bars', ['hStats' => $hStats, 'aStats' => $aStats, 'labels' => $statLabels, 'home' => $home, 'away' => $away]) ?>
+        <div class="heatmap-placeholder">
+          <svg viewBox="0 0 100 60" width="100%" aria-hidden="true">
+            <rect x="1" y="1" width="98" height="58" rx="2" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/>
+            <line x1="50" y1="1" x2="50" y2="59" stroke="currentColor" stroke-width=".8" opacity=".35"/>
+            <circle cx="50" cy="30" r="8" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/>
+            <rect x="1" y="17" width="14" height="26" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/>
+            <rect x="85" y="17" width="14" height="26" fill="none" stroke="currentColor" stroke-width=".8" opacity=".35"/>
+          </svg>
+          <p><?= e(t('stat.heatmap_soon')) ?></p>
+        </div>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <!-- ============ NEWS ============ -->
+  <section class="tab-panel" data-panel="news">
+    <?php if (empty($leagueNews)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('news.none')) ?></p></div>
+    <?php else: ?>
+      <div class="news-list">
+        <?php foreach ($leagueNews as $n): ?>
+          <?= View::partial('news-card', ['n' => $n]) ?>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <!-- ============ STANDINGS ============ -->
+  <section class="tab-panel" data-panel="standings">
+    <?php if (empty($standingRows)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('standings.none')) ?></p></div>
+    <?php else: ?>
+      <div class="card glass-soft">
+        <?= View::partial('standings-table', ['rows' => $standingRows, 'compact' => false]) ?>
+      </div>
+    <?php endif; ?>
+  </section>
+
+  <!-- ============ SCORERS ============ -->
+  <section class="tab-panel" data-panel="scorers">
+    <?php if (empty($scorers)): ?>
+      <div class="empty-state glass-soft"><p><?= e(t('scorers.none')) ?></p></div>
+    <?php else: ?>
+      <div class="card glass-soft">
+        <?= View::partial('scorers-table', ['scorers' => $scorers, 'leagueId' => (int)($m['championship']['url_id'] ?? 0)]) ?>
+      </div>
+    <?php endif; ?>
+  </section>
+</div>
+
+<?php
+/* ============ SEO Content Engine — server-rendered article ============ */
+$__article = match_article($m, $state, $channels, [
+    'referee' => (string)($mainReferee['title'] ?? ''),
+    'stadium' => (string)($stadium ?? ''),
+    'round'   => (string)($roundLabel ?? ''),
+]);
+?>
+<div class="container">
+  <?= View::partial('match-article', [
+      'article' => $__article,
+      'home'    => team_name($home),
+      'away'    => team_name($away),
+  ]) ?>
+</div>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="ALOKA Live">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2A0A83"/><stop offset="0.55" stop-color="#1B0761"/><stop offset="1" stop-color="#10033D"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(425.91999999999996,60) scale(0.34)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M512 96c-45 0-81 28-100 72L118 866c-13 31 10 62 43 62h143c19 0 36-11 43-29l71-179h188l71 179c7 18 24 29 43 29h143c33 0 56-31 43-62L612 168c-19-44-55-72-100-72Zm-67 296c0-21 23-34 41-23l165 105c17 11 17 37 0 48L486 627c-18 11-41-2-41-23V392Zm10 328h114l-57 145-57-145Z"/>
+  </g>
+  <text x="600.0" y="541.8" text-anchor="middle" font-family="'Inter','Cairo',system-ui,sans-serif" font-weight="800" font-size="69.3" fill="#FFFFFF" letter-spacing="2">ALOKA <tspan fill="#6A18F2">Live</tspan></text>
+</svg>

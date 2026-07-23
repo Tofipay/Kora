@@ -1,0 +1,56 @@
+{
+    "sections": [
+        {
+            "id": "hero",
+            "on": true
+        },
+        {
+            "id": "live",
+            "on": true
+        },
+        {
+            "id": "today",
+            "on": true
+        },
+        {
+            "id": "app",
+            "on": true
+        },
+        {
+            "id": "featured",
+            "on": true
+        },
+        {
+            "id": "leagues",
+            "on": true
+        },
+        {
+            "id": "news",
+            "on": true
+        },
+        {
+            "id": "highlights",
+            "on": true
+        },
+        {
+            "id": "teams",
+            "on": true
+        },
+        {
+            "id": "standings",
+            "on": true
+        },
+        {
+            "id": "scorers",
+            "on": true
+        },
+        {
+            "id": "stats",
+            "on": true
+        },
+        {
+            "id": "newsletter",
+            "on": true
+        }
+    ]
+}

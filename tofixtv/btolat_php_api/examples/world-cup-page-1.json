@@ -1,0 +1,243 @@
+{
+    "success": true,
+    "meta": {
+        "category": "world-cup",
+        "page": 1,
+        "pages_requested": 1,
+        "pages_fetched": 1,
+        "count": 15,
+        "has_more": true,
+        "next_page": 2,
+        "cached": false,
+        "enriched": false,
+        "source_url": "https://mobile.btolat.com/league/videos/1056/world-cup?p=1",
+        "generated_at": "2026-07-11T21:07:53+00:00"
+    },
+    "data": [
+        {
+            "id": 93993,
+            "title": "ملخص مباراة اسبانيا وبلجيكا (2-1) كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93993",
+            "thumbnail": "https://img.btolat.com/2026/7/11/video/93993/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-11",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93992,
+            "title": "هدف اسبانيا الثاني القاتل في مرمي بلجيكا بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93992",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93992/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93991,
+            "title": "لحظة خروج كورتوا في مباراة اسبانيا وبلجيكا وبكائة بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93991",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93991/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93990,
+            "title": "هدف تعادل بلجيكا مع اسبانيا (1-1) كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93990",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93990/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93989,
+            "title": "هدف اسبانيا الاول في مرمي بلجيكا بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93989",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93989/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93988,
+            "title": "اهداف مباراة اسبانيا وبلجيكا (2-1) كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93988",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93988/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93987,
+            "title": "ملخص مباراة فرنسا والمغرب (2-0) كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93987",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93987/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93986,
+            "title": "عز الدين اوناحي كاد ان يسجل هدف في مرمي فرنسا بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93986",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93986/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93985,
+            "title": "هدف عثمان ديمبلي الرائع في مرمي المغرب بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93985",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93985/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93984,
+            "title": "هدف مبابي الرائع في مرمي المغرب بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93984",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93984/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93983,
+            "title": "اهداف مباراة فرنسا والمغرب (2-0) كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93983",
+            "thumbnail": "https://img.btolat.com/2026/7/10/video/93983/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-10",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93982,
+            "title": "تصدي ياسين بونو يحرم فرنسا من هدف محقق بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93982",
+            "thumbnail": "https://img.btolat.com/2026/7/9/video/93982/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-09",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93981,
+            "title": "ياسين بونو يتصدي لركلة جزاء امبابي في مباراة المغرب وفرنسا بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93981",
+            "thumbnail": "https://img.btolat.com/2026/7/9/video/93981/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-09",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93980,
+            "title": "ياسين بونو يتألق ويتصدي لفرصتين في اقل من دقيقه امام فرنسا بكأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93980",
+            "thumbnail": "https://img.btolat.com/2026/7/9/video/93980/l.jpg?v=50",
+            "published_at": null,
+            "published_date": "2026-07-09",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        },
+        {
+            "id": 93979,
+            "title": "ملخص وركلات ترجيح مباراة سويسرا وكولومبيا في كأس العالم",
+            "page_url": "https://mobile.btolat.com/video/93979",
+            "thumbnail": "https://img.btolat.com/2026/7/8/video/93979/l.jpg",
+            "published_at": null,
+            "published_date": "2026-07-08",
+            "category": {
+                "name": "كأس العالم 2026",
+                "url": "https://mobile.btolat.com/league/1056/world-cup",
+                "type": "league",
+                "id": 1056,
+                "slug": "world-cup"
+            }
+        }
+    ]
+}
