@@ -35,16 +35,27 @@ final class License
     public  const CONTACT_URL  = 'https://t.me/Abu5Turkish';
     public  const CONTACT_TEXT = 't.me/Abu5Turkish';
 
-    /** Re-check cadence (seconds): slower while healthy, faster while locked. */
-    private const INTERVAL_ACTIVE = 600;             // 10 minutes
-    private const INTERVAL_LOCKED = 120;             // 2 minutes
+    /** Re-check cadence (seconds). Short window → editing the local cache is
+     *  useless for more than this long before the remote is consulted again. */
+    private const INTERVAL_ACTIVE = 60;              // 1 minute
+    private const INTERVAL_LOCKED = 60;              // 1 minute
     /**
      * Max time the site may keep running on the LOCAL cache without a fresh
-     * remote confirmation. After this window a successful remote check is
-     * mandatory — so blocking/removing the license host cannot keep a site
-     * alive indefinitely. Also bounds any local-cache tampering.
+     * remote confirmation (only ever used during a real network outage). After
+     * this window a successful remote check is mandatory — so blocking/removing
+     * the license host cannot keep a site alive for long.
      */
-    private const GRACE_SECONDS   = 12 * 3600;       // 12 hours
+    private const GRACE_SECONDS   = 3600;            // 1 hour
+
+    /**
+     * Server-side key used to sign the local state file. It raises the bar so a
+     * client cannot simply hand-edit storage/settings/license.json (e.g. flip
+     * "disabled" → "active"): any edit breaks the signature, which forces an
+     * immediate remote re-check on the very next request. (A sophisticated actor
+     * with full source access could still read this key — no PHP license on the
+     * client's own server can prevent that — but a casual file edit fails.)
+     */
+    private const SIGN_KEY = 'aloka::license::a7Fq3ZL9pX2v!Kd8Ntr6Ww1Ub4Yc0Hs';
 
     private static ?array $data = null;
 
@@ -67,8 +78,26 @@ final class License
 
     private static function store(array $d): void
     {
+        unset($d['sig']);
+        $d['sig'] = self::sign($d);
         self::$data = $d;
         Settings::set('license', $d);
+    }
+
+    /** Deterministic HMAC over the state (excluding the signature itself). */
+    private static function sign(array $d): string
+    {
+        unset($d['sig']);
+        ksort($d);
+        return hash_hmac('sha256', json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), self::SIGN_KEY);
+    }
+
+    /** True when the stored state is missing/invalid its signature (hand-edited). */
+    private static function tampered(array $d): bool
+    {
+        if (empty($d['activated'])) return false;      // nothing signed yet
+        $sig = (string)($d['sig'] ?? '');
+        return $sig === '' || !hash_equals(self::sign($d), $sig);
     }
 
     public static function isActivated(): bool
@@ -81,6 +110,7 @@ final class License
     {
         $d = self::load();
         if (empty($d['activated'])) return 'unactivated';
+        if (self::tampered($d)) return 'locked';          // hand-edited state file
         if (($d['state'] ?? 'active') !== 'active') return 'locked';
         // Defense in depth: never report "active" off a cache that was never
         // remotely confirmed, is confirmed in the (impossible) future, or is
@@ -277,8 +307,9 @@ final class License
         $d = self::load();
         if (empty($d['activated'])) return;         // nothing to recheck before first activation
 
-        $now   = time();
-        $state = ($d['state'] ?? 'active') === 'active' ? 'active' : 'locked';
+        $now      = time();
+        $state    = ($d['state'] ?? 'active') === 'active' ? 'active' : 'locked';
+        $tampered = self::tampered($d);                   // signature broken → hand-edited
 
         // Anti-tamper: a future timestamp is impossible on an honest server; treat
         // any future last_check / last_ok as "never happened".
@@ -289,6 +320,7 @@ final class License
 
         $interval = $state === 'active' ? self::INTERVAL_ACTIVE : self::INTERVAL_LOCKED;
         $due = $force
+            || $tampered                                 // edited file → verify NOW
             || ($now - $lastCheck) >= $interval          // normal cadence
             || $lastOk <= 0                               // never really confirmed
             || ($now - $lastOk) >= self::GRACE_SECONDS;   // must reconfirm within grace
@@ -299,14 +331,14 @@ final class License
         $d['last_ok']    = $lastOk;                       // persist the sanitized value
 
         if ($licenses === null) {
-            // Transient failure: keep serving ONLY while a real confirmation is
-            // still within the grace window; otherwise lock (can't be verified).
-            if ($state === 'active' && $lastOk > 0 && ($now - $lastOk) < self::GRACE_SECONDS) {
+            // Transient failure: keep serving ONLY while an UNTAMPERED, real
+            // confirmation is still within the grace window; otherwise lock.
+            if (!$tampered && $state === 'active' && $lastOk > 0 && ($now - $lastOk) < self::GRACE_SECONDS) {
                 $d['state']  = 'active';
                 $d['reason'] = 'cached';
             } else {
                 $d['state']  = 'locked';
-                $d['reason'] = $lastOk > 0 ? 'unreachable' : 'unverified';
+                $d['reason'] = $tampered ? 'tampered' : ($lastOk > 0 ? 'unreachable' : 'unverified');
             }
             self::store($d);
             return;
