@@ -84,6 +84,10 @@ $router->get('/series/{slug}', fn($a) => \TofiXTv\Controllers\Cinema::show($a['s
 $router->get('/search', [Search::class, 'index']);
 $router->get('/favorites', [StaticPages::class, 'favorites']);
 
+/* ---------- App download (aloka-live.apk) ---------- */
+$router->get('/download/app',   [\TofiXTv\Controllers\Download::class, 'apk']);
+$router->get('/aloka-live.apk', [\TofiXTv\Controllers\Download::class, 'apk']);
+
 /* ---------- Static / legal ---------- */
 $router->get('/about',   fn() => StaticPages::page('about'));
 $router->get('/privacy', fn() => StaticPages::page('privacy'));

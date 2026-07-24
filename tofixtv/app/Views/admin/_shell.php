@@ -16,6 +16,7 @@ function admin_top(string $title, string $active = ''): void
         'cache'         => ['cache',         'الكاش',            'M4 7c0-2 4-3 8-3s8 1 8 3-4 3-8 3-8-1-8-3zM4 7v10c0 2 4 3 8 3s8-1 8-3V7'],
         'notifications' => ['notifications', 'الإشعارات',        'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9'],
         'streaming'     => ['streaming',     'البث المباشر',     'M2 5h20v14H2zM10 9l5 3-5 3z'],
+        'app-mode'      => ['app-mode',      'وضع التطبيق',      'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18'],
         'cinema-movies' => ['cinema/movies', 'إدارة الأفلام',    'M2 4h20v16H2zM2 9h20M7 4l2.5 5M12 4l2.5 5M17 4l2.5 5'],
         'cinema-series' => ['cinema/series', 'إدارة المسلسلات',  'M2 7h20v13H2zM8 2l4 4 4-4M9.5 11l5 3-5 3z'],
         'channels'      => ['channels',      'مكتبة القنوات',    'M4 5h16v14H4zM8 5v14M16 5v14'],

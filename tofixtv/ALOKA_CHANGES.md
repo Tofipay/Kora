@@ -189,4 +189,25 @@
 للتراجع؛ واستُبدل بقفل كامل من جهة الخادم يوقف كل شيء ويعود فورًا عند إعادة التفعيل (التفاصيل في
 `LICENSE_SETUP.md`).
 
+---
+
+## 12) وضع التطبيق (تشغيل الموقع في التطبيق فقط أو في الاثنين) — مضاف
+
+في لوحة الإدارة قسم جديد **«وضع التطبيق»** فيه خياران:
+
+- **التطبيق والمتصفح معاً** (افتراضي): الموقع يعمل طبيعيًا في المتصفح وداخل التطبيق.
+- **داخل التطبيق فقط**: لا يعمل الموقع في المتصفح — يظهر للزائر **صفحة هبوط لتحميل التطبيق**
+  (بنفس هوية ALOKA) مع زر تنزيل ينزّل ملف <code>aloka-live.apk</code>، ويعمل داخل التطبيق طبيعيًا
+  عبر <code>User-Agent: com.aloka.live.app</code>. لوحة الإدارة وواجهة التنزيل والأصول تبقى متاحة من المتصفح.
+
+**مكان ملف التطبيق:** ضع الـ APK الحقيقي في <code>storage/app/aloka-live.apk</code>. زر التحميل
+(<code>/download/app</code> و<code>/aloka-live.apk</code>) يخدمه عبر PHP باسم <code>aloka-live.apk</code>؛
+وإن لم يُرفع بعد يحوّل الزر مؤقتًا إلى <code>https://t.me/alokalive</code>.
+
+**صفحة 404:** تعمل على أي مسار غير معروف (الراوتر يعرض صفحة 404 المصمّمة لأي رابط لا يطابق أي مسار).
+
+الملفات: `app/Core/AppMode.php`، `app/Controllers/Download.php`، `app/Views/admin/app-mode.php`،
+وربط في `app/bootstrap.php` و`public/api/_boot.php` و`app/routes.php` و`app/Controllers/Admin.php`
+و`app/Views/admin/_shell.php`. الإعداد يُحفظ في `storage/settings/access.json`.
+
 </div>

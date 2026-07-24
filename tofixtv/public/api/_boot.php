@@ -28,6 +28,9 @@ require APP_DIR . '/helpers.php';
 /* License gate: JSON APIs are blocked unless the site license is active. */
 \TofiXTv\Core\License::gate('api');
 
+/* App-only mode: browser API calls are blocked; the app (UA com.aloka.live.app) passes. */
+\TofiXTv\Core\AppMode::gate('api');
+
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Access-Control-Allow-Origin: ' . SITE_URL);

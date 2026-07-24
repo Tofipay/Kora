@@ -122,6 +122,19 @@ if (!$__isAdmin) {
     License::gate(str_starts_with($path, '/api/') ? 'api' : 'web');
 }
 
+/* ---------- App-access mode gate ----------
+ * When Admin → "وضع التطبيق" is set to "app only", browser visitors get the
+ * download landing page; the official app (UA com.aloka.live.app) works
+ * normally. Admin, the APK download and static assets stay reachable. */
+if (!$__isAdmin) {
+    $__ctx = 'web';
+    if (str_starts_with($path, '/api/'))                               $__ctx = 'api';
+    elseif ($path === '/aloka-live.apk' || str_starts_with($path, '/download/')) $__ctx = 'download';
+    elseif (str_starts_with($path, '/assets/') || str_starts_with($path, '/media/')
+        || $path === '/favicon.ico' || $path === '/manifest.webmanifest' || $path === '/sw.js') $__ctx = 'asset';
+    \TofiXTv\Core\AppMode::gate($__ctx);
+}
+
 /* ---------- Routes ---------- */
 $router = new Router();
 require APP_DIR . '/routes.php';

@@ -81,6 +81,7 @@ final class Admin
             $action === 'notifications' => self::notifications(),
             $action === 'newsletter'    => self::newsletter(),
             $action === 'streaming'     => self::streaming(),
+            $action === 'app-mode'      => self::appMode(),
             $action === 'channels'      => self::channels(),
             // New standalone catalogue; existing match channel libraries stay intact.
             $action === 'channel-catalog' => self::channelCatalog(),
@@ -1017,6 +1018,28 @@ final class Admin
             exit;
         }
         self::render('newsletter', ['list' => $list]);
+    }
+
+    /**
+     * "وضع التطبيق" — run the site in the browser + app, or app-only. In
+     * app-only mode browsers get the download landing page while the official
+     * app (UA com.aloka.live.app) keeps working normally.
+     */
+    private static function appMode(): void
+    {
+        $msg = null;
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+            $mode = (string)($_POST['mode'] ?? 'both');
+            \TofiXTv\Core\AppMode::setMode($mode);
+            $msg = $mode === 'app'
+                ? 'تم الحفظ: الموقع يعمل داخل التطبيق فقط. المتصفح يعرض صفحة تحميل التطبيق.'
+                : 'تم الحفظ: الموقع يعمل في التطبيق والمتصفح معاً.';
+        }
+        self::render('app-mode', [
+            'msg'  => $msg,
+            'mode' => \TofiXTv\Core\AppMode::mode(),
+            'apk'  => \TofiXTv\Core\AppMode::apkExists(),
+        ]);
     }
 
     private static function security(): void
