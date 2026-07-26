@@ -93,6 +93,7 @@ return [
     'cinema.minutes'       => 'دقيقة',
     'cinema.watched'       => 'تمت المشاهدة',
     'cinema.sources'       => 'مصادر بديلة',
+    'cinema.choose_server' => 'اختر سيرفر المشاهدة',
     'cinema.player_hint'   => 'إن لم يعمل المشغّل جرّب مصدراً آخر.',
     'cinema.rating'        => 'التقييم',
     'cinema.release'       => 'تاريخ العرض',

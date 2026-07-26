@@ -77,6 +77,28 @@ $posterUrl = fn(string $p): string => $p !== '' ? 'https://image.tmdb.org/t/p/w9
 </div>
 
 <div class="card">
+  <b>طريقة تشغيل الفيديو (الأفلام والمسلسلات)</b>
+  <small class="hint">تتحكم في طريقة المشاهدة عند الضغط على فيلم/زر مشاهدة/حلقة:
+    <br>• <b>مشغّل داخل الصفحة</b>: يشتغل الفيديو مباشرة داخل الموقع (الوضع الافتراضي).
+    <br>• <b>عبر التطبيق (intent · xmtv)</b>: يظهر نافذة اختيار سيرفر المشاهدة (Videasy · VidSrc CC · VidSrc)،
+    وعند اختيار سيرفر يُفتح عبر <code dir="ltr">intent://…#Intent;scheme=xmtv;package=com.aloka.live.app;end</code>
+    والرابط مشفّر بنفس مفتاح تشفير القنوات مع إضافة <code dir="ltr">#aloka=web</code>.</small>
+  <form method="post" action="<?= e($self) ?>" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+    <select name="playback_mode" style="width:auto;min-width:220px">
+      <option value="embed"  <?= ($playbackMode ?? 'embed') === 'embed'  ? 'selected' : '' ?>>مشغّل داخل الصفحة</option>
+      <option value="intent" <?= ($playbackMode ?? '') === 'intent' ? 'selected' : '' ?>>عبر التطبيق (intent · xmtv)</option>
+    </select>
+    <button class="btn" name="save_playback" value="1" style="margin-top:0">حفظ طريقة التشغيل</button>
+    <?php if (($playbackMode ?? 'embed') === 'intent'): ?>
+      <span class="cchip c-app">عبر التطبيق</span>
+    <?php else: ?>
+      <span class="cchip c-on">مشغّل داخل الصفحة</span>
+    <?php endif; ?>
+  </form>
+</div>
+
+<div class="card">
   <b>إعدادات المحتوى +18</b>
   <small class="hint">تحكّم كامل بعرض المحتوى المصنّف +18 على مستوى المنصة (يشمل الأفلام والمسلسلات معاً).</small>
   <form method="post" action="<?= e($self) ?>">

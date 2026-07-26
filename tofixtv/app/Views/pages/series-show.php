@@ -14,6 +14,21 @@ $nEpisodes = (int)($tv['number_of_episodes'] ?? 0);
 $selfPath  = series_url($tv);
 $downloadUrl = (string)(CinemaPolicy::itemFor('tv', (int)($tv['id'] ?? 0))['download_url'] ?? '');
 
+// Cinema playback method (see CinemaPlay). In 'intent' mode, watch / servers /
+// episodes open a server-picker dialog that launches the app via an xmtv link.
+$cinIntent   = \TofiXTv\Core\CinemaPlay::isIntent();
+$cinPlayable = !empty($policy['playable']) && !empty($policy['visible']);
+$tvId0 = (int)($tv['id'] ?? 0);
+$epServers = function (int $s, int $e) use ($tvId0): array {
+    return \TofiXTv\Core\CinemaPlay::servers([
+        'vidsrc'   => PLAYER_VIDSRC_TO . "/tv/{$tvId0}/{$s}/{$e}",
+        'vidsrccc' => PLAYER_VIDSRC_CC . "/tv/{$tvId0}/{$s}/{$e}",
+        'videasy'  => PLAYER_VIDEASY  . "/tv/{$tvId0}/{$s}/{$e}",
+    ]);
+};
+$cinServers = ($cinIntent && $cinPlayable) ? \TofiXTv\Core\CinemaPlay::servers($embed) : [];
+$cinServersAttr = $cinServers ? e(json_encode($cinServers, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) : '';
+
 // Episode count fallback when the selected season API has no detailed rows.
 $curSeasonEpisodes = 0;
 foreach ($seasons as $s) {
@@ -53,10 +68,17 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
         <p class="cd-overview"><?= e($tv['overview']) ?></p>
         <?php endif; ?>
         <div class="cd-actions">
+          <?php if ($cinServers): ?>
+          <button class="btn btn-primary" type="button" data-cinema-play data-servers="<?= $cinServersAttr ?>">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <?= e(t('cinema.watch_now')) ?>
+          </button>
+          <?php else: ?>
           <a class="btn btn-primary" href="#player">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             <?= e(t('cinema.watch_now')) ?>
           </a>
+          <?php endif; ?>
           <?php if ($trailer): ?>
           <button class="btn btn-ghost" data-embed-src="https://www.youtube.com/embed/<?= e($trailer['key']) ?>" data-embed-target="player">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -104,7 +126,9 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
         ],
     ];
     ?>
+    <?php if (!$cinIntent): ?>
     <script type="application/json" data-ep-config><?= json_encode($epConfig, JSON_UNESCAPED_SLASHES) ?></script>
+    <?php endif; ?>
 
     <!-- Season / episode picker: plain GET links = crawlable + zero JS required.
          JS upgrades EPISODE clicks to an in-place player swap (no reload). -->
@@ -121,6 +145,7 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
           <?= View::partial('episode-card', [
               'episode' => $episode, 'tv' => $tv, 'selfPath' => $selfPath,
               'season' => $curSeason, 'current' => $curEpisode,
+              'servers' => $cinIntent ? $epServers($curSeason, max(1, (int)($episode['episode_number'] ?? 1))) : null,
           ]) ?>
         <?php endforeach; ?>
       <?php else: ?>
@@ -128,12 +153,27 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
           <?= View::partial('episode-card', [
               'episode' => ['episode_number' => $ep], 'tv' => $tv, 'selfPath' => $selfPath,
               'season' => $curSeason, 'current' => $curEpisode,
+              'servers' => $cinIntent ? $epServers($curSeason, $ep) : null,
           ]) ?>
         <?php endfor; ?>
       <?php endif; ?>
     </div>
     <?php endif; ?>
 
+    <?php if ($cinServers): ?>
+    <div class="player-frame glass">
+      <button class="player-poster" type="button" data-cinema-play data-servers="<?= $cinServersAttr ?>" aria-label="<?= e(t('cinema.watch_now')) ?>">
+        <img src="<?= e(tmdb_backdrop($tv['backdrop_path'] ?? null, 'w780')) ?>" alt="" loading="lazy" decoding="async">
+        <span class="pp-btn"><svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
+      </button>
+    </div>
+    <div class="player-sources">
+      <span><?= e(t('cinema.sources')) ?>:</span>
+      <?php foreach ($cinServers as $srv): ?>
+      <a class="chip" href="<?= e($srv['intent']) ?>" rel="nofollow"><?= e($srv['name']) ?></a>
+      <?php endforeach; ?>
+    </div>
+    <?php else: ?>
     <div class="player-frame glass" data-player>
       <button class="player-poster" data-embed-src="<?= e($embed['vidsrc']) ?>" data-embed-target="player" aria-label="<?= e(t('cinema.watch_now')) ?>">
         <img src="<?= e(tmdb_backdrop($tv['backdrop_path'] ?? null, 'w780')) ?>" alt="" loading="lazy" decoding="async">
@@ -148,7 +188,9 @@ $curSeasonEpisodes = max(1, min(60, $curSeasonEpisodes ?: 20));
       <small class="player-hint"><?= e(t('cinema.player_hint')) ?></small>
     </div>
     <?php endif; ?>
+    <?php endif; ?>
   </section>
+  <?php if ($cinIntent && $cinPlayable): ?><?= View::partial('cinema-servers') ?><?php endif; ?>
 
   <?php if (!empty($cast)): ?>
   <section class="section container reveal">

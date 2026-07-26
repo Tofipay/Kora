@@ -210,4 +210,27 @@
 وربط في `app/bootstrap.php` و`public/api/_boot.php` و`app/routes.php` و`app/Controllers/Admin.php`
 و`app/Views/admin/_shell.php`. الإعداد يُحفظ في `storage/settings/access.json`.
 
+---
+
+## 13) التحكم بطريقة تشغيل الأفلام والمسلسلات — مضاف
+
+في **إدارة الأفلام / المسلسلات** خيار جديد **«طريقة تشغيل الفيديو»**:
+
+- **مشغّل داخل الصفحة** (افتراضي): يشتغل الفيديو مباشرة داخل الموقع (السلوك القديم دون تغيير).
+- **عبر التطبيق (intent · xmtv)**: عند الضغط على فيلم / زر مشاهدة / حلقة تظهر **نافذة اختيار سيرفر**
+  بنفس تصميم الموقع، تعرض المصادر: **Videasy · VidSrc CC · VidSrc**. وعند اختيار سيرفر يُفتح عبر:
+  <code dir="ltr">intent://&lt;مشفّر&gt;#Intent;scheme=xmtv;package=com.aloka.live.app;end</code>
+
+**التشفير:** يُضاف <code dir="ltr">#aloka=web</code> إلى نهاية رابط المصدر، ثم يُشفّر **بنفس مفتاح
+تشفير القنوات** (AES-192-ECB، الدالة <code>ChannelCatalog::encryptPlayValue</code>). مثال مطابق:
+<code dir="ltr">https://vidsrc.to/embed/movie/1368337#aloka=web</code> →
+<code dir="ltr">4/pL7qa+q2sgTQKKOv0X/ViPQHfpmbr6/wsSOBRoUkTYZ+C9DbGEzfPqE0Spz4ll</code> →
+<code dir="ltr">intent://4/pL7qa+q2sgTQKKOv0X/ViPQHfpmbr6/wsSOBRoUkTYZ+C9DbGEzfPqE0Spz4ll#Intent;scheme=xmtv;package=com.aloka.live.app;end</code>
+
+التشفير يتم **من جهة الخادم (PHP)** فلا يظهر المفتاح في المتصفح. الملفات:
+`app/Core/CinemaPlay.php`، `app/Views/partials/cinema-servers.php` (نافذة الاختيار)، وتعديلات في
+`app/Views/pages/movie.php` و`series-show.php` و`app/Views/partials/episode-card.php`
+و`app/Controllers/Admin.php` و`app/Views/admin/cinema.php`. الإعداد يُحفظ في
+`storage/settings/cinema_playback.json`. جميع الإضافات السابقة محفوظة دون تغيير.
+
 </div>

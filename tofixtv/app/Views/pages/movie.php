@@ -11,6 +11,13 @@ $vote    = (float)($movie['vote_average'] ?? 0);
 $policy  = is_array($policy ?? null) ? $policy : ['visible' => true, 'playable' => true, 'locked' => false, 'rating' => 'g', 'reason' => ''];
 $ageRating = (string)($policy['rating'] ?? 'g');
 $downloadUrl = (string)(CinemaPolicy::itemFor('movie', (int)($movie['id'] ?? 0))['download_url'] ?? '');
+
+// Playback method: 'intent' opens a server-picker dialog that launches the app
+// via an xmtv deep link; otherwise the normal in-page iframe player is used.
+$cinIntent  = \TofiXTv\Core\CinemaPlay::isIntent();
+$cinPlayable = !empty($policy['playable']) && !empty($policy['visible']);
+$cinServers = ($cinIntent && $cinPlayable) ? \TofiXTv\Core\CinemaPlay::servers($embed) : [];
+$cinServersAttr = $cinServers ? e(json_encode($cinServers, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) : '';
 ?>
 <article class="cinema-detail">
   <div class="cd-hero">
@@ -40,10 +47,17 @@ $downloadUrl = (string)(CinemaPolicy::itemFor('movie', (int)($movie['id'] ?? 0))
         <p class="cd-overview"><?= e($movie['overview']) ?></p>
         <?php endif; ?>
         <div class="cd-actions">
+          <?php if ($cinServers): ?>
+          <button class="btn btn-primary" type="button" data-cinema-play data-servers="<?= $cinServersAttr ?>">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <?= e(t('cinema.watch_now')) ?>
+          </button>
+          <?php else: ?>
           <a class="btn btn-primary" href="#player">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             <?= e(t('cinema.watch_now')) ?>
           </a>
+          <?php endif; ?>
           <?php if ($trailer): ?>
           <button class="btn btn-ghost" data-embed-src="https://www.youtube.com/embed/<?= e($trailer['key']) ?>" data-embed-target="player">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -72,6 +86,19 @@ $downloadUrl = (string)(CinemaPolicy::itemFor('movie', (int)($movie['id'] ?? 0))
     <div class="section-head"><h2><?= e(t('cinema.watch_now')) ?> — <?= e($title) ?></h2></div>
     <?php if (!$policy['playable'] || !$policy['visible']): ?>
       <?= View::partial('cinema-locked', ['policy' => $policy, 'title' => $title]) ?>
+    <?php elseif ($cinServers): ?>
+    <div class="player-frame glass">
+      <button class="player-poster" type="button" data-cinema-play data-servers="<?= $cinServersAttr ?>" aria-label="<?= e(t('cinema.watch_now')) ?>">
+        <img src="<?= e(tmdb_backdrop($movie['backdrop_path'] ?? null, 'w780')) ?>" alt="" loading="lazy" decoding="async">
+        <span class="pp-btn"><svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
+      </button>
+    </div>
+    <div class="player-sources">
+      <span><?= e(t('cinema.sources')) ?>:</span>
+      <?php foreach ($cinServers as $srv): ?>
+      <a class="chip" href="<?= e($srv['intent']) ?>" rel="nofollow"><?= e($srv['name']) ?></a>
+      <?php endforeach; ?>
+    </div>
     <?php else: ?>
     <div class="player-frame glass" data-player>
       <!-- Embed loads on demand (click) — keeps LCP/INP clean, no third-party JS at load. -->
@@ -89,6 +116,7 @@ $downloadUrl = (string)(CinemaPolicy::itemFor('movie', (int)($movie['id'] ?? 0))
     </div>
     <?php endif; ?>
   </section>
+  <?php if ($cinServers): ?><?= View::partial('cinema-servers') ?><?php endif; ?>
 
   <?php if (!empty($cast)): ?>
   <section class="section container reveal">

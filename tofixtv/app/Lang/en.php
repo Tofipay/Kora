@@ -92,6 +92,7 @@ return [
     'cinema.minutes'       => 'min',
     'cinema.watched'       => 'Watched',
     'cinema.sources'       => 'Alternate sources',
+    'cinema.choose_server' => 'Choose a server',
     'cinema.player_hint'   => 'If the player fails, try another source.',
     'cinema.rating'        => 'Rating',
     'cinema.release'       => 'Release date',

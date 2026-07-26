@@ -282,6 +282,11 @@ final class Admin
                 \TofiXTv\Core\CinemaPolicy::saveMode($type, (string)($_POST['section_mode'] ?? ''));
                 $msg = 'تم حفظ وضع عرض القسم';
             }
+            // Playback method (in-page player / xmtv app intent) — shared by both sections.
+            if (isset($_POST['save_playback'])) {
+                \TofiXTv\Core\CinemaPlay::setMode((string)($_POST['playback_mode'] ?? ''));
+                $msg = 'تم حفظ طريقة التشغيل';
+            }
             // 18+ blocking switches (shared by both sections).
             if (isset($_POST['save_block18'])) {
                 \TofiXTv\Core\CinemaPolicy::saveBlock18([
@@ -349,6 +354,7 @@ final class Admin
             'filter'  => $filter,
             'block18' => \TofiXTv\Core\CinemaPolicy::block18(),
             'mode'    => \TofiXTv\Core\CinemaPolicy::modes()[$type],
+            'playbackMode' => \TofiXTv\Core\CinemaPlay::mode(),
         ]);
     }
 
