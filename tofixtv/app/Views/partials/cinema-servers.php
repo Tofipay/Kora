@@ -51,12 +51,19 @@
 </style>
 
 <script>
+/* Registered ONCE (survives PJAX content swaps). The click listener runs in the
+ * CAPTURE phase so it fires BEFORE app.js's PJAX link handler (bubble phase) —
+ * otherwise an episode <a> would trigger a page swap that leaves the body
+ * scroll-locked and the dialog detached. The dialog element is re-queried every
+ * time so it always targets the current (possibly re-swapped) DOM. */
 (function(){
-  if (window.__cinserv) return; window.__cinserv = true;
-  var bd = document.querySelector('[data-cinserv]');
-  if (!bd) return;
-  var list = bd.querySelector('[data-cinserv-list]');
+  if (window.__cinservInit) return; window.__cinservInit = true;
+  function dlg(){ return document.querySelector('[data-cinserv]'); }
+  function lock(on){ try { document.body.style.overflow = on ? 'hidden' : ''; } catch(e){} }
+  function close(){ var b = dlg(); if (b) b.hidden = true; lock(false); }
   function open(servers){
+    var b = dlg(); if (!b) return;
+    var list = b.querySelector('[data-cinserv-list]'); if (!list) return;
     list.innerHTML = '';
     servers.forEach(function(s){
       if (!s || !s.intent) return;
@@ -64,6 +71,7 @@
       a.className = 'cinserv-item';
       a.setAttribute('href', s.intent);
       a.setAttribute('rel', 'nofollow');
+      a.setAttribute('data-cinserv-item', '');
       a.innerHTML =
         '<span class="cs-dot"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
         '<span class="cs-name"></span>' +
@@ -71,20 +79,34 @@
       a.querySelector('.cs-name').textContent = s.name || 'Server';
       list.appendChild(a);
     });
-    bd.hidden = false;
-    document.body.style.overflow = 'hidden';
+    b.hidden = false;
+    lock(true);
   }
-  function close(){ bd.hidden = true; document.body.style.overflow = ''; }
   document.addEventListener('click', function(ev){
-    var trigger = ev.target.closest('[data-cinema-play]');
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var trigger = t.closest('[data-cinema-play]');
     if (trigger){
-      var raw = trigger.getAttribute('data-servers') || '[]', servers = [];
-      try { servers = JSON.parse(raw); } catch(e){}
-      if (servers && servers.length){ ev.preventDefault(); open(servers); }
+      var servers = [];
+      try { servers = JSON.parse(trigger.getAttribute('data-servers') || '[]'); } catch(e){}
+      if (servers && servers.length){
+        ev.preventDefault();
+        ev.stopPropagation();     // keep app.js PJAX from swapping the page
+        open(servers);
+      }
       return;
     }
-    if (ev.target === bd || ev.target.closest('[data-cinserv-close]')) close();
+    if (t.closest('[data-cinserv-item]')){ lock(false); return; } // let it launch the app
+    var b = dlg();
+    if (b && (t === b || t.closest('[data-cinserv-close]'))){
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    }
+  }, true);
+  document.addEventListener('keydown', function(e){
+    var b = dlg();
+    if (e.key === 'Escape' && b && !b.hidden) close();
   });
-  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !bd.hidden) close(); });
 })();
 </script>
