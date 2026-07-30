@@ -71,7 +71,10 @@ const DEFAULT_DEPTH = 2;
 const MAX_FETCHES = 14;
 
 /** أقصى عدد روابط يتم التحقق منها فعليًا. */
-const MAX_PROBES = 6;
+const MAX_PROBES = 9;
+
+/** أقصى عدد المرشحين "الضعاف" (بلا امتداد) الذين نجرّبهم. */
+const MAX_WEAK_CANDIDATES = 6;
 
 /** مدة تخزين نتيجة الاستخراج (ثانية). */
 const CACHE_TTL = 120;
@@ -535,18 +538,41 @@ function changeUrlQuery(string $url, array $changes): string
 
 // ───────────────────────────── طبقة HTTP ─────────────────────────────
 
-function cookieJarPath(): string
+/**
+ * ملف كوكيز ثابت لكل مضيف، حتى تبقى الجلسة صالحة بين طلب الصفحة وطلبات
+ * المقاطع اللاحقة (كل مقطع يصل في عملية PHP مستقلة). لا نخلط كوكيز
+ * المواقع ببعضها، ونبدأ جلسة جديدة كل ساعة.
+ */
+function cookieJarPath(string $url = ''): string
 {
-    static $path = null;
+    static $paths = [];
 
-    if ($path === null) {
-        $path = (string) tempnam(sys_get_temp_dir(), 'gplayer_cookies_');
-        register_shutdown_function(static function () use ($path): void {
-            if (is_string($path) && $path !== '' && is_file($path)) {
-                @unlink($path);
-            }
-        });
+    $host = $url !== '' ? urlHost($url) : 'default';
+    if ($host === '') {
+        $host = 'default';
     }
+
+    if (isset($paths[$host])) {
+        return $paths[$host];
+    }
+
+    $directory = sys_get_temp_dir() . '/generic_player_jars';
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0700, true);
+    }
+
+    $path = $directory . '/' . hash_hmac('sha256', $host, PROXY_SIGNING_KEY) . '.jar';
+
+    if (is_file($path) && (time() - (int) filemtime($path)) > 3600) {
+        @unlink($path);
+    }
+
+    if (!is_file($path)) {
+        @touch($path);
+        @chmod($path, 0600);
+    }
+
+    $paths[$host] = $path;
 
     return $path;
 }
@@ -616,8 +642,8 @@ function httpFetch(string $url, array $options = []): array
             CURLOPT_ENCODING => '',
             CURLOPT_USERAGENT => USER_AGENT,
             CURLOPT_NOBODY => $headOnly,
-            CURLOPT_COOKIEJAR => cookieJarPath(),
-            CURLOPT_COOKIEFILE => cookieJarPath(),
+            CURLOPT_COOKIEJAR => cookieJarPath($currentUrl),
+            CURLOPT_COOKIEFILE => cookieJarPath($currentUrl),
             CURLOPT_HTTPHEADER => buildRequestHeaders($currentUrl, $options),
             CURLOPT_HEADERFUNCTION => static function (
                 $handle,
@@ -725,15 +751,28 @@ function buildRequestHeaders(string $url, array $options): array
         $origin = rtrim(urlOrigin($referer), '/');
     }
 
+    $accept = (string) ($options['accept'] ?? '*/*');
+    $isDocument = stripos($accept, 'text/html') !== false;
+
     $headers = [
-        'Accept: ' . (string) ($options['accept'] ?? '*/*'),
+        'Accept: ' . $accept,
         'Accept-Language: ar,en-US;q=0.9,en;q=0.8',
         'Cache-Control: no-cache',
         'Pragma: no-cache',
-        'Sec-Fetch-Dest: empty',
-        'Sec-Fetch-Mode: cors',
-        'Sec-Fetch-Site: cross-site',
+        'Upgrade-Insecure-Requests: 1',
     ];
+
+    // طلب الصفحة يجب أن يبدو تصفّحًا حقيقيًا لا XHR، فبعض الحمايات تفحص ذلك.
+    if ($isDocument) {
+        $headers[] = 'Sec-Fetch-Dest: document';
+        $headers[] = 'Sec-Fetch-Mode: navigate';
+        $headers[] = 'Sec-Fetch-User: ?1';
+        $headers[] = 'Sec-Fetch-Site: ' . ($referer === '' ? 'none' : 'same-origin');
+    } else {
+        $headers[] = 'Sec-Fetch-Dest: empty';
+        $headers[] = 'Sec-Fetch-Mode: cors';
+        $headers[] = 'Sec-Fetch-Site: cross-site';
+    }
 
     if ($referer !== '' && $referer !== '/') {
         $headers[] = 'Referer: ' . $referer;
@@ -864,8 +903,25 @@ function textVariants(string $text): array
         }
     }
 
-    if (stripos($text, 'http%3a') !== false || stripos($text, '%2f') !== false) {
+    if (
+        stripos($text, 'http%3a') !== false
+        || stripos($text, '%2f') !== false
+        || stripos($text, 'unescape(') !== false
+        || stripos($text, 'decodeURIComponent(') !== false
+    ) {
         $variants['urldecoded'] = urldecode($text);
+    }
+
+    // "https://cdn" + "/live/x.m3u8" → "https://cdn/live/x.m3u8"
+    $joined = collapseStringConcat($text);
+    if ($joined !== $text) {
+        $variants['concat'] = $joined;
+    }
+
+    // var base = "https://cdn/live"; player.load(base + "?id=1");
+    $inlined = inlineJsStringVars($joined);
+    if ($inlined !== null && $inlined !== $joined) {
+        $variants['js_vars'] = $inlined;
     }
 
     foreach (unpackPackedJs($text) as $index => $unpacked) {
@@ -882,6 +938,68 @@ function textVariants(string $text): array
     }
 
     return $variants;
+}
+
+/** يدمج السلاسل المتلاصقة: "a" + "b" → "ab" (يكرّر حتى تستقر). */
+function collapseStringConcat(string $text): string
+{
+    if (strpos($text, '+') === false) {
+        return $text;
+    }
+
+    for ($pass = 0; $pass < 5; $pass++) {
+        $joined = preg_replace('~(["\'])\s*\+\s*\1~', '', $text);
+
+        if ($joined === null || $joined === $text) {
+            break;
+        }
+
+        $text = $joined;
+    }
+
+    return $text;
+}
+
+/**
+ * يستبدل متغيّرات JS النصية بقيمها ثم يدمج الوصل، لالتقاط روابط مثل:
+ *   var base = "https://cdn/live"; player.load(base + "?id=1");
+ */
+function inlineJsStringVars(string $text): ?string
+{
+    $pattern = '~(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*'
+        . '(["\'])((?:\\\\.|(?!\2)[^\\\\]){4,500})\2~';
+
+    if (!preg_match_all($pattern, $text, $matches, PREG_SET_ORDER)) {
+        return null;
+    }
+
+    $map = [];
+    foreach ($matches as $match) {
+        $value = $match[3];
+
+        // نكتفي بالقيم التي قد تشكّل جزءًا من رابط.
+        if (preg_match('~[/:?.=]~', $value)) {
+            $map[$match[1]] = $value;
+        }
+
+        if (count($map) >= 200) {
+            break;
+        }
+    }
+
+    if ($map === []) {
+        return null;
+    }
+
+    $replaced = preg_replace_callback(
+        '~\b[A-Za-z_$][\w$]*\b~',
+        static fn (array $match): string => isset($map[$match[0]])
+            ? '"' . $map[$match[0]] . '"'
+            : $match[0],
+        $text
+    );
+
+    return $replaced === null ? null : collapseStringConcat($replaced);
 }
 
 /** يجمع محتوى سلاسل base64 التي تحوي روابط. */
@@ -973,6 +1091,28 @@ function mediaKind(string $url): ?string
     return null;
 }
 
+/**
+ * هل يصلح الرابط ليكون نقطة بث ديناميكية (بلا امتداد m3u8 ظاهر)؟
+ * نستبعد الأصول الثابتة والصفحات، ونقبل نقاط php/api ذات الكلمات الدلالية.
+ */
+function isProbableStreamEndpoint(string $url): bool
+{
+    $path = strtolower((string) (parse_url($url, PHP_URL_PATH) ?: ''));
+    $query = (string) (parse_url($url, PHP_URL_QUERY) ?: '');
+
+    if (preg_match('/\.(js|css|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|xml|txt|pdf|zip|map)$/', $path)) {
+        return false;
+    }
+
+    if (preg_match('/\.(html?|xhtml)$/', $path)) {
+        return false;
+    }
+
+    // كونه مُمرَّرًا لمشغّل هو الدليل، فلا نشترط كلمة دلالية في الرابط.
+    return $query !== ''
+        || (bool) preg_match('/\.(php|json|aspx?|ashx|jsp|cgi|do)$/', $path);
+}
+
 function isPlaylistUrl(string $url): bool
 {
     $kind = mediaKind($url);
@@ -1037,6 +1177,21 @@ function collectConfigValues(string $text): array
     if (preg_match_all(
         '~\bdata-(?:src|file|url|hls|stream|playlist|video|link|m3u8|source)\s*='
         . '\s*["\']([^"\']{4,700})["\']~i',
+        $text,
+        $matches
+    )) {
+        foreach ($matches[1] as $value) {
+            $values[] = $value;
+        }
+    }
+
+    // استدعاءات المشغّلات: shaka.load("…") / hls.loadSource("…") /
+    // jwplayer().setup("…") / videojs src("…") / player.play("…")
+    $methods = 'load|loadSource|loadVideo|attachSource|setSrc|setSource|src'
+        . '|setup|play|playStream|initPlayer|startPlayer|createPlayer';
+
+    if (preg_match_all(
+        '~\b(?:' . $methods . ')\s*\(\s*["\']([^"\']{6,700})["\']~i',
         $text,
         $matches
     )) {
@@ -1140,7 +1295,8 @@ function addCandidate(
     string $source,
     int $depth,
     array $context,
-    int $bonus = 0
+    int $bonus = 0,
+    bool $allowWeak = false
 ): void {
     $url = trimUrlToken($url);
     if ($url === '' || preg_match('~^(?:data|blob|javascript|mailto|about):~i', $url)) {
@@ -1158,8 +1314,16 @@ function addCandidate(
     }
 
     $kind = mediaKind($absolute);
+
     if ($kind === null) {
-        return;
+        // رابط بلا امتداد معروف (مثل get.php?id=x). كثير من المواقع تقدّم
+        // الـ HLS من نقطة كهذه، فنقبله كمرشح ضعيف ويحسمه الفحص الفعلي.
+        if (!$allowWeak || !isProbableStreamEndpoint($absolute)) {
+            return;
+        }
+
+        $kind = 'unknown';
+        $bonus -= 40;
     }
 
     $key = strtolower($absolute);
@@ -1322,6 +1486,7 @@ function scoreCandidate(array $candidate, array $context): int
         'dash' => 70,
         'file' => 30,
         'audio' => 20,
+        'unknown' => 10,
         default => 0,
     };
 
@@ -1493,7 +1658,8 @@ function discoverCandidates(string $targetUrl, array $context, int $maxDepth): a
                     'config:' . $variantName,
                     $job['depth'],
                     $pageContext,
-                    $variantBonus + 35
+                    $variantBonus + 35,
+                    true // سياق مشغّل قوي: نقبل حتى الروابط بلا امتداد.
                 );
             }
 
@@ -1820,6 +1986,27 @@ function probeCandidate(array $candidate, array $context): array
             return $candidate;
         }
 
+        // المرشح الضعيف: نحسم نوعه من محتوى الرد نفسه لا من امتداده.
+        if ($candidate['kind'] === 'unknown') {
+            $body = $response['body'];
+            $type = $response['content_type'];
+
+            if (strpos(ltrim($body), '#EXTM3U') === 0 || stripos($type, 'mpegurl') !== false) {
+                $candidate['kind'] = 'hls';
+            } elseif (isDashManifest($body, $type, $response['final_url'])) {
+                $candidate['kind'] = 'dash';
+                $candidate['verified'] = true;
+                return $candidate;
+            } elseif (preg_match('~^(?:video|audio)/~i', $type)) {
+                $candidate['kind'] = 'file';
+                $candidate['verified'] = true;
+                return $candidate;
+            } else {
+                $candidate['note'] = 'نقطة غير بثّية (الرد ليس قائمة تشغيل).';
+                return $candidate;
+            }
+        }
+
         if (!isHlsPlaylist($response['body'], $response['content_type'], $response['final_url'])) {
             $candidate['note'] = 'الاستجابة ليست M3U8.';
             return $candidate;
@@ -1861,9 +2048,19 @@ function rankAndVerify(array $candidates, array $context, bool $verify): array
     }
 
     $probes = 0;
+    $weakProbes = 0;
+
     foreach ($candidates as $index => $candidate) {
         if ($probes >= MAX_PROBES) {
             break;
+        }
+
+        if ($candidate['kind'] === 'unknown') {
+            if ($weakProbes >= MAX_WEAK_CANDIDATES) {
+                continue;
+            }
+
+            $weakProbes++;
         }
 
         $probes++;
@@ -1871,8 +2068,8 @@ function rankAndVerify(array $candidates, array $context, bool $verify): array
         $probed['score'] = scoreCandidate($probed, $context);
         $candidates[$index] = $probed;
 
-        // إن نجح رابط HLS رئيسي فلا داعي لإتعاب المصدر أكثر.
-        if ($probed['verified'] && $probed['kind'] === 'hls' && $probed['master']) {
+        // إن نجح رابط HLS فلا داعي لإتعاب المصدر أكثر.
+        if ($probed['verified'] && $probed['kind'] === 'hls') {
             break;
         }
     }
@@ -2231,6 +2428,7 @@ function streamProxiedResource(string $url, string $referer): void
     $headOnly = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD';
     $range = (string) ($_SERVER['HTTP_RANGE'] ?? '');
     $headersSent = false;
+    $needsRewrite = false;
     $responseHeaders = [];
     $status = 0;
     $currentUrl = $url;
@@ -2254,8 +2452,8 @@ function streamProxiedResource(string $url, string $referer): void
             CURLOPT_TIMEOUT => 90,
             CURLOPT_USERAGENT => USER_AGENT,
             CURLOPT_NOBODY => $headOnly,
-            CURLOPT_COOKIEJAR => cookieJarPath(),
-            CURLOPT_COOKIEFILE => cookieJarPath(),
+            CURLOPT_COOKIEJAR => cookieJarPath($currentUrl),
+            CURLOPT_COOKIEFILE => cookieJarPath($currentUrl),
             CURLOPT_HTTPHEADER => buildRequestHeaders($currentUrl, [
                 'referer' => $referer,
                 'range' => $range,
@@ -2290,8 +2488,26 @@ function streamProxiedResource(string $url, string $referer): void
             CURLOPT_WRITEFUNCTION => static function (
                 $handle,
                 string $chunk
-            ) use (&$headersSent, &$responseHeaders, &$status, $currentUrl): int {
+            ) use (
+                &$headersSent,
+                &$needsRewrite,
+                &$responseHeaders,
+                &$status,
+                $currentUrl
+            ): int {
                 if (!$headersSent) {
+                    // نقاط بلا امتداد قد تعيد قائمة تشغيل؛ نكتشفها من أول
+                    // البايتات ونوقف التمرير لتُعاد كتابتها بدل تسريبها خامًا.
+                    $type = $responseHeaders['content-type'] ?? '';
+                    if (
+                        stripos($type, 'mpegurl') !== false
+                        || strpos(ltrim($chunk), '#EXTM3U') === 0
+                        || stripos($type, 'dash+xml') !== false
+                    ) {
+                        $needsRewrite = true;
+                        return 0;
+                    }
+
                     emitProxyHeaders($status, $responseHeaders, $currentUrl);
                     $headersSent = true;
                 }
@@ -2321,6 +2537,10 @@ function streamProxiedResource(string $url, string $referer): void
         if ($redirectTo !== null) {
             $currentUrl = $redirectTo;
             continue;
+        }
+
+        if ($needsRewrite) {
+            servePlaylistResource($currentUrl, $referer);
         }
 
         if ($errorNumber !== 0 && !$headersSent) {
@@ -2392,12 +2612,19 @@ function serveProxiedResource(string $encoded, string $signature): void
     $url = prepareUpstreamUrl($request['url'], $context);
 
     if (!$request['playlist'] && !isPlaylistUrl($url)) {
+        // قد تكون هذه نقطة تعيد قائمة تشغيل رغم أن رابطها بلا امتداد،
+        // فيستشعر التمرير ذلك ويعود إلى مسار إعادة الكتابة بدل تمريرها خامًا.
         streamProxiedResource($url, $request['referer']);
     }
 
+    servePlaylistResource($url, $request['referer']);
+}
+
+function servePlaylistResource(string $url, string $referer): void
+{
     $headOnly = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD';
     $response = httpFetch($url, [
-        'referer' => $request['referer'],
+        'referer' => $referer,
         'accept' => 'application/vnd.apple.mpegurl, application/x-mpegURL, '
             . 'application/dash+xml, */*',
         'max_bytes' => MAX_PLAYLIST_BYTES,
@@ -2413,7 +2640,7 @@ function serveProxiedResource(string $encoded, string $signature): void
 
     $body = $response['body'];
     $finalUrl = $response['final_url'];
-    $proxyContext = ['referer' => $request['referer']];
+    $proxyContext = ['referer' => $referer];
 
     if (isHlsPlaylist($body, $response['content_type'], $finalUrl)) {
         $body = $headOnly ? '' : rewritePlaylist($body, $finalUrl, $proxyContext);
@@ -3024,7 +3251,8 @@ try {
                 'proxy' => buildProxyUrl(
                     (string) $candidate['url'],
                     ['referer' => (string) $candidate['referer']],
-                    isPlaylistUrl((string) $candidate['url'])
+                    in_array($candidate['kind'], ['hls', 'dash'], true)
+                        || isPlaylistUrl((string) $candidate['url'])
                 ),
                 'referer' => $candidate['referer'],
                 'qualities' => array_map(
@@ -3104,7 +3332,12 @@ try {
                 'Referer' => (string) $selected['referer'],
                 'Origin' => rtrim(urlOrigin((string) $selected['referer']), '/'),
             ],
-            'proxy_url' => buildProxyUrl($streamUrl, $streamContext, isPlaylistUrl($streamUrl)),
+            'proxy_url' => buildProxyUrl(
+                $streamUrl,
+                $streamContext,
+                in_array($selected['kind'], ['hls', 'dash'], true)
+                    || isPlaylistUrl($streamUrl)
+            ),
         ]);
     }
 
