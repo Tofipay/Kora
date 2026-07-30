@@ -143,7 +143,7 @@ if (is_file($candidate) && !str_ends_with($candidate, '.php')) {
 
 /* ── صفحات PHP المسموح فتحها مباشرة (لوحة التحكم وصفحة الخطأ) ── */
 if (
-    preg_match('#^/(panel|error)\.php$#', $uri) === 1
+    preg_match('#^/(panel|error|selfcheck)\.php$#', $uri) === 1
     && is_file($root . $uri)
 ) {
     $countHit('page');

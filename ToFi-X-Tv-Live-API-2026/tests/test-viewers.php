@@ -86,6 +86,18 @@ foreach ($viewers as $viewerId) {
 $stats = viewer_stats($channel);
 ok('تنظيف الجلسات يعمل', (int) $stats['selected_count'] === 0);
 
+/*
+ * مهم للاستضافة المشتركة: الوضع التلقائي يجب ألا يجرّب Redis إطلاقًا،
+ * حتى لو كان يعمل على الجهاز. تجربته تعني اتصال TCP في كل طلب.
+ */
+if ($backend === 'auto') {
+    ok(
+        'الوضع التلقائي لا يجرّب Redis (يتجنّب اتصال TCP في كل طلب)',
+        $active !== 'redis',
+        'اختار: ' . $active
+    );
+}
+
 ok('معرّف غير صالح يُتجاهل بهدوء', (static function () use ($channel): bool {
     try {
         viewer_touch('not-a-valid-id', $channel);

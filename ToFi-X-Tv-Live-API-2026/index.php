@@ -333,14 +333,17 @@ function validateStreamAccess(
 
 /* ═════════════════════════ إحصاء المتصلين ═════════════════════════ */
 
-function touchViewerSafely(string $viewerId, int $rootChannel): void
-{
+function touchViewerSafely(
+    string $viewerId,
+    int $rootChannel,
+    int $leaseSeconds = 0
+): void {
     if ($viewerId === '' || !function_exists('viewer_touch')) {
         return;
     }
 
     try {
-        viewer_touch($viewerId, $rootChannel);
+        viewer_touch($viewerId, $rootChannel, $leaseSeconds);
     } catch (Throwable $viewerError) {
         /* الإحصاء وظيفة منفصلة: فشلها لا يوقف الفيديو إطلاقًا. */
         error_log('[ToFi Viewers] ' . $viewerError->getMessage());
@@ -473,8 +476,17 @@ function handlePlaylistRequest(): void
     /*
      * تجديد الجلسة يحدث هنا فقط — على قائمة التشغيل التي يطلبها المشغل،
      * وليس على أي مقطع فيديو. الكتابة نفسها محدودة بمرة كل عدة ثوانٍ.
+     *
+     * في وضع القائمة المشتركة لا يعود المشغل إلى هذا الرابط بعد أول مرة،
+     * فتُمنح الجلسة مهلة أطول ويُستحسن أن يستدعي التطبيق ping_url.
      */
-    touchViewerSafely($viewerId, $rootChannel);
+    touchViewerSafely(
+        $viewerId,
+        $rootChannel,
+        (bool) hls_config('shared_media_playlist', false)
+            ? (int) hls_config('shared_playlist_viewer_lease', 120)
+            : 0
+    );
 
     /*
      * تبديل القناة (اختياري): إن كان لأي قناة مطلوبة تبديل مفعّل نعرض

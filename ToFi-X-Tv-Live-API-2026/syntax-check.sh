@@ -13,6 +13,7 @@ FILES=(
   panel.php
   error.php
   worker.php
+  selfcheck.php
   config.example.php
   tests/origin.php
   tests/router.php

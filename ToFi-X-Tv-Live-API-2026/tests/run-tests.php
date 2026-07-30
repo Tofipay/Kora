@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 const ORIGIN_PORT = 8801;
 const PROXY_PORT = 8802;
+const SHARED_PORT = 8803;
 
 $root = dirname(__DIR__);
 $originBase = 'http://127.0.0.1:' . ORIGIN_PORT;
@@ -30,6 +31,7 @@ foreach (
         $root . '/.tofi-cache',
         $root . '/hls-cache',
         $root . '/.tofi-viewers',
+        $root . '/.tofi-cache-shared',
     ] as $directory
 ) {
     remove_tree($directory);
@@ -471,6 +473,95 @@ check('watch بدون User-Agent صحيح مرفوض',
     http_get($proxyBase . '/watch/10/index.m3u8')['status'] === 401);
 $watch = http_request($proxyBase . '/watch/10/index.m3u8', 'GET', 'MTX Player');
 check('watch مع User-Agent الصحيح يحوّل 302', $watch['status'] === 302);
+
+section('21) وضع القائمة المشتركة (shared_media_playlist) — للاستضافة المشتركة');
+
+/*
+ * خادم ثالث بنفس الملفات لكن مع تفعيل القائمة المشتركة، للتأكد أن الوضع
+ * الذي نوصي به على Hostinger + Cloudflare يعمل فعلًا من طرف إلى طرف.
+ */
+$sharedBase = 'http://127.0.0.1:' . SHARED_PORT;
+
+/*
+ * كاش قوائم منفصل: نص القائمة يحتوي الروابط العامة، وهذا الخادم يعمل على
+ * منفذ آخر. أما مجلد المقاطع فمشترك عمدًا لأن اسم المقطع مشتق من رابط
+ * المصدر لا من العنوان العام.
+ */
+$sharedPid = start_server(
+    array_merge($environment, [
+        'TOFI_PUBLIC_BASE_URL=' . $sharedBase,
+        'TOFI_CACHE_ROOT=' . $root . '/.tofi-cache-shared',
+        'TOFI_SHARED_MEDIA_PLAYLIST=1',
+    ]),
+    SHARED_PORT,
+    $root,
+    $root . '/tests/router.php',
+    $root . '/tests/.shared.log'
+);
+
+register_shutdown_function(static function () use ($sharedPid): void {
+    if ($sharedPid > 0) {
+        @exec('kill ' . $sharedPid . ' 2>/dev/null');
+    }
+});
+
+if (wait_for_server($sharedBase . '/api/metrics?key=test-metrics-key')) {
+    reset_counters();
+
+    $sharedToken = json_decode(http_request(
+        $sharedBase . '/api/token/10',
+        'GET',
+        'MTX Player'
+    )['body'], true);
+
+    $entry = http_get((string) $sharedToken['url']);
+
+    check('رابط /stream يرجع قائمة رئيسية صغيرة',
+        str_contains($entry['body'], '#EXT-X-STREAM-INF'));
+
+    preg_match('#(https?://\S+/hls-cache/[a-f0-9]{40}\.m3u8)#', $entry['body'], $sharedChild);
+
+    check('القائمة الوسيطة تشير إلى قائمة مشتركة بلا بيانات مشاهد',
+        isset($sharedChild[1])
+        && !str_contains((string) ($sharedChild[1] ?? ''), 'viewer='));
+
+    if (isset($sharedChild[1])) {
+        $sharedChildUrl = (string) $sharedChild[1];
+        $childPlaylist = http_get($sharedChildUrl);
+
+        check('القائمة المشتركة تعمل وتحتوي مقاطع',
+            $childPlaylist['status'] === 200
+            && substr_count($childPlaylist['body'], '#EXTINF:') >= 6);
+
+        check('القائمة المشتركة قابلة للتخزين لثانية واحدة في CDN',
+            str_contains(strtolower($childPlaylist['headers']), 'max-age=1')
+            && !str_contains(strtolower($childPlaylist['headers']), 'no-store'));
+
+        /* 100 مشاهد يطلبون القائمة نفسها — رابط واحد، فيتقاسمه CDN. */
+        $sharedBurst = parallel(array_fill(0, 100, $sharedChildUrl));
+        $counters = origin_counters();
+
+        check('100 طلبًا للقائمة المشتركة = اتصالان بالمصدر كحد أقصى',
+            ($counters['resource:10.m3u8'] ?? 0) <= 2,
+            true,
+            'الفعلي: ' . ($counters['resource:10.m3u8'] ?? 0));
+        check('كل الطلبات نجحت',
+            ($sharedBurst['status_counts'][200] ?? 0) === 100,
+            true,
+            json_encode($sharedBurst['status_counts']));
+
+        $sharedSegments = extract_segments($childPlaylist['body']);
+
+        check('مقاطع الوضع المشترك تعمل',
+            in_array(http_get($sharedSegments[0])['status'], [200, 302], true));
+    }
+
+    $sharedPing = http_get((string) $sharedToken['ping_url']);
+    check('ping يعمل في الوضع المشترك (لإبقاء الإحصاء دقيقًا)',
+        str_contains($sharedPing['body'], '"active":true'));
+} else {
+    check('تشغيل خادم الوضع المشترك', false);
+}
 
 /* ═════════════ النتيجة ═════════════ */
 

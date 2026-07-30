@@ -23,13 +23,16 @@ return [
     /* ─────────────────────── وضع التشغيل ─────────────────────── */
 
     /**
-     * request_driven : يعمل على أي استضافة (Apache/PHP) بدون أي خدمة خلفية.
-     *                  التحديث يتم عند وصول الطلبات مع single-flight
-     *                  و stale-while-revalidate.
+     * request_driven : الوضع الأساسي والافتراضي. يعمل على أي استضافة
+     *                  مشتركة (Hostinger وغيرها) بلا أي خدمة خلفية ولا
+     *                  root ولا cron. التحديث يتم داخل الطلبات نفسها مع
+     *                  single-flight و stale-while-revalidate.
      *
-     * worker         : نفس السلوك السابق تمامًا + خدمة worker.php المستقلة
-     *                  تسحب القوائم وتحمّل المقاطع مسبقًا (VPS فقط).
-     *                  إن توقّفت الخدمة يستمر البث بوضع request_driven.
+     * worker         : خيار مستقبلي لـ VPS فقط. لا تستخدمه على استضافة
+     *                  مشتركة. حتى على VPS فهو تحسين لا شرط: إن توقفت
+     *                  الخدمة يعود النظام تلقائيًا إلى request_driven.
+     *
+     * على Hostinger Business اتركه request_driven دائمًا — راجع HOSTINGER.md
      */
     'mode' => getenv('TOFI_MODE') ?: 'request_driven',
 
@@ -139,8 +142,13 @@ return [
     /* ─────────────────────── إحصاء المتصلين ─────────────────────── */
 
     /**
-     * auto  → redis ثم apcu ثم sqlite ثم file (أول متوفّر).
-     * أو حدّد يدويًا: 'redis' | 'apcu' | 'sqlite' | 'file'
+     * auto  → apcu ثم sqlite ثم file (أول متوفّر).
+     *
+     * ملاحظة مهمة: الوضع التلقائي **لا يجرّب Redis إطلاقًا**، لأن تجربته
+     * على استضافة بلا Redis تعني محاولة اتصال TCP في كل طلب.
+     * على VPS فيه Redis اضبطه صراحةً: 'redis'
+     *
+     * القيم المقبولة: 'auto' | 'redis' | 'apcu' | 'sqlite' | 'file'
      */
     'viewer_backend' => getenv('TOFI_VIEWER_BACKEND') ?: 'auto',
 
@@ -171,7 +179,12 @@ return [
     'metrics_enabled' => false,
     'metrics_token'   => getenv('TOFI_METRICS_TOKEN') ?: '',
 
-    /* ─────────────────────── إعدادات worker.php ─────────────────────── */
+    /* ───────── إعدادات worker.php — VPS فقط، تُتجاهل تمامًا هنا ───────── */
+
+    /*
+     * كل ما تحت هذا السطر لا أثر له إطلاقًا في وضع request_driven.
+     * لا تحتاج لمسه على الاستضافة المشتركة.
+     */
 
     /** القنوات التي يسحبها الـ worker باستمرار. مثال: [10, 11, 20]. */
     'worker_channels' => array_values(array_filter(array_map(

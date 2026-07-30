@@ -76,6 +76,11 @@ function hls_default_config(): array
 
         'viewer_backend' => 'auto',
         'viewer_active_seconds' => 30,
+        /*
+         * في وضع shared_media_playlist لا يطلب المشغل رابط /stream إلا مرة
+         * واحدة، فالجلسة تحتاج مهلة أطول (أو استدعاء ping_url من التطبيق).
+         */
+        'shared_playlist_viewer_lease' => 120,
         'viewer_touch_min_interval' => 10,
         'viewer_retention_seconds' => 120,
         'redis_host' => '127.0.0.1',
@@ -113,12 +118,40 @@ function hls_environment_map(): array
         'TOFI_SEGMENT_CACHE_ROOT' => ['segment_cache_root', 'string'],
         'TOFI_LIVE_WINDOW_SEGMENTS' => ['live_window_segments', 'int'],
         'TOFI_VIEWER_BACKEND' => ['viewer_backend', 'string'],
+        'TOFI_SHARED_MEDIA_PLAYLIST' => ['shared_media_playlist', 'bool'],
         'TOFI_METRICS_ENABLED' => ['metrics_enabled', 'bool'],
         'TOFI_METRICS_TOKEN' => ['metrics_token', 'string'],
         'TOFI_WORKER_CHANNELS' => ['worker_channels', 'intlist'],
         'TOFI_ALLOW_INSECURE_SOURCE' => ['allow_insecure_source', 'bool'],
         'TOFI_SEGMENT_KEEP_SECONDS' => ['segment_keep_seconds', 'int'],
     ];
+}
+
+/**
+ * قراءة متغيّر بيئة بطريقة تعمل على كل الاستضافات.
+ *
+ * على LiteSpeed/PHP-FPM (وهو ما تستخدمه Hostinger) لا يرى getenv() دائمًا
+ * قيم SetEnv الموضوعة في ‎.htaccess‎، لكنها تصل عبر ‎$_SERVER‎.
+ */
+function hls_env(string $name): ?string
+{
+    $value = getenv($name);
+
+    if (is_string($value) && $value !== '') {
+        return $value;
+    }
+
+    foreach ([$_SERVER, $_ENV] as $source) {
+        if (isset($source[$name]) && is_scalar($source[$name])) {
+            $value = (string) $source[$name];
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+    }
+
+    return null;
 }
 
 function hls_config(?string $key = null, $default = null)
@@ -155,14 +188,14 @@ function hls_config(?string $key = null, $default = null)
         }
 
         foreach (hls_environment_map() as $variable => $definition) {
-            $raw = getenv($variable);
+            $raw = hls_env($variable);
 
-            if ($raw === false || $raw === '') {
+            if ($raw === null) {
                 continue;
             }
 
             [$name, $type] = $definition;
-            $config[$name] = hls_cast_config_value((string) $raw, $type);
+            $config[$name] = hls_cast_config_value($raw, $type);
         }
 
         $config['live_window_segments'] = max(

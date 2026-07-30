@@ -93,10 +93,14 @@ function viewer_backend(): string
         return $backend = 'file';
     }
 
-    if (viewer_redis() !== null) {
-        return $backend = 'redis';
-    }
-
+    /*
+     * مهم للاستضافة المشتركة (Hostinger وغيرها):
+     * الوضع التلقائي لا يجرّب Redis إطلاقًا. تجربته تعني محاولة اتصال TCP
+     * في كل طلب على خادم لا يوجد فيه Redis أصلًا، وقد تُكلّف مئات
+     * المللي ثانية إن كان المنفذ محجوبًا بدل مرفوض.
+     *
+     * على VPS فيه Redis اضبطه صراحةً:  'viewer_backend' => 'redis'
+     */
     if (function_exists('apcu_enabled') && apcu_enabled()) {
         return $backend = 'apcu';
     }
@@ -175,31 +179,63 @@ function viewer_sqlite(): ?PDO
     try {
         viewer_ensure_directory(VIEWER_ROOT);
         $file = VIEWER_ROOT . '/viewers.sqlite';
+        $isNew = !is_file($file);
 
         $pdo = new PDO('sqlite:' . $file, null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_TIMEOUT => 2,
         ]);
 
-        $pdo->exec('PRAGMA journal_mode=WAL');
-        $pdo->exec('PRAGMA synchronous=NORMAL');
+        /* هذان رخيصان (لا يلمسان القرص) ويجب ضبطهما لكل اتصال. */
         $pdo->exec('PRAGMA busy_timeout=1500');
-        $pdo->exec(
-            'CREATE TABLE IF NOT EXISTS viewers ('
-            . 'viewer TEXT NOT NULL, channel INTEGER NOT NULL, '
-            . 'expires_at INTEGER NOT NULL, '
-            . 'PRIMARY KEY (viewer, channel))'
-        );
-        $pdo->exec(
-            'CREATE INDEX IF NOT EXISTS viewers_expiry '
-            . 'ON viewers (expires_at)'
-        );
+        $pdo->exec('PRAGMA synchronous=NORMAL');
 
-        @chmod($file, 0640);
+        /*
+         * إنشاء الجداول و WAL مرة واحدة فقط عند أول إنشاء للملف.
+         * تكرارها في كل طلب يعني عمليات DDL على المسار الساخن بلا داعٍ.
+         */
+        if ($isNew) {
+            viewer_sqlite_schema($pdo);
+            @chmod($file, 0640);
+        }
 
         return $connection = $pdo;
     } catch (Throwable $error) {
         return $connection = null;
+    }
+}
+
+function viewer_sqlite_schema(PDO $pdo): void
+{
+    $pdo->exec('PRAGMA journal_mode=WAL');
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS viewers ('
+        . 'viewer TEXT NOT NULL, channel INTEGER NOT NULL, '
+        . 'expires_at INTEGER NOT NULL, '
+        . 'PRIMARY KEY (viewer, channel))'
+    );
+    $pdo->exec(
+        'CREATE INDEX IF NOT EXISTS viewers_expiry '
+        . 'ON viewers (expires_at)'
+    );
+}
+
+/**
+ * ينفّذ عملية على SQLite، وإن كان الجدول مفقودًا (حُذف الملف يدويًا مثلًا)
+ * ينشئ المخطط مرة واحدة ويعيد المحاولة.
+ */
+function viewer_sqlite_run(callable $operation, PDO $pdo)
+{
+    try {
+        return $operation($pdo);
+    } catch (PDOException $error) {
+        if (!str_contains($error->getMessage(), 'no such table')) {
+            throw $error;
+        }
+
+        viewer_sqlite_schema($pdo);
+
+        return $operation($pdo);
     }
 }
 
@@ -321,20 +357,30 @@ function viewer_touch_sqlite(
      * جملة واحدة قصيرة: لا تكتب شيئًا إن كانت الجلسة مجدّدة حديثًا،
      * فلا يوجد قفل كتابة على المسار الساخن بلا داعٍ.
      */
-    $statement = $pdo->prepare(
-        'INSERT INTO viewers (viewer, channel, expires_at) '
-        . 'VALUES (:viewer, :channel, :expires) '
-        . 'ON CONFLICT(viewer, channel) DO UPDATE SET '
-        . 'expires_at = excluded.expires_at '
-        . 'WHERE viewers.expires_at < :threshold'
-    );
+    viewer_sqlite_run(
+        static function (PDO $pdo) use (
+            $viewerId,
+            $channel,
+            $expiresAt,
+            $skipThreshold
+        ): void {
+            $statement = $pdo->prepare(
+                'INSERT INTO viewers (viewer, channel, expires_at) '
+                . 'VALUES (:viewer, :channel, :expires) '
+                . 'ON CONFLICT(viewer, channel) DO UPDATE SET '
+                . 'expires_at = excluded.expires_at '
+                . 'WHERE viewers.expires_at < :threshold'
+            );
 
-    $statement->execute([
-        ':viewer' => $viewerId,
-        ':channel' => $channel,
-        ':expires' => $expiresAt,
-        ':threshold' => $skipThreshold,
-    ]);
+            $statement->execute([
+                ':viewer' => $viewerId,
+                ':channel' => $channel,
+                ':expires' => $expiresAt,
+                ':threshold' => $skipThreshold,
+            ]);
+        },
+        $pdo
+    );
 }
 
 function viewer_touch_file(
@@ -547,24 +593,30 @@ function viewer_counts_sqlite(int $now): array
         return [];
     }
 
-    $pdo->prepare('DELETE FROM viewers WHERE expires_at < :cutoff')
-        ->execute([
-            ':cutoff' => $now - (int) hls_config('viewer_retention_seconds', 120),
-        ]);
+    return viewer_sqlite_run(
+        static function (PDO $pdo) use ($now): array {
+            $pdo->prepare('DELETE FROM viewers WHERE expires_at < :cutoff')
+                ->execute([
+                    ':cutoff' => $now
+                        - (int) hls_config('viewer_retention_seconds', 120),
+                ]);
 
-    $statement = $pdo->prepare(
-        'SELECT channel, COUNT(*) AS total FROM viewers '
-        . 'WHERE expires_at >= :now GROUP BY channel'
+            $statement = $pdo->prepare(
+                'SELECT channel, COUNT(*) AS total FROM viewers '
+                . 'WHERE expires_at >= :now GROUP BY channel'
+            );
+            $statement->execute([':now' => $now]);
+
+            $counts = [];
+
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $counts[(int) $row['channel']] = (int) $row['total'];
+            }
+
+            return $counts;
+        },
+        $pdo
     );
-    $statement->execute([':now' => $now]);
-
-    $counts = [];
-
-    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $counts[(int) $row['channel']] = (int) $row['total'];
-    }
-
-    return $counts;
 }
 
 function viewer_counts_file(int $now): array
