@@ -1,0 +1,45 @@
+[Unit]
+Description=ToFi X Tv — HLS live worker (playlist pull + segment prefetch)
+Documentation=file:///var/www/live-api/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# عدّل المسار والمستخدم بما يطابق سيرفرك.
+WorkingDirectory=/var/www/live-api
+User=www-data
+Group=www-data
+
+# القنوات التي تُسحب باستمرار. يمكن ضبطها هنا أو في config.php.
+Environment=TOFI_MODE=worker
+Environment=TOFI_WORKER_CHANNELS=10
+# Environment=TOFI_TOKEN_SECRET=change-me
+# Environment=TOFI_STREAM_SIGNING_SECRET=change-me
+# Environment=TOFI_VIEWER_BACKEND=redis
+
+ExecStart=/usr/bin/php /var/www/live-api/worker.php
+
+# إعادة التشغيل التلقائي: لو توقفت الخدمة يستمر البث بوضع request_driven
+# تلقائيًا، ثم تعود الخدمة خلال ثانيتين.
+Restart=always
+RestartSec=2s
+
+# تشديد أمني معقول.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/live-api/hls-cache /var/www/live-api/.tofi-cache /var/www/live-api/.tofi-viewers
+
+# حدود الموارد.
+LimitNOFILE=65535
+MemoryMax=512M
+
+StandardOutput=append:/var/log/tofi-hls-worker.log
+StandardError=append:/var/log/tofi-hls-worker.log
+SyslogIdentifier=tofi-hls-worker
+
+[Install]
+WantedBy=multi-user.target

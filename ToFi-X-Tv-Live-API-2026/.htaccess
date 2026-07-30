@@ -1,0 +1,137 @@
+Options -Indexes
+
+# صفحات الأخطاء الاحترافية: كل رمز يظهر بعنوانه الصحيح (403/404/502...).
+ErrorDocument 403 /error.php
+ErrorDocument 404 /error.php
+ErrorDocument 500 /error.php
+ErrorDocument 502 /error.php
+ErrorDocument 503 /error.php
+
+RewriteEngine On
+
+# ───────────────────────────────────────────────────────────────────────────
+# 1) إبقاء جميع قوائم HLS والمقاطع على HTTPS.
+# ───────────────────────────────────────────────────────────────────────────
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+
+# السماح بصفحة الخطأ نفسها دائمًا حتى لا تتأثر بقواعد المنع بالأسفل.
+RewriteRule ^error\.php$ - [L]
+
+# السماح بمسار التحقق لتجديد شهادة SSL (Let's Encrypt) حتى لا يتعطل التجديد.
+RewriteRule ^\.well-known/ - [L]
+
+# ───────────────────────────────────────────────────────────────────────────
+# 2) أهم قاعدة في الملف:
+#    إذا كان المقطع موجودًا فعلًا داخل hls-cache يرسله Apache مباشرة،
+#    فلا يعمل PHP إطلاقًا، ولا يُقرأ الملف بـ readfile()، ولا يُتصل بالمصدر.
+#    Range Requests يتولاها Apache وحده.
+#    (موضعها قبل أي تحويل إلى index.php — وهذا هو المطلوب.)
+# ───────────────────────────────────────────────────────────────────────────
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^hls-cache/[A-Za-z0-9_-]{8,4096}\.(?:ts|m4s|mp4|m4a|aac|vtt)$ - [L]
+
+# ───────────────────────────────────────────────────────────────────────────
+# 3) المنع والحماية.
+# ───────────────────────────────────────────────────────────────────────────
+
+# مجلدات الحالة الداخلية (قوائم مؤقتة، خرائط الأسماء، إحصاء المتصلين).
+RewriteRule ^\.tofi-cache(?:/|$) - [F,L,NC]
+RewriteRule ^\.tofi-viewers(?:/|$) - [F,L,NC]
+
+# ملفات المكتبات والإعدادات والخدمة لا تُفتح من المتصفح إطلاقًا.
+RewriteRule ^(?:hls-core|worker|viewers|override|config|config\.example)\.php$ - [F,L,NC]
+RewriteRule ^(?:tests|loadtest|systemd|supervisor)(?:/|$) - [F,L,NC]
+RewriteRule \.(?:md|txt|sqlite|sqlite-wal|sqlite-shm|service|conf|log|bak|dist|sql|ini)$ - [F,L,NC]
+
+# منع الوصول المباشر إلى الجذر أو ملف المعالج (التوجيه الداخلي يبقى يعمل).
+RewriteCond %{THE_REQUEST} \s/+(?:index\.php)?[\s?] [NC]
+RewriteRule ^ - [F,L]
+
+# منع كشف أي ملف مخفي (‎.data.json‎ و‎.uploads‎ وغيرها).
+RewriteRule (?:^|/)\.(?!well-known/) - [F,L]
+
+# منع الوصول من المتصفح إلى ملفات إعدادات وبيانات التبديل.
+# مقاطع القالب (.ts/.m3u8) تبقى متاحة لأنها ليست php/json.
+RewriteRule ^overrides/.*\.(?:php|json)$ - [F,L,NC]
+
+# ───────────────────────────────────────────────────────────────────────────
+# 4) أي ملف ثابت آخر موجود فعلًا (مقاطع القوالب، لوحة التحكم…) يخدمه Apache.
+# ───────────────────────────────────────────────────────────────────────────
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# ───────────────────────────────────────────────────────────────────────────
+# 5) المسارات العامة (لم تتغيّر — لا يحتاج التطبيق لأي تعديل).
+# ───────────────────────────────────────────────────────────────────────────
+
+# رابط ثابت للتطبيق؛ يتطلب User-Agent المسموح، ثم يصدر رابطًا موقعًا ويحول إليه.
+RewriteRule ^watch/([0-9]+(?:-[0-9]+){0,2})/index\.m3u8$ index.php?action=redirect_token&channels=$1 [L,QSA,NC]
+
+# إرجاع رابط موقع بصيغة JSON عند الحاجة داخل التطبيق.
+RewriteRule ^api/token/([0-9]+(?:-[0-9]+){0,2})$ index.php?action=issue_token&channels=$1 [L,QSA,NC]
+
+# إنهاء جلسة المشاهدة فور إغلاق المشغل.
+RewriteRule ^api/viewer/leave/([0-9]+(?:-[0-9]+){0,2})$ index.php?action=viewer_leave&channels=$1 [L,QSA,NC]
+
+# تجديد الجلسة كل 10–15 ثانية دون أي علاقة بمسار المقاطع.
+RewriteRule ^api/viewer/ping/([0-9]+(?:-[0-9]+){0,2})$ index.php?action=viewer_ping&channels=$1 [L,QSA,NC]
+
+# قياسات التشغيل (تعمل فقط عند تفعيلها ومع مفتاح صحيح، وإلا 404).
+RewriteRule ^api/metrics$ index.php?action=metrics [L,QSA]
+
+# قائمة قناة واحدة أو قائمة جودات متعددة.
+RewriteRule ^stream/([0-9]+(?:-[0-9]+){0,2})/index\.m3u8$ index.php?channels=$1 [L,QSA,NC]
+
+# المقطع غير موجود بعد → PHP يجلبه مرة واحدة وينشره كملف ثابت.
+# الاسم القصير الجديد (SHA-256) والاسم الطويل القديم كلاهما مدعوم.
+RewriteRule ^hls-cache/([A-Za-z0-9_-]{8,4096})\.([a-z0-9]{2,5})$ index.php?action=asset&name=$1&ext=$2 [L,QSA]
+
+# ملاحظة: لا توجد قاعدة منع شاملة هنا حتى لا تعترض روابط البث بعد إعادة
+# التوجيه الداخلي. المسارات غير المعروفة يتكفّل بها Apache تلقائيًا (404)
+# فتظهر صفحة الخطأ الاحترافية عبر ErrorDocument بالأعلى.
+
+# ───────────────────────────────────────────────────────────────────────────
+# 6) أنواع المحتوى الصحيحة للملفات الثابتة.
+# ───────────────────────────────────────────────────────────────────────────
+<IfModule mod_mime.c>
+    AddType application/vnd.apple.mpegurl .m3u8
+    AddType video/mp2t .ts
+    AddType video/iso.segment .m4s
+    AddType audio/mp4 .m4a
+    AddType audio/aac .aac
+    AddType text/vtt .vtt
+</IfModule>
+
+# ───────────────────────────────────────────────────────────────────────────
+# 7) ترويسات التخزين المؤقت وCORS.
+#    اسم المقطع مشتق من رابطه الفريد، فمحتواه لا يتغيّر أبدًا → immutable.
+#    القوائم لا تأخذ immutable إطلاقًا. مفاتيح التشفير مدتها قصيرة جدًا.
+# ───────────────────────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    <FilesMatch "\.(?:ts|m4s|mp4|m4a|aac|vtt)$">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+        Header always set Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges"
+        Header always set Cache-Control "public, max-age=86400, s-maxage=86400, immutable"
+        Header always set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+
+    <FilesMatch "\.m3u8$">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Cache-Control "public, max-age=1, s-maxage=1, stale-while-revalidate=2"
+    </FilesMatch>
+
+    <FilesMatch "\.key$">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Cache-Control "public, max-age=15, s-maxage=15"
+    </FilesMatch>
+</IfModule>
+
+# ───────────────────────────────────────────────────────────────────────────
+# 8) Range Requests للملفات الثابتة يتولاها Apache وحده (mod_headers لا يلغيها).
+# ───────────────────────────────────────────────────────────────────────────
+<IfModule mod_reqtimeout.c>
+    RequestReadTimeout header=10-20,minrate=500 body=20,minrate=500
+</IfModule>

@@ -1,0 +1,19 @@
+# مجلدات تُنشأ تلقائيًا أثناء التشغيل — لا تُرفع ولا تُحفظ في المستودع.
+/hls-cache/
+/.tofi-cache/
+/.tofi-viewers/
+
+# ملف الإعدادات الفعلي يحتوي أسرارًا — انسخه من config.example.php.
+/config.php
+
+# مخلفات الاختبار المحلي.
+/tests/.origin-state.json
+/tests/.origin-counters.json
+/tests/.router-counters.json
+/tests/.dev-serve.pids
+/tests/.origin.log
+/tests/.proxy.log
+
+# بيانات لوحة التحكم والقوالب المرفوعة من المستخدم.
+/overrides/.data.json
+/overrides/.uploads/

@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  ToFi X Tv — إعداد Nginx مكافئ لملف .htaccess
+#  للاستخدام على VPS مع PHP-FPM. على الاستضافة المشتركة استخدم .htaccess.
+# ═══════════════════════════════════════════════════════════════════════════
+
+server {
+    listen 443 ssl http2;
+    server_name live-api-tofixtv.tofi-xtv.com;
+
+    root /var/www/live-api;
+    index index.php;
+
+    ssl_certificate     /etc/letsencrypt/live/live-api-tofixtv.tofi-xtv.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/live-api-tofixtv.tofi-xtv.com/privkey.pem;
+
+    # صفحات الأخطاء الاحترافية.
+    error_page 403 /error.php;
+    error_page 404 /error.php;
+    error_page 500 502 503 504 /error.php;
+
+    # حجم مناسب لملفات البث.
+    client_max_body_size 210m;
+    sendfile on;
+    tcp_nopush on;
+    aio threads;
+
+    # ───────────────────────────────────────────────────────────────────────
+    #  1) المقاطع المحفوظة: يرسلها Nginx مباشرة، وإن لم توجد يجلبها PHP مرة
+    #     واحدة فقط. Range Requests يتولاها Nginx وحده.
+    # ───────────────────────────────────────────────────────────────────────
+    location ^~ /hls-cache/ {
+        add_header Access-Control-Allow-Origin  "*" always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Expose-Headers "Content-Length, Content-Range, Accept-Ranges" always;
+        add_header X-Content-Type-Options "nosniff" always;
+
+        # الاسم مشتق من رابط فريد → المحتوى ثابت أبدًا.
+        location ~* ^/hls-cache/[A-Za-z0-9_-]{8,}\.(ts|m4s|mp4|m4a|aac|vtt)$ {
+            add_header Access-Control-Allow-Origin "*" always;
+            add_header Cache-Control "public, max-age=86400, s-maxage=86400, immutable" always;
+
+            # الملف موجود → إرسال مباشر. غير موجود → PHP يجلبه.
+            try_files $uri /index.php?action=asset&name=$1&ext=$2;
+        }
+
+        # القوائم والمفاتيح لا تُخزَّن كملفات ثابتة إطلاقًا.
+        try_files /dev/null /index.php;
+    }
+
+    # ───────────────────────────────────────────────────────────────────────
+    #  2) المسارات العامة.
+    # ───────────────────────────────────────────────────────────────────────
+    location ~ ^/watch/([0-9]+(?:-[0-9]+){0,2})/index\.m3u8$ {
+        rewrite ^ /index.php?action=redirect_token&channels=$1 last;
+    }
+
+    location ~ ^/api/token/([0-9]+(?:-[0-9]+){0,2})$ {
+        rewrite ^ /index.php?action=issue_token&channels=$1 last;
+    }
+
+    location ~ ^/api/viewer/leave/([0-9]+(?:-[0-9]+){0,2})$ {
+        rewrite ^ /index.php?action=viewer_leave&channels=$1 last;
+    }
+
+    location ~ ^/api/viewer/ping/([0-9]+(?:-[0-9]+){0,2})$ {
+        rewrite ^ /index.php?action=viewer_ping&channels=$1 last;
+    }
+
+    location = /api/metrics {
+        rewrite ^ /index.php?action=metrics last;
+    }
+
+    location ~ ^/stream/([0-9]+(?:-[0-9]+){0,2})/index\.m3u8$ {
+        rewrite ^ /index.php?channels=$1 last;
+    }
+
+    # ───────────────────────────────────────────────────────────────────────
+    #  3) الحماية.
+    # ───────────────────────────────────────────────────────────────────────
+    location ~ ^/(hls-core|worker|viewers|override|config|config\.example)\.php$ {
+        deny all;
+    }
+
+    location ~ ^/(tests|loadtest|systemd|supervisor)/ {
+        deny all;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+    location ~* \.(md|txt|sqlite|service|conf|log|bak|dist|ini)$ {
+        deny all;
+    }
+
+    location ~ ^/overrides/.*\.(php|json)$ {
+        deny all;
+    }
+
+    # منع فتح الجذر أو المعالج مباشرة (التوجيه الداخلي يبقى يعمل).
+    location = / {
+        return 403;
+    }
+
+    location = /index.php {
+        # يسمح فقط بالتوجيه الداخلي القادم من القواعد أعلاه.
+        internal;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_read_timeout 30s;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_read_timeout 30s;
+    }
+
+    location / {
+        try_files $uri =404;
+    }
+}
+
+server {
+    listen 80;
+    server_name live-api-tofixtv.tofi-xtv.com;
+    return 301 https://$host$request_uri;
+}
